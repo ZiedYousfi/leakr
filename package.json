@@ -10,10 +10,17 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
+    "@types/chrome": "^0.0.315",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "prettier": "^3.5.3",
+    "tailwindcss": "^4.1.4",
     "typescript": "~5.8.3",
     "vite": "^6.2.0",
     "vite-plugin-static-copy": "^2.3.1",
-    "@types/chrome": "^0.0.315",
-    "prettier": "^3.5.3"
+    "@tailwindcss/vite": "^4.1.4"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.4"
   }
 }
