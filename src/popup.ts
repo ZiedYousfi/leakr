@@ -249,7 +249,6 @@ document.addEventListener("DOMContentLoaded", () => {
     burger.addEventListener("click", () => {
       nav.classList.toggle("hidden");
     });
-    // Optional: close menu when clicking outside
     document.addEventListener("click", (e) => {
       if (
         !burger.contains(e.target as Node) &&
@@ -260,4 +259,3 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
-// ...existing code...

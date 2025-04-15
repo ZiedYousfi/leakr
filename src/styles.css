@@ -88,7 +88,8 @@ details button:hover {
   gap: 0.5rem;
   width: 100%;
   max-width: 20rem;
-}.popup-header {
+}
+.popup-header {
   width: 100%;
   display: flex;
   align-items: center;
@@ -98,13 +99,14 @@ details button:hover {
 }
 
 .popup-title {
-  font-family: 'JetBrains Mono', 'Inter', monospace;
+  font-family: "JetBrains Mono", "Inter", monospace;
   color: #7e5bef;
   font-size: 1.5rem;
   letter-spacing: 0.05em;
   font-weight: 700;
   background: linear-gradient(90deg, #7e5bef 80%, #b0b0b0 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 0 2px 8px #000a;
   margin: 0;
@@ -155,9 +157,11 @@ details button:hover {
   color: #b0b0b0;
   text-decoration: none;
   padding: 0.5rem 1.5rem;
-  font-family: 'JetBrains Mono', 'Inter', monospace;
+  font-family: "JetBrains Mono", "Inter", monospace;
   font-size: 1rem;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .nav-link:hover {
