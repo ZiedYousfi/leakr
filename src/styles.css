@@ -12,11 +12,13 @@ details summary {
   align-items: center;
   gap: 0.5em;
   user-select: none;
-  border: 1px solid #7E5BEF;
-  transition: background 0.2s, color 0.2s;
+  border: 1px solid #7e5bef;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 details[open] summary {
-  background: #7E5BEF;
+  background: #7e5bef;
   color: #fff;
 }
 details summary::before {
@@ -31,18 +33,18 @@ details summary:hover {
   background: #5a4e8c;
 }
 details summary:focus {
-  outline: 2px solid #7E5BEF;
+  outline: 2px solid #7e5bef;
 }
 details button {
   background: #232136;
   color: #a18aff;
-  border: 1px solid #7E5BEF;
+  border: 1px solid #7e5bef;
   font-style: italic;
   display: block;
   margin: 1em auto 0 auto;
 }
 details button:hover {
-  background: #7E5BEF;
+  background: #7e5bef;
   color: #fff;
 }
 .popup-body {
@@ -64,8 +66,10 @@ details button:hover {
   border-radius: 0.5rem;
   background: #1a1a1a;
   color: #e5e7eb;
-  border: 1px solid #7E5BEF;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  border: 1px solid #7e5bef;
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s;
 }
 
 .twitch-input::placeholder {
@@ -74,8 +78,8 @@ details button:hover {
 
 .twitch-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #7E5BEF;
-  border-color: #7E5BEF;
+  box-shadow: 0 0 0 2px #7e5bef;
+  border-color: #7e5bef;
 }
 
 #actions {

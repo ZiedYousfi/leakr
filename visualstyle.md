@@ -17,10 +17,11 @@
    → Elle représente à la fois une "fuite" (leak), la fluidité du contenu, et le caractère insaisissable du web.
 
 2. **À l’intérieur de la goutte :**
+
    - Une **loupe discrète** (symbole de recherche) intégrée dans le dessin.
    - Ou un **œil semi-ouvert**, pour symboliser l’exploration de l’invisible.
 
 3. **Typographie :**
    - **"Leakr"** en monospace modernisé, genre JetBrains Mono ou Inter, avec le “r” final légèrement incliné comme un glitch.
-   - Ou une police inspirée du *terminal hacker aesthetic*, subtile, fine et légèrement distordue.
+   - Ou une police inspirée du _terminal hacker aesthetic_, subtile, fine et légèrement distordue.
    - Couleur : violet nuit pour le texte, avec un léger dégradé argenté sur le "r" pour le faire ressortir.

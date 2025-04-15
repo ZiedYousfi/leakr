@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [
@@ -12,7 +12,7 @@ export default defineConfig({
         },
         {
           src: "src/icon.png", // Ajoute cette ligne
-          dest: ".",           // Copie à la racine de dist
+          dest: ".", // Copie à la racine de dist
         },
       ],
     }),

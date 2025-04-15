@@ -11,7 +11,10 @@ type Platform =
   | "onlyfans"
   | null;
 
-function detectPlatform(url: string): { platform: Platform; username: string | null } {
+function detectPlatform(url: string): {
+  platform: Platform;
+  username: string | null;
+} {
   const patterns: [Platform, RegExp][] = [
     ["twitch", /twitch\.tv\/([\w\d_]+)/i],
     ["instagram", /instagram\.com\/([\w\d_.]+)/i],
@@ -94,12 +97,18 @@ function renderButtons(platform: Platform, username: string | null) {
 
   [
     ["Eporner", `https://www.eporner.com/search/${encodeURIComponent(value)}/`],
-    ["Pornhub", `https://www.pornhub.com/video/search?search=${encodeURIComponent(value)}`],
+    [
+      "Pornhub",
+      `https://www.pornhub.com/video/search?search=${encodeURIComponent(value)}`,
+    ],
     ["Xvideos", `https://www.xvideos.com/?k=${encodeURIComponent(value)}`],
     ["XVideos Red", `https://www.xvideos.red/?k=${encodeURIComponent(value)}`],
     ["XHamster", `https://xhamster.com/search/${encodeURIComponent(value)}`],
     ["SpankBang", `https://spankbang.com/s/${encodeURIComponent(value)}`],
-    ["RedGIFs", `https://www.redgifs.com/search?q=${encodeURIComponent(value)}`],
+    [
+      "RedGIFs",
+      `https://www.redgifs.com/search?q=${encodeURIComponent(value)}`,
+    ],
   ].forEach(([label, url]) => {
     adultSection.appendChild(
       createButton(`🔎 ${label}`, () => chrome.tabs.create({ url }))
@@ -157,7 +166,11 @@ function renderButtons(platform: Platform, username: string | null) {
   }
 
   // 5. Social Blade
-  if (["twitch", "instagram", "tiktok", "youtube", "twitter"].includes(platform || "")) {
+  if (
+    ["twitch", "instagram", "tiktok", "youtube", "twitter"].includes(
+      platform || ""
+    )
+  ) {
     actions.appendChild(
       createButton("📊 Social Blade", () => {
         let sbUrl = "";
