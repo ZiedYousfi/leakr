@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Leakr",
+  "version": "1.0",
+  "description": "Find leaks of your favorite streamers ;)",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": ["tabs"],
+  "icons": {
+    "48": "icon.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

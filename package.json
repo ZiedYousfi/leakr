@@ -1,0 +1,19 @@
+{
+  "name": "leakr",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3",
+    "vite": "^6.2.0",
+    "vite-plugin-static-copy": "^2.3.1",
+    "@types/chrome": "^0.0.315",
+    "prettier": "^3.5.3"
+  }
+}
