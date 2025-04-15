@@ -1,7 +1,7 @@
 {
   "name": "leakr",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -18,9 +18,7 @@
     "typescript": "~5.8.3",
     "vite": "^6.2.0",
     "vite-plugin-static-copy": "^2.3.1",
-    "@tailwindcss/vite": "^4.1.4"
-  },
-  "dependencies": {
+    "@tailwindcss/vite": "^4.1.4",
     "@tailwindcss/postcss": "^4.1.4"
   }
 }

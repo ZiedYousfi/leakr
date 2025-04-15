@@ -1,1 +1,87 @@
 @import "tailwindcss";
+
+details summary {
+  background: #232136;
+  color: #fff;
+  padding: 0.5em 1em;
+  border-radius: 0.5em;
+  font-weight: bold;
+  cursor: pointer;
+  outline: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  user-select: none;
+  border: 1px solid #7E5BEF;
+  transition: background 0.2s, color 0.2s;
+}
+details[open] summary {
+  background: #7E5BEF;
+  color: #fff;
+}
+details summary::before {
+  content: "▶";
+  display: inline-block;
+  transition: transform 0.2s;
+}
+details[open] summary::before {
+  content: "▼";
+}
+details summary:hover {
+  background: #5a4e8c;
+}
+details summary:focus {
+  outline: 2px solid #7E5BEF;
+}
+details button {
+  background: #232136;
+  color: #a18aff;
+  border: 1px solid #7E5BEF;
+  font-style: italic;
+  display: block;
+  margin: 1em auto 0 auto;
+}
+details button:hover {
+  background: #7E5BEF;
+  color: #fff;
+}
+.popup-body {
+  background-color: #000;
+  min-width: 320px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.twitch-input {
+  width: 100%;
+  max-width: 20rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: #1a1a1a;
+  color: #e5e7eb;
+  border: 1px solid #7E5BEF;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.twitch-input::placeholder {
+  color: #6b7280;
+}
+
+.twitch-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #7E5BEF;
+  border-color: #7E5BEF;
+}
+
+#actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 20rem;
+}
