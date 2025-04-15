@@ -21,6 +21,7 @@ function detectPlatform(url: string): {
     ["tiktok", /tiktok\.com\/@([\w\d_.-]+)/i],
     ["twitter", /(?:twitter\.com|x\.com)\/([\w\d_]+)/i],
     ["youtube", /youtube\.com\/(channel|c|user)\/([\w\d_\-]+)/i],
+    ["youtube", /youtube\.com\/@([\w\d_.-]+)/i],
     ["facebook", /facebook\.com\/([\w\d.]+)/i],
     ["onlyfans", /onlyfans\.com\/([\w\d_.-]+)/i],
   ];
@@ -240,3 +241,23 @@ input.addEventListener("input", () => {
   const { platform, username } = detectPlatform(input.value.trim());
   renderButtons(platform, username);
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  const burger = document.getElementById("burger-menu");
+  const nav = document.getElementById("popup-nav");
+  if (burger && nav) {
+    burger.addEventListener("click", () => {
+      nav.classList.toggle("hidden");
+    });
+    // Optional: close menu when clicking outside
+    document.addEventListener("click", (e) => {
+      if (
+        !burger.contains(e.target as Node) &&
+        !nav.contains(e.target as Node)
+      ) {
+        nav.classList.add("hidden");
+      }
+    });
+  }
+});
+// ...existing code...

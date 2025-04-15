@@ -11,8 +11,8 @@ export default defineConfig({
           dest: ".",
         },
         {
-          src: "src/icon.png", // Ajoute cette ligne
-          dest: ".", // Copie à la racine de dist
+          src: "src/icon.png",
+          dest: ".",
         },
       ],
     }),
