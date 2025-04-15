@@ -4,7 +4,7 @@
   "version": "1.0",
   "description": "Find leaks of your favorite streamers ;)",
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "src/popup.html"
   },
   "permissions": ["tabs"],
   "icons": {

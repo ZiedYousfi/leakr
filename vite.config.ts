@@ -9,6 +9,10 @@ export default defineConfig({
           src: "src/manifest.json",
           dest: ".",
         },
+        {
+          src: "src/icon.png", // Ajoute cette ligne
+          dest: ".",           // Copie à la racine de dist
+        },
       ],
     }),
   ],
