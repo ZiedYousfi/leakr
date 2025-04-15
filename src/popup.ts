@@ -1,41 +1,6 @@
 const input = document.getElementById("twitch-link") as HTMLInputElement;
 const actions = document.getElementById("actions") as HTMLDivElement;
-
-type Platform =
-  | "twitch"
-  | "instagram"
-  | "tiktok"
-  | "twitter"
-  | "youtube"
-  | "facebook"
-  | "onlyfans"
-  | null;
-
-function detectPlatform(url: string): {
-  platform: Platform;
-  username: string | null;
-} {
-  const patterns: [Platform, RegExp][] = [
-    ["twitch", /twitch\.tv\/([\w\d_]+)/i],
-    ["instagram", /instagram\.com\/([\w\d_.]+)/i],
-    ["tiktok", /tiktok\.com\/@([\w\d_.-]+)/i],
-    ["twitter", /(?:twitter\.com|x\.com)\/([\w\d_]+)/i],
-    ["youtube", /youtube\.com\/(channel|c|user)\/([\w\d_\-]+)/i],
-    ["youtube", /youtube\.com\/@([\w\d_.-]+)/i],
-    ["facebook", /facebook\.com\/([\w\d.]+)/i],
-    ["onlyfans", /onlyfans\.com\/([\w\d_.-]+)/i],
-  ];
-  for (const [platform, regex] of patterns) {
-    const match = url.match(regex);
-    if (match) {
-      return {
-        platform,
-        username: match[2] || match[1],
-      };
-    }
-  }
-  return { platform: null, username: null };
-}
+import { detectPlatform, Platform } from "./detectPlatform";
 
 function createButton(label: string, onClick: () => void) {
   const btn = document.createElement("button");
@@ -121,7 +86,7 @@ function renderButtons(platform: Platform, username: string | null) {
 
   // 4. Plateforme spécifique
   if (platform && username) {
-    let profileUrls: [string, string][] = [
+    const profileUrls: [string, string][] = [
       ["Twitch", `https://twitch.tv/${username}`],
       ["Instagram", `https://instagram.com/${username}`],
       ["TikTok", `https://tiktok.com/@${username}`],
@@ -135,7 +100,7 @@ function renderButtons(platform: Platform, username: string | null) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const currentUrl = tabs[0]?.url || "";
       // Filtrer les liens déjà ouverts
-      const filtered = profileUrls.filter(([_, url]) => url !== currentUrl);
+      const filtered = profileUrls.filter(([url]) => url !== currentUrl);
 
       if (filtered.length === 1) {
         // Un seul bouton, on l'affiche directement
