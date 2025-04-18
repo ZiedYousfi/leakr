@@ -1,10 +1,23 @@
 <script lang="ts">
   const showNavState = $state(false);
-  const { title, showNav = () => showNavState, onclickToggle } = $props<{
+  const {
+    title,
+    showNav = () => showNavState,
+    onclickToggle,
+    onNavigate
+  } = $props<{
     title: string;
     showNav?: boolean;
     onclickToggle: () => void;
+    onNavigate?: (page: string) => void;
   }>();
+
+  function navigate(page: string) {
+    if (onNavigate) {
+      onNavigate(page);
+      onclickToggle(); // Close menu after navigation
+    }
+  }
 </script>
 
 <header class="popup-header">
@@ -20,9 +33,9 @@
 
   {#if showNav}
     <nav id="popup-nav" class="popup-nav">
-      <button type="button" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;">Search</button>
-      <button type="button" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;">Content</button>
-      <button type="button" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;">Creators</button>
+      <button type="button" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;" onclick={() => navigate('search')}>Search</button>
+      <button type="button" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;" onclick={() => navigate('contents')}>Contents</button>
+      <button type="button" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;" onclick={() => navigate('creators')}>Creators</button>
     </nav>
   {/if}
 </header>

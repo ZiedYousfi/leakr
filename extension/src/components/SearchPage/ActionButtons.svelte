@@ -9,7 +9,7 @@
     filteredProfileLinks,
     socialBladeUrl,
   }: {
-    displayValue: string;
+    displayValue: string | null;
     socialLinks: LinkItem[];
     adultLinks: LinkItem[];
     filteredProfileLinks: [string, string][];
@@ -25,16 +25,18 @@
   <button
     class="action-button"
     onclick={() =>
-      openUrl(`https://www.google.com/search?q=${encodeURIComponent(displayValue)}`)
-    }
+      openUrl(
+        `https://www.google.com/search?q=${encodeURIComponent(displayValue || "")}`
+      )}
   >
     🔍 Google Search
   </button>
   <button
     class="action-button"
     onclick={() =>
-      openUrl(`https://www.kbjfree.com/search?q=${encodeURIComponent(displayValue)}`)
-    }
+      openUrl(
+        `https://www.kbjfree.com/search?q=${encodeURIComponent(displayValue || "")}`
+      )}
   >
     🔍 KBJFree
   </button>
@@ -42,9 +44,8 @@
     class="action-button"
     onclick={() =>
       openUrl(
-        `https://www.google.com/search?q=${encodeURIComponent(displayValue)}+leaks`
-      )
-    }
+        `https://www.google.com/search?q=${encodeURIComponent(displayValue || "")}+leaks`
+      )}
   >
     🕵️‍♂️ Find Leaks
   </button>
@@ -52,19 +53,19 @@
   <DetailsGroup
     title="🔗 Réseaux sociaux & Plateformes"
     links={socialLinks}
-    {displayValue}
+    displayValue={displayValue ?? ""}
   />
   <DetailsGroup
     title="🔞 Plateformes adultes"
     links={adultLinks}
-    {displayValue}
+    displayValue={displayValue ?? ""}
   />
 
   {#if filteredProfileLinks.length}
     <DetailsGroup
       title="🌐 Profils sur plateformes"
       customLinks={filteredProfileLinks}
-      displayValue={displayValue}
+      displayValue={displayValue ?? ""}
     />
   {/if}
 
@@ -88,11 +89,11 @@
     gap: 0.5rem;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
-    background-color: #7E5BEF;
+    background-color: #7e5bef;
     color: white;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
     font-weight: 600;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     transition: background-color 0.2s ease;
     border: none;
     cursor: pointer;
