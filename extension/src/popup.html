@@ -1,31 +1,16 @@
 <!doctype html>
 <html>
   <head>
-    <title>Recherche Twitch ✨</title>
-    <link href="/src/styles.css" rel="stylesheet" />
+    <title>Leakr ✨</title>
+    <!-- The CSS will be handled by Svelte's build process -->
     <meta charset="UTF-8" />
+    <!-- Ensure Tailwind base styles are included if not handled by Svelte/build -->
+    <!-- <link href="/path/to/tailwind/output.css" rel="stylesheet"> -->
   </head>
-  <body class="popup-body">
-    <header class="popup-header">
-      <h1 class="popup-title">Leakr</h1>
-      <button id="burger-menu" class="burger-menu" aria-label="Menu">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-      <nav id="popup-nav" class="popup-nav hidden">
-        <a href="#" class="nav-link">Search</a>
-        <a href="#" class="nav-link">Content</a>
-        <a href="#" class="nav-link">Creators</a>
-      </nav>
-    </header>
-
-    <input
-      id="twitch-link"
-      placeholder="Colle un lien Twitch ici 🦊"
-      class="twitch-input"
-    />
-    <div id="actions"></div>
-    <script type="module" src="../src/popup.ts"></script>
+  <body>
+    <!-- Svelte app will mount here -->
+    <div id="app"></div>
+    <!-- Include the compiled JavaScript file -->
+    <script type="module" src="./popup.ts"></script>
   </body>
 </html>

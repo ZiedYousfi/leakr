@@ -1,9 +1,11 @@
 import { defineConfig } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import tailwindcss from "@tailwindcss/vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte"; // Import Svelte plugin
 
 export default defineConfig({
   plugins: [
+    svelte(), // Add Svelte plugin
     viteStaticCopy({
       targets: [
         {

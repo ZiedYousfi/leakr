@@ -1,7 +1,7 @@
 import js from "@eslint/js";
 import globals from "globals";
 import tsEslint from "@typescript-eslint/eslint-plugin";
-import tsParser from "@typescript-eslint/parser"
+import tsParser from "@typescript-eslint/parser";
 import json from "@eslint/json";
 import markdown from "@eslint/markdown";
 import css from "@eslint/css";
@@ -10,7 +10,7 @@ import css from "@eslint/css";
 // et pour s'assurer de renvoyer un tableau d'objets
 function getConfig(config) {
   if (Array.isArray(config)) {
-    return config.map(c =>
+    return config.map((c) =>
       c && c.extends ? (({ extends: _ignored, ...rest }) => rest)(c) : c
     );
   } else if (config && config.extends) {
@@ -32,13 +32,7 @@ const cssConfigs = getConfig(css.configs.recommended);
 
 export default [
   {
-    ignores: [
-      "node_modules/",
-      "dist/",
-      "build/",
-      "coverage/",
-      "*.config.js",
-    ],
+    ignores: ["node_modules/", "dist/", "build/", "coverage/", "*.config.js"],
   },
   // Configuration recommandée pour les fichiers JavaScript
   {
