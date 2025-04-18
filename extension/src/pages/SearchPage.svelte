@@ -12,36 +12,42 @@
   // States
   let inputValue = $state("");
   let currentTabUrl = $state("");
+  let detectedPlatformState: Platform = $state(null);
+  let detectedUsernameState: string | null = $state(null);
+  let displayValueState: string = $state("");
+  let initialUrlChecked = $state(false); // Flag to prevent overwriting user input
 
-  // Derived reactivity
-  let detectedResult = $derived(() => detectPlatform(inputValue.trim()));
-  let detectedPlatform = $derived(() => detectedResult().platform);
-  let detectedUsername = $derived(() => detectedResult().username);
-  let displayValue = $derived(() => detectedUsername || inputValue.trim());
-
-  // Lifecycle effect
+  // Effect to update platform/username based on input
   $effect(() => {
+    const input = inputValue.trim();
+    const { platform, username } = detectPlatform(input);
+    detectedPlatformState = platform;
+    detectedUsernameState = username;
+    displayValueState = username || input;
+  });
+
+  // Effect to get current tab URL and pre-fill input if applicable
+  $effect(() => {
+    if (initialUrlChecked) return; // Only run once initially
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs[0];
       currentTabUrl = tab?.url || "";
       if (tab?.url) {
         const { platform, username } = detectPlatform(tab.url);
+        // Check if the current URL corresponds to a known platform profile
         if (platform && username) {
-          // const prefixMap: Record<Exclude<Platform, null | undefined>, string> = {
-          //   twitch:    `https://twitch.tv/${username}`,
-          //   instagram: `https://instagram.com/${username}`,
-          //   tiktok:    `https://tiktok.com/@${username}`,
-          //   twitter:   `https://twitter.com/${username}`,
-          //   youtube:   `https://youtube.com/${username}`,
-          //   facebook:  `https://facebook.com/${username}`,
-          //   onlyfans:  `https://onlyfans.com/${username}`,
-          // };
+           // Pre-fill the input field only if it's currently empty
+           if (inputValue === "") {
+             inputValue = tab.url;
+           }
         }
       }
+      initialUrlChecked = true; // Mark as checked
     });
   });
 
-  // Links
+  // Links (remain the same)
   const socialLinks: [string, (v: string) => string][] = [
     ["Linktree", v => `https://linktr.ee/${encodeURIComponent(v)}`],
     ["OnlyFans", v => `https://onlyfans.com/${encodeURIComponent(v)}`],
@@ -66,35 +72,35 @@
     ["onlyfans",  u => `https://onlyfans.com/${u}`],
   ];
 
-  // Filtered profiles
+  // Filtered profiles - Still using $derived, but based on the new $state variables
   let filteredProfileLinks = $derived(() => {
-    if (detectedPlatform && detectedUsername) {
+    const platform = detectedPlatformState; // Read state
+    const username = detectedUsernameState; // Read state
+    if (platform && username) {
       return platformProfileLinks
-        .filter(([p]) => p === detectedPlatform())
-        .map<[string, string]>(([p, fn]) => [p ? p[0].toUpperCase() + p.slice(1) : "", fn(detectedUsername() ?? "")])
-        .filter(([, url]) => url !== currentTabUrl);
+        .filter(([p]) => p === platform)
+        .map<[string, string]>(([p, fn]) => [p ? p[0].toUpperCase() + p.slice(1) : "", fn(username)])
+        .filter(([, url]) => url !== currentTabUrl); // Read state
     }
     return [] as [string, string][];
   });
 
-  // SocialBlade
+  // SocialBlade - Still using $derived, but based on the new $state variables
   let socialBladeUrl = $derived(() => {
-    if (!detectedPlatform || !detectedUsername) return null;
+    const platform = detectedPlatformState; // Read state
+    const username = detectedUsernameState; // Read state
+    if (!platform || !username) return null;
     const map: Record<Exclude<Platform, null | undefined>, string> = {
-      twitch:    `https://socialblade.com/twitch/user/${detectedUsername}`,
-      instagram: `https://socialblade.com/instagram/user/${detectedUsername}`,
-      tiktok:    `https://socialblade.com/tiktok/user/${detectedUsername}`,
-      youtube:   `https://socialblade.com/youtube/${detectedUsername}`,
-      twitter:   `https://socialblade.com/twitter/user/${detectedUsername}`,
-      facebook:  "",
-      onlyfans:  "",
+      twitch:    `https://socialblade.com/twitch/user/${username}`,
+      instagram: `https://socialblade.com/instagram/user/${username}`,
+      tiktok:    `https://socialblade.com/tiktok/user/${username}`,
+      youtube:   `https://socialblade.com/youtube/${username}`, // Note: SocialBlade uses different structures for YouTube sometimes
+      twitter:   `https://socialblade.com/twitter/user/${username}`,
+      facebook:  "", // No direct SB link usually
+      onlyfans:  "", // No SB link
     };
-    const platform = detectedPlatform();
-    if (!platform) return null;
     return map[platform] || null;
   });
-
-
 </script>
 
 <div class="popup-body">
@@ -107,9 +113,9 @@
     onInput={(value) => (inputValue = value)}
   />
 
-  {#if displayValue()}
+  {#if displayValueState}
     <ActionButtons
-      displayValue={displayValue().toString() || ""}
+      displayValue={displayValueState}
       socialLinks={socialLinks}
       adultLinks={adultLinks}
       filteredProfileLinks={filteredProfileLinks()}
