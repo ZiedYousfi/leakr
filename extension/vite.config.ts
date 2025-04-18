@@ -5,16 +5,20 @@ import { svelte } from "@sveltejs/vite-plugin-svelte"; // Import Svelte plugin
 
 export default defineConfig({
   plugins: [
-    svelte(), // Add Svelte plugin
+    svelte(),
     viteStaticCopy({
       targets: [
         {
-          src: "src/manifest.json",
-          dest: ".",
+          src: 'src/manifest.json',
+          dest: '.',
         },
         {
-          src: "src/icon.png",
-          dest: ".",
+          src: 'src/icon.png',
+          dest: '.',
+        },
+        {
+          src: 'node_modules/sql.js/dist/sql-wasm.wasm',
+          dest: '.',
         },
       ],
     }),

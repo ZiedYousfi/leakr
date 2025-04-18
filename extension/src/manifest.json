@@ -6,7 +6,8 @@
   "action": {
     "default_popup": "src/popup.html"
   },
-  "permissions": ["tabs"],
+  "permissions": ["tabs", "storage", "scripting"],
+  "host_permissions": [ "<all_urls>" ],
   "icons": {
     "48": "icon.png"
   },
