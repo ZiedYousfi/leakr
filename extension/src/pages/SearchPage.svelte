@@ -4,9 +4,13 @@
   import ActionButtons from "../components/SearchPage/ActionButtons.svelte";
   import { detectPlatform, type Platform } from "../detectPlatform";
 
+  const { onNavigate } = $props<{
+    onNavigate: (page: string, params?: object) => void;
+    params: object;
+  }>();
+
   // States
   let inputValue = $state("");
-  let showNav = $state(false);
   let currentTabUrl = $state("");
 
   // Derived reactivity
@@ -35,16 +39,6 @@
         }
       }
     });
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const nav = document.getElementById("popup-nav");
-      const burger = document.getElementById("burger-menu");
-      if (nav && burger && !nav.contains(e.target as Node) && !burger.contains(e.target as Node)) {
-        showNav = false;
-      }
-    };
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
   });
 
   // Links
@@ -100,16 +94,13 @@
     return map[platform] || null;
   });
 
-  function onclickToggle() {
-    showNav = !showNav;
-  }
+
 </script>
 
 <div class="popup-body">
   <Header
     title="Leakr"
-    {showNav}
-    onclickToggle={onclickToggle}
+    onNavigate={onNavigate}
   />
   <SearchInput
     value={inputValue}

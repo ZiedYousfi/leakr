@@ -1,41 +1,62 @@
 <script lang="ts">
-  const showNavState = $state(false);
-  const {
-    title,
-    showNav = () => showNavState,
-    onclickToggle,
-    onNavigate
-  } = $props<{
+  import { onMount, onDestroy } from 'svelte';
+
+  let showNav = $state(false);
+  let headerElement: HTMLElement | undefined; // Reference to the header element
+
+  const { title, onNavigate } = $props<{
     title: string;
-    showNav?: boolean;
-    onclickToggle: () => void;
     onNavigate?: (page: string) => void;
   }>();
+
+  function toggleNav() {
+    showNav = !showNav;
+  }
+
+  function closeNav() {
+    showNav = false;
+  }
 
   function navigate(page: string) {
     if (onNavigate) {
       onNavigate(page);
-      onclickToggle(); // Close menu after navigation
+    }
+    closeNav(); // Close nav after navigation
+  }
+
+  function handleClickOutside(event: MouseEvent) {
+    if (headerElement && !headerElement.contains(event.target as Node)) {
+      closeNav();
     }
   }
+
+  onMount(() => {
+    // Add listener when component mounts
+    document.addEventListener('click', handleClickOutside, true);
+  });
+
+  onDestroy(() => {
+    // Remove listener when component unmounts
+    document.removeEventListener('click', handleClickOutside, true);
+  });
 </script>
 
-<header class="popup-header">
+<header class="popup-header" bind:this={headerElement}>
   <h1 class="popup-title">{title}</h1>
   <button
     id="burger-menu"
     class="burger-menu"
     aria-label="Menu"
-    onclick={onclickToggle}
+    onclick={toggleNav}
   >
     <span></span><span></span><span></span>
   </button>
 
   {#if showNav}
     <nav id="popup-nav" class="popup-nav">
-      <button type="button" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;" onclick={() => navigate('search')}>Search</button>
-      <button type="button" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;" onclick={() => navigate('contents')}>Contents</button>
-      <button type="button" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;" onclick={() => navigate('creators')}>Creators</button>
+      <button type="button" class="nav-link" onclick={() => navigate('search')}>Search</button>
+      <button type="button" class="nav-link" onclick={() => navigate('contents')}>Contents</button>
+      <button type="button" class="nav-link" onclick={() => navigate('creators')}>Creators</button>
     </nav>
   {/if}
 </header>
