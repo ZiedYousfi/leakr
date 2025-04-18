@@ -19,24 +19,29 @@ jobs:
 
       - name: 📦 Install dependencies
         run: bun install
+        working-directory: extension
 
       - name: 🧹 Lint code
         run: bun run lint
+        working-directory: extension
 
       - name: 🧪 Run tests
         run: bun run test
+        working-directory: extension
 
       - name: 🛠 Build extension with Vite
         run: bun run build
+        working-directory: extension
 
       - name: 📁 Zip dist folder
         run: |
           cd dist
           zip -r ../extension.zip ./
+        working-directory: extension
         if: success()
 
       - name: 📤 Upload zip as artifact
         uses: actions/upload-artifact@v4.6.2
         with:
           name: chrome-extension
-          path: extension.zip
+          path: extension/extension.zip
