@@ -3,11 +3,8 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    // "module": "ESNext", // Provided by the base config
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
-
-    // "moduleResolution": "bundler", // Provided by the base config
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
@@ -18,13 +15,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-
-    // Add specific overrides if needed, e.g.:
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"] // Example path alias
+      "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte"], // Ensure .svelte files are included
-  "exclude": ["node_modules/**", "public/**"] // Example excludes
+  "include": ["src/**/*.ts", "src/**/*.svelte"],
+  "exclude": ["node_modules/**", "public/**"]
 }
