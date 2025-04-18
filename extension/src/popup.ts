@@ -10,16 +10,22 @@ if (!target) {
   throw new Error('🌸 Mount point "#app" introuvable dans popup.html');
 }
 
-try {
-  // Initialise la base de données
-  await dbLib.initDatabase();
+// Wrap the initialization and mounting logic in an async function
+const initializeApp = async () => {
+  try {
+    // Initialise la base de données
+    await dbLib.initDatabase();
 
-  // Monte l'application Svelte
-  mount(App, {
-    target,
-    props: {},
-  });
-} catch (error) {
-  console.error("❌ Erreur lors de l'initialisation de la base :", error);
-  target.innerHTML = `<p style="color: red;">Erreur : impossible d'initialiser l'application.</p>`;
-}
+    // Monte l'application Svelte
+    mount(App, {
+      target,
+      props: {},
+    });
+  } catch (error) {
+    console.error("❌ Erreur lors de l'initialisation de la base :", error);
+    target.innerHTML = `<p style="color: red;">Erreur : impossible d'initialiser l'application.</p>`;
+  }
+};
+
+// Call the async function to start the initialization
+initializeApp();

@@ -9,7 +9,7 @@ const DB_VERSION = "1.0.0"; // 💡 version actuelle de la structure
 // 📦 Initialise sql.js et la base (nouvelle ou chargée depuis storage)
 export async function initDatabase(): Promise<void> {
   SQL = await initSqlJs({
-    locateFile: file => file // suppose que sql-wasm.wasm est à la racine du dist
+    locateFile: _ => chrome.runtime.getURL("sql-wasm.wasm") // suppose que sql-wasm.wasm est à la racine du dist
   });
 
   const stored = await chrome.storage.local.get("leakr_db");
@@ -93,7 +93,7 @@ function checkVersion() {
 export async function saveDatabase(): Promise<void> {
   const data = db.export();
   const array = Array.from(data);
-  await chrome.storage.local.set({ ahri_db: array });
+  await chrome.storage.local.set({ leakr_db: array });
   console.log("💫 Base sauvegardée localement");
 }
 

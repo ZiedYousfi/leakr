@@ -2,7 +2,7 @@
   import Header from "../components/Header.svelte";
   import SearchInput from "../components/SearchPage/SearchInput.svelte";
   import ActionButtons from "../components/SearchPage/ActionButtons.svelte";
-  import { detectPlatform, type Platform } from "../detectPlatform";
+  import { detectPlatform, type Platform } from "../lib/detectPlatform";
 
   const { onNavigate } = $props<{
     onNavigate: (page: string, params?: object) => void;
