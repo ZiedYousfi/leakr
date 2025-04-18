@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Leakr",
-  "version": "1.1",
+  "version": "1.2.0",
   "description": "Find leaks of your favorite streamers ;)",
   "action": {
     "default_popup": "src/popup.html"
