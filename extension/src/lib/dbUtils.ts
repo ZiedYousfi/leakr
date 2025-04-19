@@ -80,6 +80,9 @@ function createSchema() {
       share_collection BOOLEAN DEFAULT FALSE
     );
 
+    -- Insérer une valeur par défaut pour le UUID
+    INSERT INTO settings (id, uuid, share_collection) VALUES (1, '00000000-0000-0000-0000-000000000000', 1);
+
     -- Création des tables créateurs, contenus, plateformes et profils_plateforme
     CREATE TABLE createurs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -264,7 +267,7 @@ export function findCreatorByUsername(username: string): Createur | null {
 
   // 🌸 Si pas trouvé exactement, on fait une recherche floue avec Fuse.js
   if (!creator) {
-    const allCreators = getCreateurs();
+    const allCreators = getCreateurs(); // Peut être optimisé si la liste est très grande
 
     const fuse = new Fuse(allCreators, {
       keys: ['nom', 'aliases'],
@@ -275,7 +278,30 @@ export function findCreatorByUsername(username: string): Createur | null {
 
     const results = fuse.search(username);
     if (results.length > 0) {
-      creator = results[0].item;
+      const matchedCreator = results[0].item;
+      const searchTermLower = username.toLowerCase();
+      const nameLower = matchedCreator.nom.toLowerCase();
+      const aliasesLower = matchedCreator.aliases.map(a => a.toLowerCase());
+
+      // Vérifie si le terme recherché n'est pas déjà le nom ou un alias existant (insensible à la casse)
+      if (searchTermLower !== nameLower && !aliasesLower.includes(searchTermLower)) {
+        // Ajoute le terme recherché comme nouvel alias
+        const updatedAliases = [...matchedCreator.aliases, username];
+        const updatedAliasesStr = JSON.stringify(updatedAliases);
+
+        try {
+          const updateStmt = db.prepare("UPDATE createurs SET aliases = ? WHERE id = ?");
+          updateStmt.run([updatedAliasesStr, matchedCreator.id]);
+          updateStmt.free();
+          saveDatabase(); // Sauvegarde la modification
+          console.log(`Alias "${username}" ajouté pour le créateur "${matchedCreator.nom}" (ID: ${matchedCreator.id}) suite à une correspondance floue.`);
+          // Met à jour l'objet retourné pour refléter le nouvel alias
+          matchedCreator.aliases = updatedAliases;
+        } catch (updateErr) {
+            console.error(`Erreur lors de l'ajout de l'alias "${username}" pour le créateur ${matchedCreator.id}:`, updateErr);
+        }
+      }
+      creator = matchedCreator; // Assigne le créateur trouvé (potentiellement mis à jour)
     }
   }
 

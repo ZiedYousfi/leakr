@@ -1,34 +1,31 @@
-<script>
-  let name = '';
+<script lang="ts">
+    import { exportDatabase } from '../lib/dbUtils';
+
+    async function handleExport() {
+        try {
+            await exportDatabase();
+            // Optionally show a success message to the user
+            console.log("Database export initiated.");
+        } catch (error) {
+            console.error("Failed to export database:", error);
+            // Optionally show an error message to the user
+        }
+    }
 </script>
 
 <main>
-  <h1>Welcome to Leakr Options</h1>
-  <label>
-    Your Name:
-    <input bind:value={name} placeholder="Enter your name" />
-  </label>
-  {#if name}
-    <p>Hello, {name}!</p>
-  {/if}
+    <h1>Leakr Options</h1>
+    <button onclick={handleExport}>Export Database</button>
+    <!-- Add other options UI elements here -->
 </main>
 
 <style>
-  main {
-    font-family: system-ui, sans-serif;
-    padding: 2rem;
-    max-width: 400px;
-    margin: auto;
-  }
-  input {
-    margin-top: 0.5rem;
-    padding: 0.5rem;
-    font-size: 1rem;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  label {
-    display: block;
-    margin-bottom: 1rem;
-  }
+    main {
+        padding: 1em;
+    }
+    button {
+        margin-top: 1em;
+        padding: 0.5em 1em;
+        cursor: pointer;
+    }
 </style>
