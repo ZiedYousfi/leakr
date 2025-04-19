@@ -6,6 +6,9 @@ export type Platform =
   | "youtube"
   | "facebook"
   | "onlyfans"
+  | "linktree"
+  | "linkinbio"
+  | "fapello"
   | null;
 
 export function detectPlatform(url: string): {
@@ -21,6 +24,10 @@ export function detectPlatform(url: string): {
     ["youtube", /youtube\.com\/@([\w\d_.-]+)/i],
     ["facebook", /facebook\.com\/([\w\d.]+)/i],
     ["onlyfans", /onlyfans\.com\/([\w\d_.-]+)/i],
+    ["linktree", /linktr\.ee\/([\w\d_.-]+)/i],
+    ["linktree", /linktree\.com\/([\w\d_.-]+)/i],
+    ["linkinbio", /linkin\.bio\/([\w\d_.-]+)/i],
+    ["fapello", /fapello\.com\/([\w\d_.-]+)/i],
   ];
   for (const [platform, regex] of patterns) {
     const match = url.match(regex);
