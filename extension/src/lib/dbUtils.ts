@@ -28,19 +28,52 @@ export async function initDatabase(): Promise<void> {
   checkVersion();
 }
 
+// --- Types ---
+
+export interface Createur {
+  id: number;
+  nom: string;
+  aliases: string[];
+  date_ajout: string; // ISO 8601 format
+  favori: boolean;
+}
+
+export interface Contenu {
+  id: number;
+  url: string;
+  date_ajout: string; // ISO 8601 format
+  id_createur: number;
+  favori: boolean;
+}
+
+export interface Plateforme {
+    id: number;
+    nom: string;
+}
+
+export interface ProfilPlateforme {
+    id: number;
+    lien: string;
+    id_createur: number;
+    id_plateforme: number;
+}
+
 // 📐 Création complète du schéma initial
 function createSchema() {
   db.run(`
     CREATE TABLE version (
       id INTEGER PRIMARY KEY CHECK (id = 1),
-      version_texte TEXT NOT NULL
+      version_texte TEXT NOT NULL,
+      iterations INTEGER DEFAULT 0
     );
 
-    INSERT INTO version (id, version_texte) VALUES (1, '${DB_VERSION}');
+    INSERT INTO version (id, version_texte, iterations) VALUES (1, '${DB_VERSION}', 0);
 
     CREATE TABLE createurs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nom TEXT NOT NULL,
+      aliases TEXT NOT NULL,
+      date_ajout TEXT NOT NULL,
       favori BOOLEAN DEFAULT FALSE
     );
 
@@ -91,16 +124,248 @@ function checkVersion() {
 
 // 💾 Sauvegarde de la base dans chrome.storage.local
 export async function saveDatabase(): Promise<void> {
+  try {
+    // Incrémenter le compteur d'itérations avant de sauvegarder
+    db.run("UPDATE version SET iterations = iterations + 1 WHERE id = 1;");
+  } catch (err) {
+    console.error("❌ Erreur lors de l'incrémentation des itérations:", err);
+    return;
+  }
+
   const data = db.export();
   const array = Array.from(data);
   await chrome.storage.local.set({ leakr_db: array });
   console.log("💫 Base sauvegardée localement");
 }
 
-// 📦 Exporter en Blob (téléchargement ou envoi)
-export function exportDatabase(): Blob {
-  const binaryArray = db.export();
-  return new Blob([binaryArray], { type: "application/octet-stream" });
+// --- Fonctions CRUD ---
+
+// CREATEURS
+
+/** Ajoute un nouveau créateur */
+export function addCreateur(nom: string, aliases: string[]): number | bigint {
+  const aliasesStr = JSON.stringify(aliases);
+  const stmt = db.prepare("INSERT INTO createurs (nom, aliases, date_ajout) VALUES (?, ?, ?)");
+  stmt.run([nom, aliasesStr, new Date().toISOString()]);
+  stmt.free();
+  const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
+  const lastId = (typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint") ? lastIdRaw : 0;
+  saveDatabase();
+  return lastId;
 }
 
-// (Tu pourras ajouter ici d'autres fonctions : addCreateur, getContenus, etc.)
+/** Récupère tous les créateurs */
+export function getCreateurs(): Createur[] {
+  const stmt = db.prepare("SELECT id, nom, aliases, date_ajout, favori FROM createurs ORDER BY nom ASC");
+  const createurs: Createur[] = [];
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as any;
+    createurs.push({
+      id: row.id,
+      nom: row.nom,
+      aliases: JSON.parse(row.aliases),
+      date_ajout: row.date_ajout,
+      favori: Boolean(row.favori)
+    });
+  }
+  stmt.free();
+  return createurs;
+}
+
+/** Met à jour le statut favori d'un créateur */
+export function updateFavoriCreateur(id: number, favori: boolean): void {
+    const stmt = db.prepare("UPDATE createurs SET favori = ? WHERE id = ?");
+    stmt.run([favori ? 1 : 0, id]);
+    stmt.free();
+    saveDatabase();
+}
+
+/** Supprime un créateur et ses contenus/profils associés */
+export function deleteCreateur(id: number): void {
+    db.exec("BEGIN TRANSACTION;");
+    try {
+        // Supprimer les profils plateforme associés
+        let stmt = db.prepare("DELETE FROM profils_plateforme WHERE id_createur = ?");
+        stmt.run([id]);
+        stmt.free();
+
+        // Supprimer les contenus associés
+        stmt = db.prepare("DELETE FROM contenus WHERE id_createur = ?");
+        stmt.run([id]);
+        stmt.free();
+
+        // Supprimer le créateur
+        stmt = db.prepare("DELETE FROM createurs WHERE id = ?");
+        stmt.run([id]);
+        stmt.free();
+
+        db.exec("COMMIT;");
+        saveDatabase();
+    } catch (err) {
+        console.error("Erreur lors de la suppression du créateur:", err);
+        db.exec("ROLLBACK;");
+    }
+}
+
+
+// CONTENUS
+
+/** Ajoute un nouveau contenu pour un créateur */
+export function addContenu(url: string, id_createur: number): number | bigint {
+  const stmt = db.prepare("INSERT INTO contenus (url, date_ajout, id_createur) VALUES (?, ?, ?)");
+  stmt.run([url, new Date().toISOString(), id_createur]);
+  stmt.free();
+  const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
+  const lastId = (typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint") ? lastIdRaw : 0;
+  saveDatabase();
+  return lastId;
+}
+
+/** Récupère les contenus d'un créateur spécifique */
+export function getContenusByCreator(id_createur: number): Contenu[] {
+  const stmt = db.prepare("SELECT id, url, date_ajout, id_createur, favori FROM contenus WHERE id_createur = ? ORDER BY date_ajout DESC");
+  const contenus: Contenu[] = [];
+  stmt.bind([id_createur]);
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as any;
+    contenus.push({
+        id: row.id,
+        url: row.url,
+        date_ajout: row.date_ajout,
+        id_createur: row.id_createur,
+        favori: Boolean(row.favori)
+    });
+  }
+  stmt.free();
+  return contenus;
+}
+
+/** Met à jour le statut favori d'un contenu */
+export function updateFavoriContenu(id: number, favori: boolean): void {
+    const stmt = db.prepare("UPDATE contenus SET favori = ? WHERE id = ?");
+    stmt.run([favori ? 1 : 0, id]);
+    stmt.free();
+    saveDatabase();
+}
+
+/** Supprime un contenu spécifique */
+export function deleteContenu(id: number): void {
+    const stmt = db.prepare("DELETE FROM contenus WHERE id = ?");
+    stmt.run([id]);
+    stmt.free();
+    saveDatabase();
+}
+
+// PLATEFORMES (Exemples simples)
+
+/** Ajoute une nouvelle plateforme */
+export function addPlateforme(nom: string): number | bigint | null {
+    try {
+        const stmt = db.prepare("INSERT INTO plateformes (nom) VALUES (?)");
+        stmt.run([nom]);
+        stmt.free();
+        const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
+        const lastId = (typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint") ? lastIdRaw : 0;
+        saveDatabase();
+        return lastId;
+    } catch (err: any) {
+        // Gérer l'erreur d'unicité
+        if (err.message.includes("UNIQUE constraint failed")) {
+            console.warn(`La plateforme "${nom}" existe déjà.`);
+            // Optionnel: retourner l'ID existant
+            const stmt = db.prepare("SELECT id FROM plateformes WHERE nom = ?");
+            stmt.bind([nom]);
+            let existingId: number | bigint | null = null;
+            if (stmt.step()) {
+                existingId = stmt.getAsObject().id as number | bigint;
+            }
+            stmt.free();
+            return existingId;
+        } else {
+            console.error("Erreur lors de l'ajout de la plateforme:", err);
+            return null;
+        }
+    }
+}
+
+/** Récupère toutes les plateformes */
+export function getPlateformes(): Plateforme[] {
+    const stmt = db.prepare("SELECT id, nom FROM plateformes ORDER BY nom ASC");
+    const plateformes: Plateforme[] = [];
+    while (stmt.step()) {
+        const row = stmt.getAsObject() as any;
+        plateformes.push({
+            id: row.id,
+            nom: row.nom
+        });
+    }
+    stmt.free();
+    return plateformes;
+}
+
+// PROFILS PLATEFORME (Exemples simples)
+
+/** Ajoute un profil plateforme pour un créateur */
+export function addProfilPlateforme(lien: string, id_createur: number, id_plateforme: number): number | bigint {
+    const stmt = db.prepare("INSERT INTO profils_plateforme (lien, id_createur, id_plateforme) VALUES (?, ?, ?)");
+    stmt.run([lien, id_createur, id_plateforme]);
+    stmt.free();
+    const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
+    const lastId = (typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint") ? lastIdRaw : 0;
+    saveDatabase();
+    return lastId;
+}
+
+/** Récupère les profils d'un créateur */
+export function getProfilsByCreator(id_createur: number): ProfilPlateforme[] {
+    const stmt = db.prepare(`
+        SELECT pp.id, pp.lien, pp.id_createur, pp.id_plateforme
+        FROM profils_plateforme pp
+        WHERE pp.id_createur = ?
+    `);
+    const profils: ProfilPlateforme[] = [];
+    stmt.bind([id_createur]);
+    while (stmt.step()) {
+        const row = stmt.getAsObject() as any;
+        profils.push({
+            id: row.id,
+            lien: row.lien,
+            id_createur: row.id_createur,
+            id_plateforme: row.id_plateforme
+        });
+    }
+    stmt.free();
+    return profils;
+}
+
+// --- Utilitaires ---
+
+/** Exécute une requête SQL générique (pour lecture) */
+export function executeQuery(sql: string, params?: any[]): any[] {
+    const stmt = db.prepare(sql);
+    if (params) {
+        stmt.bind(params);
+    }
+    const results = [];
+    while (stmt.step()) {
+        results.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return results;
+}
+
+/** Exécute une commande SQL générique (pour écriture) */
+export function executeCommand(sql: string, params?: any[]): void {
+    db.run(sql, params);
+    saveDatabase(); // Sauvegarde après chaque commande potentiellement modificatrice
+}
+
+// --- Fermeture ---
+
+/** Ferme la connexion à la base de données (utile si l'extension est déchargée) */
+export function closeDatabase(): void {
+    if (db) {
+        db.close();
+        console.log("🚪 Base de données fermée.");
+    }
+}
