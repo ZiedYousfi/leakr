@@ -2,9 +2,11 @@ import { defineConfig } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import tailwindcss from "@tailwindcss/vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte"; // Import Svelte plugin
+import path from 'path'; // Import the path module
 
 export default defineConfig({
   plugins: [
+    // ...existing plugins...
     svelte(),
     viteStaticCopy({
       targets: [
@@ -24,6 +26,11 @@ export default defineConfig({
     }),
     tailwindcss(),
   ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,
