@@ -5,7 +5,7 @@ import type { SqlJsStatic, Database } from "sql.js";
 let SQL: SqlJsStatic;
 let db: Database;
 
-const DB_VERSION = "1.0.0"; // 💡 version actuelle de la structure
+const DB_VERSION = "1.0.1"; // 💡 version actuelle de la structure
 
 // 📦 Initialise sql.js et la base (nouvelle ou chargée depuis storage)
 export async function initDatabase(): Promise<void> {
@@ -64,6 +64,8 @@ export interface ProfilPlateforme {
 // 📐 Création complète du schéma initial
 function createSchema() {
   db.run(`
+    BEGIN TRANSACTION;
+
     -- Création de la table version
     CREATE TABLE version (
       id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -115,27 +117,120 @@ function createSchema() {
       FOREIGN KEY (id_createur) REFERENCES createurs(id),
       FOREIGN KEY (id_plateforme) REFERENCES plateformes(id)
     );
+
+    COMMIT;
   `);
 
   console.log("🧱 Schéma initial installé");
 }
 
-// 🧠 Vérifie la version de la base
-function checkVersion() {
+// 🧠 Vérifie la version de la base et lance les migrations si nécessaire
+async function checkVersion() {
   try {
     const stmt = db.prepare("SELECT version_texte FROM version WHERE id = 1;");
+    let needsMigration = false;
+    let currentDbVersion = "";
+
     if (stmt.step()) {
-      const version = stmt.getAsObject().version_texte;
-      console.log(`📜 Version actuelle de la base : ${version}`);
-      if (version !== DB_VERSION) {
-        console.warn(`⚠️ Attention : version locale (${version}) différente de celle attendue (${DB_VERSION})`);
-        // Ici tu pourrais déclencher une migration si besoin
+      const result = stmt.getAsObject() as { version_texte: string };
+      currentDbVersion = result.version_texte;
+      console.log(`📜 Version actuelle de la base : ${currentDbVersion}`);
+      if (currentDbVersion !== DB_VERSION) {
+        console.warn(`⚠️ Attention : version locale (${currentDbVersion}) différente de celle attendue (${DB_VERSION}). Migration nécessaire.`);
+        // Compare versions properly if using semantic versioning (e.g., using a library)
+        // For simple sequential versions like "1.0.0", "1.1.0", string comparison might suffice if ordered correctly.
+        // A more robust comparison might be needed for complex versioning.
+        if (currentDbVersion < DB_VERSION) { // Basic check, improve if needed
+             needsMigration = true;
+        } else {
+             console.error(`❌ La version de la base (${currentDbVersion}) est plus récente que la version attendue (${DB_VERSION}). Impossible de continuer.`);
+             // Handle downgrade or error appropriately
+             stmt.free();
+             return; // Stop further processing
+        }
       }
+    } else {
+        console.error("❌ Impossible de lire la version de la base. Tentative de création du schéma initial.");
+        // This case might happen if the version table itself is missing after a failed init/migration
+        // Consider recreating schema or attempting specific recovery steps.
+        // For now, let's assume a fresh start might be needed or a specific migration from "unknown".
+        // createSchema(); // Be careful with this, might wipe data.
+        // await saveDatabase();
     }
     stmt.free();
+
+    if (needsMigration) {
+        await runMigrations(currentDbVersion);
+        // Re-verify version after migration
+        const checkStmt = db.prepare("SELECT version_texte FROM version WHERE id = 1;");
+        if (checkStmt.step()) {
+            const updatedVersion = (checkStmt.getAsObject() as { version_texte: string }).version_texte;
+            console.log(`✅ Migration terminée. Nouvelle version de la base : ${updatedVersion}`);
+            if (updatedVersion !== DB_VERSION) {
+                console.error(`❌ Erreur post-migration: La version de la base (${updatedVersion}) ne correspond toujours pas à la version attendue (${DB_VERSION}).`);
+            }
+        } else {
+             console.error("❌ Impossible de vérifier la version après la migration.");
+        }
+        checkStmt.free();
+    }
+
   } catch (err) {
-    console.error("❌ Impossible de lire la version de la base. Est-elle corrompue ?", err);
+    console.error("❌ Erreur lors de la vérification de la version ou de la migration:", err);
   }
+}
+
+// 🚀 Fonction pour appliquer les migrations séquentiellement
+async function runMigrations(currentDbVersion: string) {
+    console.log(`🚀 Démarrage des migrations depuis la version ${currentDbVersion}...`);
+    db.exec("BEGIN TRANSACTION;"); // Start transaction for migrations
+
+    try {
+        // --- Migration vers 1.1.0 ---
+        if (currentDbVersion === "1.0.0") {
+            console.log("⏳ Application de la migration vers 1.1.0...");
+            // Exemple: Ajouter une colonne 'description' à la table 'createurs'
+            // db.run("ALTER TABLE createurs ADD COLUMN description TEXT;");
+            // console.log("   - Colonne 'description' ajoutée à 'createurs'.");
+
+            // Exemple: Ajouter une nouvelle table
+            // db.run("CREATE TABLE tags (id INTEGER PRIMARY KEY, name TEXT UNIQUE);");
+            // console.log("   - Table 'tags' créée.");
+
+            // Mettre à jour la version DANS la transaction
+            db.run("UPDATE version SET version_texte = '1.1.0', date_maj = CURRENT_TIMESTAMP WHERE id = 1;");
+            console.log("   - Version mise à jour vers 1.1.0.");
+            currentDbVersion = "1.1.0"; // Update local tracker
+        }
+
+        // --- Migration vers 1.2.0 ---
+        // if (currentDbVersion === "1.1.0") {
+        //     console.log("⏳ Application de la migration vers 1.2.0...");
+        //     // db.run("ALTER TABLE ...");
+        //     // db.run("UPDATE ...");
+        //     db.run("UPDATE version SET version_texte = '1.2.0', date_maj = CURRENT_TIMESTAMP WHERE id = 1;");
+        //     console.log("   - Version mise à jour vers 1.2.0.");
+        //     currentDbVersion = "1.2.0"; // Update local tracker
+        // }
+
+        // --- Ajoutez d'autres étapes de migration ici ---
+
+        // Vérification finale si la version actuelle correspond à la cible
+        if (currentDbVersion !== DB_VERSION) {
+             // This should ideally not happen if the chain is correct
+             throw new Error(`Migration incomplète. Version atteinte: ${currentDbVersion}, attendue: ${DB_VERSION}`);
+        }
+
+        db.exec("COMMIT;"); // Commit transaction if all migrations succeed
+        console.log("✅ Toutes les migrations ont été appliquées avec succès.");
+        await saveDatabase(); // Sauvegarde la base après les migrations réussies
+
+    } catch (err) {
+        db.exec("ROLLBACK;"); // Rollback transaction on error
+        console.error("❌ Erreur durant la migration. Annulation des changements.", err);
+        // Rethrow or handle the error appropriately - maybe notify the user
+        throw err; // Re-throw to signal failure
+    }
 }
 
 // 💾 Sauvegarde de la base dans chrome.storage.local
