@@ -51,19 +51,19 @@
   </button>
 
   <DetailsGroup
-    title="🔗 Réseaux sociaux & Plateformes"
+    title="🔗 Social Networks & Platforms"
     links={socialLinks}
     displayValue={displayValue ?? ""}
   />
   <DetailsGroup
-    title="🔞 Plateformes adultes"
+    title="🔞 Adult Platforms"
     links={adultLinks}
     displayValue={displayValue ?? ""}
   />
 
   {#if filteredProfileLinks.length}
     <DetailsGroup
-      title="🌐 Profils sur plateformes"
+      title="🌐 Profiles on platforms"
       customLinks={filteredProfileLinks}
       displayValue={displayValue ?? ""}
     />
