@@ -6,6 +6,7 @@
   "action": {
     "default_popup": "src/popup.html"
   },
+  "options_page": "src/options/options.html",
   "permissions": ["tabs", "storage", "scripting"],
   "host_permissions": [ "<all_urls>" ],
   "content_security_policy": {
