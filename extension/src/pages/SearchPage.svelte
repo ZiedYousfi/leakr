@@ -2,7 +2,8 @@
   import Header from "../components/Header.svelte";
   import SearchInput from "../components/SearchPage/SearchInput.svelte";
   import ActionButtons from "../components/SearchPage/ActionButtons.svelte";
-  import { detectPlatform, type Platform } from "../lib/detectPlatform";
+  import { detectPlatform, type Platform } from "../lib/detectPlatform"; // Keep for tab URL detection
+  import { processSearchInput, type SearchResult } from "../lib/searchProcessor"; // Import the new processor
 
   const { onNavigate } = $props<{
     onNavigate: (page: string, params?: object) => void;
@@ -12,19 +13,10 @@
   // States
   let inputValue = $state("");
   let currentTabUrl = $state("");
-  let detectedPlatformState: Platform = $state(null);
-  let detectedUsernameState: string | null = $state(null);
-  let displayValueState: string = $state("");
   let initialUrlChecked = $state(false); // Flag to prevent overwriting user input
 
-  // Effect to update platform/username based on input
-  $effect(() => {
-    const input = inputValue.trim();
-    const { platform, username } = detectPlatform(input);
-    detectedPlatformState = platform;
-    detectedUsernameState = username;
-    displayValueState = username || input;
-  });
+  // Derived state for search results based on input value
+  let searchResult = $derived<SearchResult>(processSearchInput(inputValue));
 
   // Effect to get current tab URL and pre-fill input if applicable
   $effect(() => {
@@ -34,12 +26,13 @@
       const tab = tabs[0];
       currentTabUrl = tab?.url || "";
       if (tab?.url) {
+        // Still use detectPlatform here for the initial URL check
         const { platform, username } = detectPlatform(tab.url);
         // Check if the current URL corresponds to a known platform profile
         if (platform && username) {
           // Pre-fill the input field only if it's currently empty
           if (inputValue === "") {
-            inputValue = tab.url;
+            inputValue = tab.url; // This will trigger the $derived searchResult update
           }
         }
       }
@@ -79,9 +72,9 @@
     ["onlyfans", (u) => `https://onlyfans.com/${u}`],
   ];
 
-  // Filtered profiles - Show all platform links based on detected username
+  // Filtered profiles - Use derived searchResult
   let filteredProfileLinks = $derived(() => {
-    const username = detectedUsernameState; // Read state
+    const username = searchResult.username; // Use derived result
     if (username) {
       // Map over all platform links, generating the URL with the detected username
       return (
@@ -92,16 +85,16 @@
           ])
           // Still filter out the link if it matches the current tab URL
           .filter(([, url]) => url !== currentTabUrl)
-      ); // Read state
+      );
     }
     // Return empty array if no username is detected
     return [] as [string, string][];
   });
 
-  // SocialBlade - Still using $derived, but based on the new $state variables
+  // SocialBlade - Use derived searchResult
   let socialBladeUrl = $derived(() => {
-    const platform = detectedPlatformState; // Read state
-    const username = detectedUsernameState; // Read state
+    const platform = searchResult.platform; // Use derived result
+    const username = searchResult.username; // Use derived result
     if (!platform || !username) return null;
     const map: Record<Exclude<Platform, null | undefined>, string> = {
       twitch: `https://socialblade.com/twitch/user/${username}`,
@@ -120,9 +113,9 @@
   <Header title="Leakr" {onNavigate} />
   <SearchInput value={inputValue} onInput={(value) => (inputValue = value)} />
 
-  {#if displayValueState}
+  {#if searchResult.displayValue}
     <ActionButtons
-      displayValue={displayValueState}
+      displayValue={searchResult.displayValue} 
       {socialLinks}
       {adultLinks}
       filteredProfileLinks={filteredProfileLinks()}
