@@ -64,14 +64,23 @@ export interface ProfilPlateforme {
 // 📐 Création complète du schéma initial
 function createSchema() {
   db.run(`
+    -- Création de la table version
     CREATE TABLE version (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       version_texte TEXT NOT NULL,
-      iterations INTEGER DEFAULT 0
+      iterations INTEGER DEFAULT 0,
+      date_maj TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
-    INSERT INTO version (id, version_texte, iterations) VALUES (1, '${DB_VERSION}', 0);
+    INSERT INTO version (id, version_texte, iterations, date_maj) VALUES (1, '${DB_VERSION}', 0, CURRENT_TIMESTAMP);
 
+    CREATE TABLE settings (
+      id INTEGER PRIMARY KEY,
+      uuid TEXT NOT NULL,
+      share_collection BOOLEAN DEFAULT FALSE
+    );
+
+    -- Création des tables créateurs, contenus, plateformes et profils_plateforme
     CREATE TABLE createurs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nom TEXT NOT NULL,
@@ -129,10 +138,10 @@ function checkVersion() {
 // 💾 Sauvegarde de la base dans chrome.storage.local
 export async function saveDatabase(): Promise<void> {
   try {
-    // Incrémenter le compteur d'itérations avant de sauvegarder
     db.run("UPDATE version SET iterations = iterations + 1 WHERE id = 1;");
+    db.run("UPDATE version SET date_maj = CURRENT_TIMESTAMP WHERE id = 1;");
   } catch (err) {
-    console.error("❌ Erreur lors de l'incrémentation des itérations:", err);
+    console.error("❌ Erreur lors de l'incrémentation des itérations ou de la mise à jour de la date :", err);
     return;
   }
 
@@ -140,6 +149,46 @@ export async function saveDatabase(): Promise<void> {
   const array = Array.from(data);
   await chrome.storage.local.set({ leakr_db: array });
   console.log("💫 Base sauvegardée localement");
+}
+
+export async function exportDatabase(): Promise<Uint8Array> {
+  const data = db.export();
+  const array = new Uint8Array(data);
+  const blob = new Blob([array], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  // Récupère la date et l'iteration depuis la table version
+  let dateMaj = new Date().toISOString();
+  let iteration = 0;
+  try {
+    const stmt = db.prepare("SELECT date_maj, iterations FROM version WHERE id = 1;");
+    if (stmt.step()) {
+      const row = stmt.getAsObject() as any;
+      dateMaj = row.date_maj as string || dateMaj;
+      iteration = row.iterations as number || 0;
+    }
+    stmt.free();
+  } catch (err) {
+    console.warn("Impossible de récupérer la date/iteration depuis la table version :", err);
+  }
+  let uuid = "unknown";
+  try {
+    const stmtUuid = db.prepare("SELECT uuid FROM settings LIMIT 1;");
+    if (stmtUuid.step()) {
+      uuid = stmtUuid.getAsObject().uuid as string || "unknown";
+    }
+    stmtUuid.free();
+  } catch (err) {
+    console.warn("Impossible de récupérer le uuid depuis la table settings :", err);
+  }
+  a.download = `leakr_db_${uuid}_${dateMaj.replace(/[:.]/g, "-")}_it${iteration}.sqlite`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  console.log("📦 Base exportée");
+  return array;
 }
 
 // --- Fonctions CRUD ---
