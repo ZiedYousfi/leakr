@@ -1,4 +1,5 @@
 import initSqlJs from "sql.js";
+import Fuse from "fuse.js";
 import type { SqlJsStatic, Database } from "sql.js";
 
 let SQL: SqlJsStatic;
@@ -176,50 +177,60 @@ export function getCreateurs(): Createur[] {
   return createurs;
 }
 
-/** Finds a creator by their primary name (case-insensitive) */
+/** Trouve un créateur avec correspondance floue sur le nom ou les alias (insensible à la casse) */
 export function findCreatorByUsername(username: string): Createur | null {
-    // Using LOWER() for case-insensitive comparison is generally good practice
-    // for usernames, assuming SQLite's default case sensitivity or using LOWER().
-    const stmt = db.prepare("SELECT id, nom, aliases, date_ajout, favori FROM createurs WHERE LOWER(nom) = LOWER(?) LIMIT 1");
-    stmt.bind([username]);
-    let creator: Createur | null = null;
-    try {
-        if (stmt.step()) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const row = stmt.getAsObject() as any;
-            let parsedAliases: string[] = [];
-            try {
-                // Ensure aliases are parsed correctly, defaulting to empty array if null/invalid
-                parsedAliases = JSON.parse(row.aliases as string || '[]');
-            } catch (e) {
-                console.error(`Error parsing aliases for creator ${row.id}:`, row.aliases, e);
-            }
-            creator = {
-                id: row.id as number,
-                nom: row.nom as string,
-                aliases: parsedAliases,
-                date_ajout: row.date_ajout as string,
-                favori: Boolean(row.favori)
-            };
-        }
-    } catch (error) {
-        console.error("Error finding creator by username:", error);
-        // Ensure statement is freed even if an error occurs during processing
-    } finally {
-        stmt.free();
-    }
+  // Essai direct par nom exact (rapide)
+  const stmt = db.prepare(`
+    SELECT id, nom, aliases, date_ajout, favori
+    FROM createurs
+    WHERE LOWER(nom) = LOWER(?)
+    LIMIT 1
+  `);
+  stmt.bind([username]);
 
-    // Optional: If not found by name, you could add logic here to search
-    // within the JSON 'aliases' field, though this can be less efficient.
-    // Example (conceptual - requires fetching all or more complex SQL):
-    if (!creator) {
-      const allCreators = getCreateurs();
-      creator = allCreators.find(c =>
-         c.aliases.some(alias => alias.toLowerCase() === username.toLowerCase())
-      ) || null;
-    }
+  let creator: Createur | null = null;
 
-    return creator;
+  try {
+    if (stmt.step()) {
+      const row = stmt.getAsObject() as any;
+      let parsedAliases: string[] = [];
+      try {
+        parsedAliases = JSON.parse(row.aliases as string || '[]');
+      } catch (e) {
+        console.error(`Erreur de parsing des aliases pour ${row.id}:`, row.aliases, e);
+      }
+      creator = {
+        id: row.id as number,
+        nom: row.nom as string,
+        aliases: parsedAliases,
+        date_ajout: row.date_ajout as string,
+        favori: Boolean(row.favori),
+      };
+    }
+  } catch (err) {
+    console.error("Erreur lors de la recherche exacte :", err);
+  } finally {
+    stmt.free();
+  }
+
+  // 🌸 Si pas trouvé exactement, on fait une recherche floue avec Fuse.js
+  if (!creator) {
+    const allCreators = getCreateurs();
+
+    const fuse = new Fuse(allCreators, {
+      keys: ['nom', 'aliases'],
+      threshold: 0.3, // Ajuste pour rendre plus ou moins strict
+      ignoreLocation: true,
+      includeScore: true,
+    });
+
+    const results = fuse.search(username);
+    if (results.length > 0) {
+      creator = results[0].item;
+    }
+  }
+
+  return creator;
 }
 
 /** Met à jour le statut favori d'un créateur */
