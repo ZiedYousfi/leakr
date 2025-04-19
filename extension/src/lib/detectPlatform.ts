@@ -31,6 +31,7 @@ export function detectPlatform(url: string): {
     ["fapello", /fapello\.com\/([\w\d_.-]+)/i],
     ["kbjfree", /kbjfree\.com\/search\?q=([\w\d_.-]+)/i],
     ["kbjfree", /kbjfree\.com\/model\/([\w\d_.-]+)/i],
+    [null, /(?:https?:\/\/)?(?:www\.)?([\w\d_.-]+)\.com\/([\w\d_.-]+)/i], // Generic catch-all for unrecognized platforms
   ];
   for (const [platform, regex] of patterns) {
     const match = url.match(regex);
