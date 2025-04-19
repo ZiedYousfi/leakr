@@ -468,7 +468,6 @@
 </div>
 
 <style>
-  /* ... existing styles ... */
   @import "tailwindcss";
 
   .popup-body {

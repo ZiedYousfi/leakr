@@ -42,8 +42,8 @@
   .tab-nav {
     display: flex;
     border-bottom: 1px solid #333; /* Darker border for separation */
-    margin-bottom: 1rem; /* Space below the tabs */
-    padding-left: 0.5rem; /* Align with potential page padding */
+    /*margin-bottom: 0.05rem; /* Smaller space below the tabs */
+    /*padding-left: 0.25rem; /* Smaller padding for tighter alignment */
   }
 
   .tab-button {

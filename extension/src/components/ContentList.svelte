@@ -95,7 +95,7 @@
 
 <!-- Content List -->
   <div
-    class="w-full flex flex-col gap-2 max-h-80 p-2 bg-gray-800 rounded-2xl overflow-y-auto"
+    class="w-full flex-1 flex-col gap-2 max-h-350 p-2 bg-gray-800 rounded-2xl overflow-y-auto"
   >
     {#if isLoading && contents.length === 0}
       <p class="text-[#B0B0B0] text-center">Loading content...</p>
@@ -152,7 +152,6 @@
   </div>
 
 <style>
-  /* ... existing styles ... */
   @import "tailwindcss";
 
   .popup-body {
