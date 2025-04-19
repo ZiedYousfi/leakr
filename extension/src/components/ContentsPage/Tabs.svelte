@@ -1,4 +1,3 @@
-<!-- Tabs.svelte -->
 <script lang="ts">
   import type { ComponentType } from "svelte";
 
@@ -8,8 +7,7 @@
     props: object;
   };
 
-  let { tabs }: { tabs: Tab[] } = $props();
-  let active = $state(0);
+  let { tabs, active = $bindable(0) }: { tabs: Tab[]; active?: number } = $props(); // Make active bindable
 
   // Derived state for the active component and props
   let activeComponent = $derived(tabs[active]?.component);

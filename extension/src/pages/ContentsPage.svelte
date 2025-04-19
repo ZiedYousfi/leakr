@@ -16,6 +16,9 @@
     onNavigate: (page: string, params?: object) => void;
     params: object;
   }>();
+
+  let activeTabIndex = $state(0); // State to hold the active tab index
+
   const tabs: Tab[] = $derived([
     {
       title: "All",
@@ -29,11 +32,22 @@
     },
     // ➜ Ajoute ici autant d’onglets que tu veux
   ]);
+
+  // Define widths based on tab index (example)
+  const widths = ['500px', '600px']; // Width for 'All', Width for 'For Creator'
+  let currentMinWidth = $derived(widths[activeTabIndex] ?? '500px');
+
+  // Define heights based on tab index (example)
+  const heights = ['600px', '700px']; // Height for 'All', Height for 'For Creator'
+  let currentMinHeight = $derived(heights[activeTabIndex] ?? '600px');
+
 </script>
 
-<div class="page-container">
+<!-- Apply the dynamic min-width and min-height -->
+<div class="page-container" style:min-width={currentMinWidth} style:min-height={currentMinHeight}>
   <Header title="Leakr" {onNavigate} />
-  <Tabs {tabs} />
+  <!-- Bind the activeTabIndex -->
+  <Tabs {tabs} bind:active={activeTabIndex} />
 </div>
 
 <style>
@@ -41,13 +55,13 @@
 
   .page-container {
     background-color: #000; /* Match SearchPage background */
-    min-width: 320px; /* Match SearchPage min-width */
     display: flex; /* Match SearchPage layout */
     flex-direction: column; /* Match SearchPage layout */
     align-items: center; /* Match SearchPage layout */
     gap: 1rem; /* Match SearchPage gap */
     padding: 1rem; /* Match SearchPage padding */
     color: #e5e7eb; /* Match SearchPage text color */
-    min-height: 100vh; /* Keep full height */
+    overflow: hidden; /* Ensure no overflow */
+    transition: min-width 0.3s ease, min-height 0.3s ease;
   }
 </style>

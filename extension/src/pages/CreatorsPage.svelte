@@ -13,7 +13,7 @@
 
 <style>
   .creators-list {
-    max-width: 500px;
+    max-width: 1000px;
     margin: 2rem auto;
     padding: 1rem;
     border-radius: 8px;
