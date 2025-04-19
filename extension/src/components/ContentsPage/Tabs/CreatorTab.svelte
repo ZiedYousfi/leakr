@@ -1,5 +1,4 @@
 <script lang="ts">
-  console.log('--- CreatorTab SCRIPT START ---');
   import {
     addContenu,
     getContenusByCreator,
@@ -8,7 +7,7 @@
     updateFavoriContenu,
     type Createur,
     findCreatorByUsername,
-    addCreateur, // Import addCreateur
+    addCreateur,
   } from "@/lib/dbUtils";
   import { processSearchInput } from "@/lib/searchProcessor";
 
@@ -20,87 +19,126 @@
   // --- State ---
   let creator = $state<Createur | null>(null);
   let creatorId = $derived.by(() => creator?.id);
-  let potentialCreatorUsername = $state<string | null>(null);
+  let potentialCreatorUsername = $state<string | null>(null); // Username identified (URL/Param) or manually entered for potential creation
+  let manualInput = $state<string>(""); // Input field for manual username entry
   let currentTabUrl = $state("");
   let currentTabTitle = $state<string | null>(null);
   let contents = $state<Contenu[]>([]);
-  let isLoading = $state(true);
-  let isLoadingCreator = $state(true);
+  let isLoading = $state(true); // General loading (content, add/delete ops)
+  let isLoadingCreator = $state(true); // Specific loading for creator lookup
   let errorMessage = $state<string | null>(null);
   let showAddConfirmation = $state(false);
+  let initialCheckDone = $state(false); // Track if initial URL/param check is complete
 
   // --- Effect to find creator by username (or extract from URL) ---
   $effect(() => {
-    async function fetchCreator() {
+    async function initialFetch() {
+      isLoadingCreator = true;
+      isLoading = true; // Start loading
+      errorMessage = null;
+      creator = null;
+      contents = [];
+      potentialCreatorUsername = null;
+      manualInput = ""; // Reset manual input
+
       let usernameToFetch: string | null = params.username || null;
 
       if (!usernameToFetch) {
-        await getCurrentTabUrl();
+        await getCurrentTabUrl(); // Fetch URL if needed
         if (currentTabUrl) {
           const { username: extractedUsername } =
             processSearchInput(currentTabUrl);
           if (extractedUsername) {
             usernameToFetch = extractedUsername;
-            console.log(`Extracted username from URL: ${extractedUsername}`);
           }
         }
       }
 
-      if (!usernameToFetch) {
+      if (usernameToFetch) {
+        // If we got a username from params or URL, try to find the creator
+        await findCreator(usernameToFetch);
+      } else {
+        // No username from params or URL, stop loading, wait for manual input
         console.warn(
-          "ContentsPage: username missing from params and could not be extracted from URL."
+          "CreatorTab: username missing from params and could not be extracted from URL."
         );
-        errorMessage =
-          "Creator username not provided and could not be extracted from the current tab URL.";
+        // Don't set error message here, just allow manual input
         isLoading = false;
         isLoadingCreator = false;
         creator = null;
         contents = [];
-        potentialCreatorUsername = null; // Clear potential name
-        return;
+        potentialCreatorUsername = null;
       }
-
-      // Store the username we are attempting to find/create
-      potentialCreatorUsername = usernameToFetch;
-
-      isLoadingCreator = true;
-      isLoading = true;
-      errorMessage = null;
-      creator = null;
-      contents = [];
-
-      try {
-        const foundCreator = findCreatorByUsername(usernameToFetch);
-        if (foundCreator) {
-          creator = foundCreator;
-          potentialCreatorUsername = null; // Clear potential name as creator is found
-          await loadContents(); // Load contents for the found creator
-        } else {
-          // Creator not found, keep potentialCreatorUsername set
-          // Don't set error message here, allow user to add content to create creator
-          console.log(
-            `Creator "${usernameToFetch}" not found. Ready to create.`
-          );
-          creator = null;
-          contents = [];
-          // We stop loading here, waiting for user action (add content)
-          isLoading = false;
-        }
-      } catch (error) {
-        console.error("Error finding creator:", error);
-        errorMessage = `Failed to look up creator "${usernameToFetch}".`;
-        creator = null;
-        potentialCreatorUsername = null; // Clear on error
-      } finally {
-        isLoadingCreator = false;
-        // isLoading is set to false either above (if creator not found)
-        // or within loadContents (if creator was found)
-      }
+      initialCheckDone = true; // Mark initial check as done
     }
-    fetchCreator();
+    initialFetch();
   });
 
   // --- Functions ---
+
+  // Function to find a creator by username and update state
+  async function findCreator(username: string) {
+    potentialCreatorUsername = username; // Store the name we are looking for/might create
+    isLoadingCreator = true;
+    isLoading = true; // Also set general loading during creator lookup
+    errorMessage = null;
+    creator = null;
+    contents = [];
+    manualInput = ""; // Clear input after attempting to find
+
+    try {
+      const foundCreator = findCreatorByUsername(username);
+      if (foundCreator) {
+        creator = foundCreator;
+        potentialCreatorUsername = null; // Clear potential name as creator is found
+        await loadContents(); // Load contents for the found creator
+      } else {
+        // Creator not found, keep potentialCreatorUsername set
+        creator = null;
+        contents = [];
+        // Stop loading here, waiting for user action (add content will create)
+        isLoading = false;
+      }
+    } catch (error) {
+      console.error(`Error finding creator "${username}":`, error);
+      errorMessage = `Failed to look up creator "${username}".`;
+      creator = null;
+      potentialCreatorUsername = null; // Clear on error
+      isLoading = false; // Stop loading on error
+    } finally {
+      isLoadingCreator = false;
+      // isLoading is set to false either above or within loadContents
+    }
+  }
+
+  // Handler for the manual find/prepare button
+  async function handleManualFind() {
+    const trimmedInput = manualInput.trim();
+    if (!trimmedInput) {
+      errorMessage = "Please enter a username or URL.";
+      setTimeout(() => {
+        if (errorMessage === "Please enter a username or URL.")
+          errorMessage = null;
+      }, 3000);
+      return;
+    }
+
+    // Process the input using the search processor
+    const { username: extractedUsername } = processSearchInput(trimmedInput);
+
+    if (extractedUsername) {
+      // If a username was extracted (likely from a URL or direct username)
+      await findCreator(extractedUsername);
+    } else {
+      // If no username could be extracted (e.g., invalid URL or just random text)
+      // Treat the input as a potential username directly
+      // Alternatively, show an error if you only want valid URLs or known patterns
+      console.warn(
+        `Could not extract username from "${trimmedInput}", attempting to use it directly.`
+      );
+      await findCreator(trimmedInput); // Or show an error: errorMessage = "Could not identify a username from the input.";
+    }
+  }
 
   async function getCurrentTabUrl() {
     if (currentTabUrl) return; // Only fetch if not already fetched
@@ -115,7 +153,6 @@
       if (tab?.url) {
         currentTabUrl = tab.url;
         currentTabTitle = tab.title || null; // Store the title, fallback to null
-        console.log("Current Tab:", currentTabUrl, currentTabTitle);
       } else {
         if (!errorMessage) errorMessage = "Could not get current tab URL.";
       }
@@ -126,6 +163,7 @@
   }
 
   async function loadContents() {
+    // ...existing code...
     const currentCreatorId = creatorId;
     if (!currentCreatorId) {
       console.warn("loadContents called without a valid creatorId.");
@@ -149,6 +187,7 @@
 
   // Add content: either to existing creator or create new one first
   async function addCurrentTabContent() {
+    // ...existing code...
     // Ensure URL and potentially title are fetched if not already available
     if (!currentTabUrl) {
       await getCurrentTabUrl();
@@ -159,6 +198,13 @@
       return;
     }
 
+    // Ensure we have a creator or a potential one to create
+    if (!creatorId && !potentialCreatorUsername) {
+      errorMessage =
+        "Please identify a creator first (via URL or manual input).";
+      return;
+    }
+
     isLoading = true;
     errorMessage = null;
 
@@ -166,7 +212,7 @@
       // Handle potential undefined from creatorId by defaulting to null
       let targetCreatorId: number | bigint | null = creatorId ?? null;
 
-      // If creator doesn't exist yet, create them first
+      // If creator doesn't exist yet, create them first using potentialCreatorUsername
       if (!targetCreatorId && potentialCreatorUsername) {
         console.log(`Creating new creator: ${potentialCreatorUsername}`);
         const newCreatorId = addCreateur(potentialCreatorUsername, []); // Add with empty aliases for now
@@ -174,7 +220,8 @@
           targetCreatorId = newCreatorId;
           // Refresh creator state now that they exist
           creator = findCreatorByUsername(potentialCreatorUsername);
-          potentialCreatorUsername = null; // Clear potential name
+          potentialCreatorUsername = null; // Clear potential name as creator now exists
+          manualInput = ""; // Clear manual input as well
           console.log(
             `Creator ${creator?.nom} (ID: ${targetCreatorId}) created.`
           );
@@ -195,9 +242,12 @@
       // Need to fetch contents if creator was just created
       let currentContents = contents;
       if (!creatorId) {
-        // If we just created the creator, contents array is empty
+        // Check if creator was *just* created in this function call
         // Fetch fresh contents using the newly created ID
         currentContents = getContenusByCreator(Number(targetCreatorId));
+      } else {
+        // If creator already existed, 'contents' state should be up-to-date
+        currentContents = contents;
       }
 
       if (currentContents.some((c) => c.url === currentTabUrl)) {
@@ -228,6 +278,7 @@
 
   // Delete a specific content item
   async function handleDeleteContent(contentId: number) {
+    // ...existing code...
     if (!confirm("Are you sure you want to delete this content?")) return;
     isLoading = true;
     errorMessage = null;
@@ -244,6 +295,7 @@
 
   // Toggle favorite status for a content item
   async function handleToggleFavorite(content: Contenu) {
+    // ...existing code...
     isLoading = true;
     errorMessage = null;
     try {
@@ -259,80 +311,111 @@
 </script>
 
 <div class="popup-body">
-
-  <!-- Add Content Section -->
+  <!-- Section for Adding Content / Identifying Creator -->
   <div class="w-full flex flex-col items-center gap-2 my-2">
+    <!-- Display Current Tab URL -->
     {#if currentTabUrl}
       <p
-        class="text-xs text-[#B0B0B0] truncate w-full text-center px-2"
+        class="text-xs text-[#B0B0B0] text-center opacity-40 select-none"
         title={currentTabUrl}
       >
         Current Tab: {currentTabUrl}
       </p>
-      <!-- Enable button if URL exists AND (creator exists OR potential creator name exists) -->
+    {:else if initialCheckDone && !isLoading}
+      <!-- Show only after initial check and if not loading -->
+      <p class="text-xs text-yellow-500">Could not detect current tab URL.</p>
+      <button
+        onclick={getCurrentTabUrl}
+        disabled={isLoading}
+        class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-[#B0B0B0] text-xs disabled:opacity-50 w-auto"
+      >
+        {isLoading ? "Checking..." : `Retry Tab Check`}
+      </button>
+    {/if}
+
+    <!-- Manual Creator Input (Show if no creator found/identified yet) -->
+    {#if initialCheckDone && !isLoadingCreator && !creatorId && !potentialCreatorUsername}
+      <div class="w-full flex flex-col items-center gap-2 mt-2">
+        <p class="text-xs text-yellow-400 text-center px-2">
+          Could not identify creator. Please enter username or profile URL:
+        </p>
+        <div class="flex gap-2 w-full max-w-xs">
+          <input
+            type="text"
+            bind:value={manualInput}
+            placeholder="Enter username or URL"
+            class="flex-grow px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#7E5BEF]"
+            disabled={isLoading}
+            onkeydown={(e) => {
+              if (e.key === "Enter") handleManualFind();
+            }}
+          />
+          <button
+            onclick={handleManualFind}
+            disabled={isLoading || !manualInput.trim()}
+            class="px-3 py-1 bg-[#7E5BEF] hover:bg-[#6A4ADF] rounded text-white text-sm disabled:opacity-50 flex-shrink-0"
+          >
+            Find
+          </button>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Add Content Button (Show if URL is available) -->
+    {#if currentTabUrl}
       <button
         onclick={addCurrentTabContent}
         disabled={isLoading ||
           !currentTabUrl ||
           (!creatorId && !potentialCreatorUsername)}
-        class="px-4 py-2 bg-[#7E5BEF] hover:bg-[#6A4ADF] rounded text-white text-sm disabled:opacity-50 w-full max-w-xs"
+        class="px-4 py-2 mt-2 bg-[#7E5BEF] hover:bg-[#6A4ADF] rounded text-white text-sm disabled:opacity-50 w-full max-w-xs"
+        style="{!creatorId && !potentialCreatorUsername ? 'display: none;' : ''}"
       >
-        {#if isLoading}
-          Loading...
-        {:else if creatorId}
-          Add Current Tab URL
+        {#if isLoading && !isLoadingCreator}
+          <!-- Show loading only if adding/deleting, not during creator lookup -->
+          Processing...
+        {:else if creatorId && creator}
+          <!-- Check for creator existence as well -->
+          Add Current Tab URL for {creator.nom}
         {:else if potentialCreatorUsername}
           Create {potentialCreatorUsername} & Add URL
         {:else}
-          Cannot Add (No Creator/URL)
+          Identify Creator First
         {/if}
       </button>
       {#if showAddConfirmation}
         <p class="text-green-400 text-xs mt-1">Content added successfully!</p>
-        <!-- Adjusted green shade slightly -->
       {/if}
       <!-- Informational message if creator needs to be created -->
       {#if !isLoading && !creatorId && potentialCreatorUsername}
         <p class="text-yellow-400 text-xs mt-1 text-center px-2">
-          <!-- Kept yellow for warning -->
           Creator "{potentialCreatorUsername}" not found. Adding content will
           create them.
         </p>
       {/if}
-    {:else}
-      <p class="text-xs text-yellow-500">Could not detect current tab URL.</p>
-      <!-- Kept yellow for warning -->
-      <button
-        onclick={getCurrentTabUrl}
-        disabled={isLoading}
-        class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-[#B0B0B0] text-sm disabled:opacity-50 w-full max-w-xs"
-      >
-        {isLoading ? "Checking..." : `Retry Tab Check`}
-      </button>
     {/if}
   </div>
 
   <!-- Error Message -->
   {#if errorMessage}
     <p class="text-red-500 text-sm my-2 text-center">{errorMessage}</p>
-    <!-- Kept red for error -->
   {/if}
 
   <!-- Loading Indicator for Creator Lookup -->
   {#if isLoadingCreator}
     <p class="text-[#B0B0B0] text-center">Looking up creator...</p>
-    <!-- Changed text color -->
   {/if}
 
   <!-- Content List (Only show if creator exists and not loading creator) -->
   {#if !isLoadingCreator && creatorId}
-    <div class="w-full flex flex-col gap-2 mt-4 overflow-y-auto max-h-60 px-1">
+    <h3 class="text-lg font-semibold text-white mt-3 mb-1">
+      Content for {creator?.nom}
+    </h3>
+    <div class="w-full flex flex-col gap-2 overflow-y-auto max-h-60 px-1">
       {#if isLoading && contents.length === 0}
         <p class="text-[#B0B0B0] text-center">Loading content...</p>
-        <!-- Changed text color -->
       {:else if contents.length === 0 && !isLoading}
         <p class="text-[#B0B0B0] text-center">
-          <!-- Changed text color -->
           No content added for {creator?.nom || "this creator"} yet.
         </p>
       {:else}
@@ -345,7 +428,9 @@
               target="_blank"
               rel="noopener noreferrer"
               class="text-[#7E5BEF] hover:underline text-sm truncate flex-grow"
-              title={content.tabname ? content.url : "Go to URL"}
+              title={content.tabname
+                ? `${content.tabname} (${content.url})`
+                : content.url}
             >
               {content.tabname ? content.tabname : content.url}
             </a>
@@ -373,14 +458,17 @@
         {/each}
       {/if}
     </div>
-  {:else if !isLoadingCreator && !creatorId && !potentialCreatorUsername && !errorMessage}
-    <!-- Only show if no creator, no potential name, and no specific error -->
-    <p class="text-[#B0B0B0] text-center">Cannot display content.</p>
-    <!-- Changed text color -->
+  {:else if initialCheckDone && !isLoadingCreator && !creatorId && !potentialCreatorUsername && !errorMessage}
+    <!-- Show prompt if initial check done, no creator, no potential, no error -->
+    <p class="text-[#B0B0B0] text-center mt-4">
+      Identify a creator using the current tab or by entering a username/URL
+      above.
+    </p>
   {/if}
 </div>
 
 <style>
+  /* ... existing styles ... */
   @import "tailwindcss";
 
   .popup-body {
@@ -393,8 +481,8 @@
     gap: 0.5rem;
     padding: 1rem;
     color: #b0b0b0; /* Gris argenté */
-    min-height: 300px;
-    max-height: 500px;
+    /*min-height: 300px;
+    max-height: 500px;*/
   }
 
   /* Style for scrollbar */
