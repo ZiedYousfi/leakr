@@ -3,7 +3,10 @@
   import SearchInput from "../components/SearchPage/SearchInput.svelte";
   import ActionButtons from "../components/SearchPage/ActionButtons.svelte";
   import { detectPlatform, type Platform } from "../lib/detectPlatform"; // Keep for tab URL detection
-  import { processSearchInput, type SearchResult } from "../lib/searchProcessor"; // Import the new processor
+  import {
+    processSearchInput,
+    type SearchResult,
+  } from "../lib/searchProcessor"; // Import the new processor
 
   const { onNavigate } = $props<{
     onNavigate: (page: string, params?: object) => void;
@@ -90,7 +93,6 @@
     // Return empty array if no username is detected
     return [] as [string, string][];
   });
-
   // SocialBlade - Use derived searchResult
   let socialBladeUrl = $derived(() => {
     const platform = searchResult.platform; // Use derived result
@@ -104,6 +106,10 @@
       twitter: `https://socialblade.com/twitter/user/${username}`,
       facebook: "", // No direct SB link usually
       onlyfans: "", // No SB link
+      linktree: "", // No SB link
+      linkinbio: "", // No SB link
+      fapello: "", // No SB link
+      kbjfree: "", // No SB link
     };
     return map[platform] || null;
   });

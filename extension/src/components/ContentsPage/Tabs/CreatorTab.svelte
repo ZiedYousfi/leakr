@@ -1,15 +1,14 @@
 <script lang="ts">
   import {
     addContenu,
-    getContenusByCreator,
-    deleteContenu,
-    type Contenu,
-    updateFavoriContenu,
+    getContenusByCreator, // Keep for duplicate check
+    getContenuIdsByCreator, // Import the new function
     type Createur,
     findCreatorByUsername,
     addCreateur,
   } from "@/lib/dbUtils";
   import { processSearchInput } from "@/lib/searchProcessor";
+  import ContentList from "@/components/ContentList.svelte"; // Import ContentList
 
   // --- Props ---
   const { params } = $props<{
@@ -23,12 +22,13 @@
   let manualInput = $state<string>(""); // Input field for manual username entry
   let currentTabUrl = $state("");
   let currentTabTitle = $state<string | null>(null);
-  let contents = $state<Contenu[]>([]);
-  let isLoading = $state(true); // General loading (content, add/delete ops)
+  let creatorContentIds = $state<number[] | null>(null); // State for content IDs
+  let isLoading = $state(true); // General loading (add/delete ops, ID fetching)
   let isLoadingCreator = $state(true); // Specific loading for creator lookup
   let errorMessage = $state<string | null>(null);
   let showAddConfirmation = $state(false);
   let initialCheckDone = $state(false); // Track if initial URL/param check is complete
+  let showResetButton = $state(false); // NEW: Controls visibility of the reset button
 
   // --- Effect to find creator by username (or extract from URL) ---
   $effect(() => {
@@ -37,9 +37,10 @@
       isLoading = true; // Start loading
       errorMessage = null;
       creator = null;
-      contents = [];
+      creatorContentIds = null; // Reset IDs
       potentialCreatorUsername = null;
       manualInput = ""; // Reset manual input
+      showResetButton = false; // Ensure reset button is hidden on initial load/param change
 
       let usernameToFetch: string | null = params.username || null;
 
@@ -66,7 +67,8 @@
         isLoading = false;
         isLoadingCreator = false;
         creator = null;
-        contents = [];
+        // contents = []; // Remove
+        creatorContentIds = null; // Reset IDs
         potentialCreatorUsername = null;
       }
       initialCheckDone = true; // Mark initial check as done
@@ -83,19 +85,22 @@
     isLoading = true; // Also set general loading during creator lookup
     errorMessage = null;
     creator = null;
-    contents = [];
+    // contents = []; // Remove
+    creatorContentIds = null; // Reset IDs
     manualInput = ""; // Clear input after attempting to find
+    showResetButton = false; // Reset button visibility on new find attempt
 
     try {
       const foundCreator = findCreatorByUsername(username);
       if (foundCreator) {
         creator = foundCreator;
         potentialCreatorUsername = null; // Clear potential name as creator is found
-        await loadContents(); // Load contents for the found creator
+        await loadCreatorContentIds(creator.id); // Load content IDs for the found creator
       } else {
         // Creator not found, keep potentialCreatorUsername set
         creator = null;
-        contents = [];
+        // contents = []; // Remove
+        creatorContentIds = null; // No IDs if no creator
         // Stop loading here, waiting for user action (add content will create)
         isLoading = false;
       }
@@ -104,10 +109,27 @@
       errorMessage = `Failed to look up creator "${username}".`;
       creator = null;
       potentialCreatorUsername = null; // Clear on error
+      creatorContentIds = null; // Reset IDs on error
       isLoading = false; // Stop loading on error
     } finally {
       isLoadingCreator = false;
-      // isLoading is set to false either above or within loadContents
+      // isLoading might be set to false above or within loadCreatorContentIds
+    }
+  }
+
+  // Function to load content IDs for a given creator
+  async function loadCreatorContentIds(id: number) {
+    // isLoading = true; // Optionally set loading, but ContentList has its own
+    errorMessage = null; // Clear previous errors related to content loading
+    try {
+      const fetchedIds = getContenuIdsByCreator(id);
+      creatorContentIds = fetchedIds;
+    } catch (error) {
+      console.error(`Error loading content IDs for creator ${id}:`, error);
+      errorMessage = "Failed to load content list.";
+      creatorContentIds = null; // Set to null on error
+    } finally {
+      // isLoading = false; // Stop loading if set above
     }
   }
 
@@ -162,39 +184,19 @@
     }
   }
 
-  async function loadContents() {
-    // ...existing code...
-    const currentCreatorId = creatorId;
-    if (!currentCreatorId) {
-      console.warn("loadContents called without a valid creatorId.");
-      contents = [];
-      isLoading = false;
-      return;
-    }
-    isLoading = true; // Set loading true for content fetching
-    // Don't clear potential creator lookup errors
-    try {
-      const fetchedContents = getContenusByCreator(currentCreatorId);
-      contents = fetchedContents;
-    } catch (error) {
-      console.error("Error loading contents:", error);
-      errorMessage = "Failed to load content list.";
-      contents = [];
-    } finally {
-      isLoading = false;
-    }
-  }
-
   // Add content: either to existing creator or create new one first
   async function addCurrentTabContent() {
-    // ...existing code...
+    console.log("addCurrentTabContent: Started"); // <-- Add log
     // Ensure URL and potentially title are fetched if not already available
     if (!currentTabUrl) {
+      console.log("addCurrentTabContent: Calling getCurrentTabUrl"); // <-- Add log
       await getCurrentTabUrl();
+      console.log("addCurrentTabContent: Finished getCurrentTabUrl"); // <-- Add log
     }
 
     if (!currentTabUrl) {
       errorMessage = "No valid tab URL found to add.";
+      console.log("addCurrentTabContent: Exiting - No valid tab URL"); // <-- Add log
       return;
     }
 
@@ -202,111 +204,99 @@
     if (!creatorId && !potentialCreatorUsername) {
       errorMessage =
         "Please identify a creator first (via URL or manual input).";
+      console.log("addCurrentTabContent: Exiting - Creator not identified"); // <-- Add log
       return;
     }
 
     isLoading = true;
     errorMessage = null;
+    showResetButton = false;
+    console.log("addCurrentTabContent: isLoading set to true");
 
     try {
-      // Handle potential undefined from creatorId by defaulting to null
+      console.log("addCurrentTabContent: Entering try block");
       let targetCreatorId: number | bigint | null = creatorId ?? null;
 
-      // If creator doesn't exist yet, create them first using potentialCreatorUsername
+      // Create creator if needed
       if (!targetCreatorId && potentialCreatorUsername) {
-        console.log(`Creating new creator: ${potentialCreatorUsername}`);
-        const newCreatorId = addCreateur(potentialCreatorUsername, []); // Add with empty aliases for now
+        console.log(`addCurrentTabContent: Creating new creator: ${potentialCreatorUsername}`);
+        const newCreatorId = addCreateur(potentialCreatorUsername, []); // SYNC CALL
+        console.log(`addCurrentTabContent: addCreateur returned: ${newCreatorId}`);
         if (newCreatorId) {
           targetCreatorId = newCreatorId;
-          // Refresh creator state now that they exist
-          creator = findCreatorByUsername(potentialCreatorUsername);
-          potentialCreatorUsername = null; // Clear potential name as creator now exists
-          manualInput = ""; // Clear manual input as well
-          console.log(
-            `Creator ${creator?.nom} (ID: ${targetCreatorId}) created.`
-          );
+          console.log("addCurrentTabContent: Calling findCreatorByUsername");
+          creator = findCreatorByUsername(potentialCreatorUsername); // SYNC CALL
+          console.log("addCurrentTabContent: Finished findCreatorByUsername");
+          potentialCreatorUsername = null;
+          manualInput = "";
+          console.log(`Creator ${creator?.nom} (ID: ${targetCreatorId}) created.`);
         } else {
           throw new Error("Failed to create the new creator in the database.");
         }
       }
 
-      // If we still don't have a creator ID, something went wrong
       if (!targetCreatorId) {
-        errorMessage =
-          "Cannot add content: Creator could not be identified or created.";
-        isLoading = false;
+        errorMessage = "Cannot add content: Creator could not be identified or created.";
+        console.log("addCurrentTabContent: Exiting - targetCreatorId still null");
+        // Note: finally block will still execute even if we return here
         return;
       }
 
-      // Check for duplicate URL for the target creator
-      // Need to fetch contents if creator was just created
-      let currentContents = contents;
-      if (!creatorId) {
-        // Check if creator was *just* created in this function call
-        // Fetch fresh contents using the newly created ID
-        currentContents = getContenusByCreator(Number(targetCreatorId));
-      } else {
-        // If creator already existed, 'contents' state should be up-to-date
-        currentContents = contents;
-      }
-
-      if (currentContents.some((c) => c.url === currentTabUrl)) {
+      // Check for duplicate
+      console.log("addCurrentTabContent: Calling getContenusByCreator for duplicate check");
+      const currentContentsForCheck = getContenusByCreator(Number(targetCreatorId)); // SYNC CALL
+      console.log("addCurrentTabContent: Finished getContenusByCreator");
+      if (currentContentsForCheck.some((c) => c.url === currentTabUrl)) {
         errorMessage = "This URL has already been added for this creator.";
-        setTimeout(() => {
-          if (
-            errorMessage === "This URL has already been added for this creator."
-          )
-            errorMessage = null;
-        }, 3000);
-        isLoading = false;
+        setTimeout(() => { /* ... */ }, 3000);
+        console.log("addCurrentTabContent: Exiting - Duplicate URL found");
+         // Note: finally block will still execute even if we return here
         return;
       }
 
-      // Add the content to the (potentially new) creator, including the tab title
-      addContenu(currentTabUrl, currentTabTitle || "", Number(targetCreatorId)); // Pass title or empty string
-      await loadContents(); // Refresh the list (will use the now-set creatorId)
+      // Add content
+      console.log("addCurrentTabContent: Calling addContenu");
+      addContenu(currentTabUrl, currentTabTitle || "", Number(targetCreatorId)); // SYNC CALL
+      console.log("addCurrentTabContent: Finished addContenu");
+
+      // Load content IDs
+      console.log("addCurrentTabContent: PRE - await loadCreatorContentIds"); // <-- Log before await
+      await loadCreatorContentIds(Number(targetCreatorId)); // ASYNC CALL
+      console.log("addCurrentTabContent: POST - await loadCreatorContentIds"); // <-- Log after await
+
+      // Success path
+      console.log("addCurrentTabContent: Success path");
       showAddConfirmation = true;
+      showResetButton = true;
       setTimeout(() => (showAddConfirmation = false), 2000);
+
     } catch (error: any) {
       console.error("Error adding content or creator:", error);
       errorMessage = `Failed to add content: ${error.message || "Unknown error"}`;
-      // Consider how to handle partial failures if needed
+      showResetButton = false;
+      console.log("addCurrentTabContent: Caught error", error);
     } finally {
+      // This block MUST execute to reset isLoading
       isLoading = false;
+      console.log("addCurrentTabContent: Finally block - isLoading set to false. Current value:", isLoading); // <-- Log in finally
     }
   }
 
-  // Delete a specific content item
-  async function handleDeleteContent(contentId: number) {
-    // ...existing code...
-    if (!confirm("Are you sure you want to delete this content?")) return;
-    isLoading = true;
+  // NEW: Function to reset the component state for a new search
+  function resetComponentState() {
+    creator = null;
+    // creatorId will update via derived
+    potentialCreatorUsername = null;
+    manualInput = "";
+    creatorContentIds = null;
     errorMessage = null;
-    try {
-      deleteContenu(contentId);
-      await loadContents(); // Refresh list
-    } catch (error) {
-      console.error("Error deleting content:", error);
-      errorMessage = "Failed to delete content.";
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  // Toggle favorite status for a content item
-  async function handleToggleFavorite(content: Contenu) {
-    // ...existing code...
-    isLoading = true;
-    errorMessage = null;
-    try {
-      updateFavoriContenu(content.id, !content.favori);
-      await loadContents(); // Refresh list to show updated status
-    } catch (error) {
-      console.error("Error updating favorite status:", error);
-      errorMessage = "Failed to update favorite status.";
-    } finally {
-      isLoading = false;
-    }
+    showResetButton = false; // Hide the reset button itself
+    showAddConfirmation = false; // Ensure confirmation is hidden
+    isLoading = false; // Ensure loading indicators are off
+    isLoadingCreator = false;
+    // Keep initialCheckDone = true
+    // Keep currentTabUrl and currentTabTitle
+    // The UI should now show the manual input section again
   }
 </script>
 
@@ -333,8 +323,8 @@
       </button>
     {/if}
 
-    <!-- Manual Creator Input (Show if no creator found/identified yet) -->
-    {#if initialCheckDone && !isLoadingCreator && !creatorId && !potentialCreatorUsername}
+    <!-- Manual Creator Input (Show if no creator found/identified yet AND reset button isn't shown) -->
+    {#if initialCheckDone && !isLoadingCreator && !creatorId && !potentialCreatorUsername && !showResetButton}
       <div class="w-full flex flex-col items-center gap-2 mt-2">
         <p class="text-xs text-yellow-400 text-center px-2">
           Could not identify creator. Please enter username or profile URL:
@@ -361,38 +351,57 @@
       </div>
     {/if}
 
-    <!-- Add Content Button (Show if URL is available) -->
+    <!-- Add Content / Reset Button Area -->
     {#if currentTabUrl}
-      <button
-        onclick={addCurrentTabContent}
-        disabled={isLoading ||
-          !currentTabUrl ||
-          (!creatorId && !potentialCreatorUsername)}
-        class="px-4 py-2 mt-2 bg-[#7E5BEF] hover:bg-[#6A4ADF] rounded text-white text-sm disabled:opacity-50 w-full max-w-xs"
-        style="{!creatorId && !potentialCreatorUsername ? 'display: none;' : ''}"
-      >
-        {#if isLoading && !isLoadingCreator}
-          <!-- Show loading only if adding/deleting, not during creator lookup -->
-          Processing...
-        {:else if creatorId && creator}
-          <!-- Check for creator existence as well -->
-          Add Current Tab URL for {creator.nom}
-        {:else if potentialCreatorUsername}
-          Create {potentialCreatorUsername} & Add URL
+      <div class="w-full max-w-xs mt-2">
+        <!-- Wrapper div -->
+        {#if showResetButton}
+          <!-- Show Reset Button after successful add -->
+          <button
+            onclick={resetComponentState}
+            class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white text-sm w-full"
+          >
+            Start New Search / Reset
+          </button>
         {:else}
-          Identify Creator First
+          <!-- Show Add/Create Button -->
+          <button
+            onclick={addCurrentTabContent}
+            disabled={isLoading ||
+              !currentTabUrl ||
+              (!creatorId && !potentialCreatorUsername)}
+            class="px-4 py-2 bg-[#7E5BEF] hover:bg-[#6A4ADF] rounded text-white text-sm disabled:opacity-50 w-full"
+            style={!creatorId && !potentialCreatorUsername
+              ? "display: none;"
+              : ""}
+          >
+            {#if isLoading && !isLoadingCreator}
+              Processing...
+            {:else if creatorId && creator}
+              <!-- Check for creator existence as well -->
+              Add Current Tab URL for {creator.nom}
+            {:else if potentialCreatorUsername}
+              Create {potentialCreatorUsername} & Add URL
+            {:else}
+              Identify Creator First
+            {/if}
+          </button>
         {/if}
-      </button>
-      {#if showAddConfirmation}
-        <p class="text-green-400 text-xs mt-1">Content added successfully!</p>
-      {/if}
-      <!-- Informational message if creator needs to be created -->
-      {#if !isLoading && !creatorId && potentialCreatorUsername}
-        <p class="text-yellow-400 text-xs mt-1 text-center px-2">
-          Creator "{potentialCreatorUsername}" not found. Adding content will
-          create them.
-        </p>
-      {/if}
+
+        {#if showAddConfirmation && !showResetButton}
+          <!-- Hide confirmation if reset button is shown -->
+          <p class="text-green-400 text-xs mt-1 text-center">
+            Content added successfully!
+          </p>
+        {/if}
+        <!-- Informational message if creator needs to be created (and reset button isn't shown) -->
+        {#if !isLoading && !creatorId && potentialCreatorUsername && !showResetButton}
+          <p class="text-yellow-400 text-xs mt-1 text-center px-2">
+            Creator "{potentialCreatorUsername}" not found. Adding content will
+            create them.
+          </p>
+        {/if}
+      </div>
     {/if}
   </div>
 
@@ -411,55 +420,12 @@
     <h3 class="text-lg font-semibold text-white mt-3 mb-1">
       Content for {creator?.nom}
     </h3>
+    <!-- Use ContentList component -->
     <div class="w-full flex flex-col gap-2 overflow-y-auto max-h-60 px-1">
-      {#if isLoading && contents.length === 0}
-        <p class="text-[#B0B0B0] text-center">Loading content...</p>
-      {:else if contents.length === 0 && !isLoading}
-        <p class="text-[#B0B0B0] text-center">
-          No content added for {creator?.nom || "this creator"} yet.
-        </p>
-      {:else}
-        {#each contents as content (content.id)}
-          <div
-            class="bg-gray-900 p-2 rounded flex justify-between items-center gap-2"
-          >
-            <a
-              href={content.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-[#7E5BEF] hover:underline text-sm truncate flex-grow"
-              title={content.tabname
-                ? `${content.tabname} (${content.url})`
-                : content.url}
-            >
-              {content.tabname ? content.tabname : content.url}
-            </a>
-            <div class="flex items-center gap-2 flex-shrink-0">
-              <button
-                onclick={() => handleToggleFavorite(content)}
-                title={content.favori
-                  ? "Remove from favorites"
-                  : "Add to favorites"}
-                class={`text-xl ${content.favori ? "text-yellow-400" : "text-[#B0B0B0] hover:text-[#7E5BEF]"}`}
-                disabled={isLoading}
-              >
-                {content.favori ? "★" : "☆"}
-              </button>
-              <button
-                onclick={() => handleDeleteContent(content.id)}
-                title="Delete Content"
-                class="text-red-500 hover:text-red-400 text-lg font-bold"
-                disabled={isLoading}
-              >
-                &times; <!-- Cross symbol -->
-              </button>
-            </div>
-          </div>
-        {/each}
-      {/if}
+      <ContentList bind:contentIds={creatorContentIds} />
     </div>
-  {:else if initialCheckDone && !isLoadingCreator && !creatorId && !potentialCreatorUsername && !errorMessage}
-    <!-- Show prompt if initial check done, no creator, no potential, no error -->
+  {:else if initialCheckDone && !isLoadingCreator && !creatorId && !potentialCreatorUsername && !errorMessage && !showResetButton}
+    <!-- Show prompt if initial check done, no creator, no potential, no error, and not in reset state -->
     <p class="text-[#B0B0B0] text-center mt-4">
       Identify a creator using the current tab or by entering a username/URL
       above.
@@ -484,7 +450,7 @@
     max-height: 500px;*/
   }
 
-  /* Style for scrollbar */
+  /* Style for scrollbar (keep if needed for overall popup, ContentList has its own internal scroll styling) */
   .overflow-y-auto::-webkit-scrollbar {
     width: 6px;
   }

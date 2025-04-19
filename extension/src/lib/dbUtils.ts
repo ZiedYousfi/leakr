@@ -368,7 +368,7 @@ export function findCreatorByUsername(username: string): Createur | null {
 
     const fuse = new Fuse(allCreators, {
       keys: ['nom', 'aliases'],
-      threshold: 0.3, // Ajuste pour rendre plus ou moins strict
+      threshold: 0.1, // Ajuste pour rendre plus ou moins strict
       ignoreLocation: true,
       includeScore: true,
     });
@@ -440,7 +440,6 @@ export function deleteCreateur(id: number): void {
     }
 }
 
-
 // CONTENUS
 
 /** Ajoute un nouveau contenu pour un créateur */
@@ -495,6 +494,22 @@ export function getContenusByCreator(id_createur: number): Contenu[] {
   }
   stmt.free();
   return contenus;
+}
+
+
+
+/** Récupère les IDs des contenus d'un créateur spécifique */
+export function getContenuIdsByCreator(id_createur: number): number[] {
+  const stmt = db.prepare("SELECT id FROM contenus WHERE id_createur = ? ORDER BY date_ajout DESC");
+  const ids: number[] = [];
+  stmt.bind([id_createur]);
+  while (stmt.step()) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const row = stmt.getAsObject() as any;
+    ids.push(row.id as number);
+  }
+  stmt.free();
+  return ids;
 }
 
 /** Récupère un contenu spécifique par son ID */

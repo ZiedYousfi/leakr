@@ -3,8 +3,6 @@
 
   import {
     getAllContenus,
-    deleteContenu,
-    updateFavoriContenu,
     type Contenu,
   } from "@/lib/dbUtils";
 
@@ -32,45 +30,6 @@
       contents = [];
     } finally {
       isLoading = false;
-    }
-  }
-
-  // Delete a specific content item
-  async function handleDeleteContent(contentId: number) {
-    if (!confirm("Are you sure you want to delete this content?")) return;
-    isLoading = true; // Indicate loading during delete
-    errorMessage = null;
-    try {
-      deleteContenu(contentId);
-      await loadAllContents(); // Refresh list
-    } catch (error) {
-      console.error("Error deleting content:", error);
-      errorMessage = "Failed to delete content.";
-      isLoading = false; // Ensure loading is false on error
-    }
-    // isLoading will be set to false by loadAllContents on success
-  }
-
-  // Toggle favorite status for a content item
-  async function handleToggleFavorite(content: Contenu) {
-    isLoading = true; // Indicate loading during toggle
-    errorMessage = null;
-    try {
-      updateFavoriContenu(content.id, !content.favori);
-      await loadAllContents(); // Refresh list to show updated status
-    } catch (error) {
-      console.error("Error updating favorite status:", error);
-      errorMessage = "Failed to update favorite status.";
-      isLoading = false; // Ensure loading is false on error
-    }
-    // isLoading will be set to false by loadAllContents on success
-  }
-
-  function formatDate(dateString: string): string {
-    try {
-      return new Date(dateString).toLocaleString();
-    } catch (e) {
-      return "Invalid Date";
     }
   }
 </script>
