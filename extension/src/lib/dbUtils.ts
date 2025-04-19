@@ -41,6 +41,7 @@ export interface Createur {
 export interface Contenu {
   id: number;
   url: string;
+  tabname: string | null;
   date_ajout: string; // ISO 8601 format
   id_createur: number;
   favori: boolean;
@@ -80,6 +81,7 @@ function createSchema() {
     CREATE TABLE contenus (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       url TEXT NOT NULL,
+      tabname TEXT,
       date_ajout TEXT NOT NULL,
       id_createur INTEGER NOT NULL,
       favori BOOLEAN DEFAULT FALSE,
@@ -172,6 +174,51 @@ export function getCreateurs(): Createur[] {
   return createurs;
 }
 
+/** Finds a creator by their primary name (case-insensitive) */
+export function findCreatorByUsername(username: string): Createur | null {
+    // Using LOWER() for case-insensitive comparison is generally good practice
+    // for usernames, assuming SQLite's default case sensitivity or using LOWER().
+    const stmt = db.prepare("SELECT id, nom, aliases, date_ajout, favori FROM createurs WHERE LOWER(nom) = LOWER(?) LIMIT 1");
+    stmt.bind([username]);
+    let creator: Createur | null = null;
+    try {
+        if (stmt.step()) {
+            const row = stmt.getAsObject() as any;
+            let parsedAliases: string[] = [];
+            try {
+                // Ensure aliases are parsed correctly, defaulting to empty array if null/invalid
+                parsedAliases = JSON.parse(row.aliases || '[]');
+            } catch (e) {
+                console.error(`Error parsing aliases for creator ${row.id}:`, row.aliases, e);
+            }
+            creator = {
+                id: row.id,
+                nom: row.nom,
+                aliases: parsedAliases,
+                date_ajout: row.date_ajout,
+                favori: Boolean(row.favori) // Ensure boolean conversion
+            };
+        }
+    } catch (error) {
+        console.error("Error finding creator by username:", error);
+        // Ensure statement is freed even if an error occurs during processing
+    } finally {
+        stmt.free();
+    }
+
+    // Optional: If not found by name, you could add logic here to search
+    // within the JSON 'aliases' field, though this can be less efficient.
+    // Example (conceptual - requires fetching all or more complex SQL):
+    if (!creator) {
+      const allCreators = getCreateurs();
+      creator = allCreators.find(c =>
+         c.aliases.some(alias => alias.toLowerCase() === username.toLowerCase())
+      ) || null;
+    }
+
+    return creator;
+}
+
 /** Met à jour le statut favori d'un créateur */
 export function updateFavoriCreateur(id: number, favori: boolean): void {
     const stmt = db.prepare("UPDATE createurs SET favori = ? WHERE id = ?");
@@ -211,9 +258,9 @@ export function deleteCreateur(id: number): void {
 // CONTENUS
 
 /** Ajoute un nouveau contenu pour un créateur */
-export function addContenu(url: string, id_createur: number): number | bigint {
-  const stmt = db.prepare("INSERT INTO contenus (url, date_ajout, id_createur) VALUES (?, ?, ?)");
-  stmt.run([url, new Date().toISOString(), id_createur]);
+export function addContenu(url: string, tabname: string, id_createur: number): number | bigint {
+  const stmt = db.prepare("INSERT INTO contenus (url, tabname, date_ajout, id_createur) VALUES (?, ?, ?, ?)");
+  stmt.run([url, tabname, new Date().toISOString(), id_createur]);
   stmt.free();
   const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
   const lastId = (typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint") ? lastIdRaw : 0;
@@ -223,7 +270,7 @@ export function addContenu(url: string, id_createur: number): number | bigint {
 
 /** Récupère les contenus d'un créateur spécifique */
 export function getContenusByCreator(id_createur: number): Contenu[] {
-  const stmt = db.prepare("SELECT id, url, date_ajout, id_createur, favori FROM contenus WHERE id_createur = ? ORDER BY date_ajout DESC");
+  const stmt = db.prepare("SELECT id, url, tabname, date_ajout, id_createur, favori FROM contenus WHERE id_createur = ? ORDER BY date_ajout DESC");
   const contenus: Contenu[] = [];
   stmt.bind([id_createur]);
   while (stmt.step()) {
@@ -231,6 +278,7 @@ export function getContenusByCreator(id_createur: number): Contenu[] {
     contenus.push({
         id: row.id,
         url: row.url,
+        tabname: row.tabname,
         date_ajout: row.date_ajout,
         id_createur: row.id_createur,
         favori: Boolean(row.favori)
