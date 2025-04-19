@@ -9,6 +9,7 @@ export type Platform =
   | "linktree"
   | "linkinbio"
   | "fapello"
+  | "kbjfree"
   | null;
 
 export function detectPlatform(url: string): {
@@ -28,6 +29,8 @@ export function detectPlatform(url: string): {
     ["linktree", /linktree\.com\/([\w\d_.-]+)/i],
     ["linkinbio", /linkin\.bio\/([\w\d_.-]+)/i],
     ["fapello", /fapello\.com\/([\w\d_.-]+)/i],
+    ["kbjfree", /kbjfree\.com\/search\?q=([\w\d_.-]+)/i],
+    ["kbjfree", /kbjfree\.com\/model\/([\w\d_.-]+)/i],
   ];
   for (const [platform, regex] of patterns) {
     const match = url.match(regex);
