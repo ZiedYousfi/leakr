@@ -9,7 +9,8 @@ const DB_VERSION = "1.0.0"; // 💡 version actuelle de la structure
 // 📦 Initialise sql.js et la base (nouvelle ou chargée depuis storage)
 export async function initDatabase(): Promise<void> {
   SQL = await initSqlJs({
-    locateFile: _ => chrome.runtime.getURL("sql-wasm.wasm") // suppose que sql-wasm.wasm est à la racine du dist
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    locateFile: (_file: string) => chrome.runtime.getURL("sql-wasm.wasm") // suppose que sql-wasm.wasm est à la racine du dist
   });
 
   const stored = await chrome.storage.local.get("leakr_db");
@@ -161,12 +162,13 @@ export function getCreateurs(): Createur[] {
   const stmt = db.prepare("SELECT id, nom, aliases, date_ajout, favori FROM createurs ORDER BY nom ASC");
   const createurs: Createur[] = [];
   while (stmt.step()) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const row = stmt.getAsObject() as any;
     createurs.push({
-      id: row.id,
-      nom: row.nom,
-      aliases: JSON.parse(row.aliases),
-      date_ajout: row.date_ajout,
+      id: row.id as number,
+      nom: row.nom as string,
+      aliases: JSON.parse(row.aliases as string || '[]'),
+      date_ajout: row.date_ajout as string,
       favori: Boolean(row.favori)
     });
   }
@@ -183,20 +185,21 @@ export function findCreatorByUsername(username: string): Createur | null {
     let creator: Createur | null = null;
     try {
         if (stmt.step()) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const row = stmt.getAsObject() as any;
             let parsedAliases: string[] = [];
             try {
                 // Ensure aliases are parsed correctly, defaulting to empty array if null/invalid
-                parsedAliases = JSON.parse(row.aliases || '[]');
+                parsedAliases = JSON.parse(row.aliases as string || '[]');
             } catch (e) {
                 console.error(`Error parsing aliases for creator ${row.id}:`, row.aliases, e);
             }
             creator = {
-                id: row.id,
-                nom: row.nom,
+                id: row.id as number,
+                nom: row.nom as string,
                 aliases: parsedAliases,
-                date_ajout: row.date_ajout,
-                favori: Boolean(row.favori) // Ensure boolean conversion
+                date_ajout: row.date_ajout as string,
+                favori: Boolean(row.favori)
             };
         }
     } catch (error) {
@@ -274,13 +277,14 @@ export function getContenusByCreator(id_createur: number): Contenu[] {
   const contenus: Contenu[] = [];
   stmt.bind([id_createur]);
   while (stmt.step()) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const row = stmt.getAsObject() as any;
     contenus.push({
-        id: row.id,
-        url: row.url,
-        tabname: row.tabname,
-        date_ajout: row.date_ajout,
-        id_createur: row.id_createur,
+        id: row.id as number,
+        url: row.url as string,
+        tabname: row.tabname as string | null,
+        date_ajout: row.date_ajout as string,
+        id_createur: row.id_createur as number,
         favori: Boolean(row.favori)
     });
   }
@@ -308,32 +312,32 @@ export function deleteContenu(id: number): void {
 
 /** Ajoute une nouvelle plateforme */
 export function addPlateforme(nom: string): number | bigint | null {
-    try {
-        const stmt = db.prepare("INSERT INTO plateformes (nom) VALUES (?)");
-        stmt.run([nom]);
-        stmt.free();
-        const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
-        const lastId = (typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint") ? lastIdRaw : 0;
-        saveDatabase();
-        return lastId;
-    } catch (err: any) {
-        // Gérer l'erreur d'unicité
-        if (err.message.includes("UNIQUE constraint failed")) {
-            console.warn(`La plateforme "${nom}" existe déjà.`);
-            // Optionnel: retourner l'ID existant
-            const stmt = db.prepare("SELECT id FROM plateformes WHERE nom = ?");
-            stmt.bind([nom]);
-            let existingId: number | bigint | null = null;
-            if (stmt.step()) {
-                existingId = stmt.getAsObject().id as number | bigint;
-            }
-            stmt.free();
-            return existingId;
-        } else {
-            console.error("Erreur lors de l'ajout de la plateforme:", err);
-            return null;
-        }
-    }
+  try {
+      const stmt = db.prepare("INSERT INTO plateformes (nom) VALUES (?)");
+      stmt.run([nom]);
+      stmt.free();
+      const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
+      const lastId = (typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint") ? lastIdRaw : 0;
+      saveDatabase();
+      return lastId;
+  } catch (err: unknown) {
+      // Gérer l'erreur d'unicité
+      if (err instanceof Error && err.message.includes("UNIQUE constraint failed")) {
+          console.warn(`La plateforme "${nom}" existe déjà.`);
+          // Optionnel: retourner l'ID existant
+          const stmt = db.prepare("SELECT id FROM plateformes WHERE nom = ?");
+          stmt.bind([nom]);
+          let existingId: number | bigint | null = null;
+          if (stmt.step()) {
+              existingId = stmt.getAsObject().id as number | bigint;
+          }
+          stmt.free();
+          return existingId;
+      } else {
+          console.error("Erreur lors de l'ajout de la plateforme:", err);
+          return null;
+      }
+  }
 }
 
 /** Récupère toutes les plateformes */
@@ -341,10 +345,11 @@ export function getPlateformes(): Plateforme[] {
     const stmt = db.prepare("SELECT id, nom FROM plateformes ORDER BY nom ASC");
     const plateformes: Plateforme[] = [];
     while (stmt.step()) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const row = stmt.getAsObject() as any;
         plateformes.push({
-            id: row.id,
-            nom: row.nom
+            id: row.id as number,
+            nom: row.nom as string
         });
     }
     stmt.free();
@@ -374,12 +379,13 @@ export function getProfilsByCreator(id_createur: number): ProfilPlateforme[] {
     const profils: ProfilPlateforme[] = [];
     stmt.bind([id_createur]);
     while (stmt.step()) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const row = stmt.getAsObject() as any;
         profils.push({
-            id: row.id,
-            lien: row.lien,
-            id_createur: row.id_createur,
-            id_plateforme: row.id_plateforme
+            id: row.id as number,
+            lien: row.lien as string,
+            id_createur: row.id_createur as number,
+            id_plateforme: row.id_plateforme as number
         });
     }
     stmt.free();
@@ -389,6 +395,7 @@ export function getProfilsByCreator(id_createur: number): ProfilPlateforme[] {
 // --- Utilitaires ---
 
 /** Exécute une requête SQL générique (pour lecture) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function executeQuery(sql: string, params?: any[]): any[] {
     const stmt = db.prepare(sql);
     if (params) {
@@ -403,6 +410,7 @@ export function executeQuery(sql: string, params?: any[]): any[] {
 }
 
 /** Exécute une commande SQL générique (pour écriture) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function executeCommand(sql: string, params?: any[]): void {
     db.run(sql, params);
     saveDatabase(); // Sauvegarde après chaque commande potentiellement modificatrice
