@@ -8,39 +8,43 @@
   } from "@/lib/dbUtils";
 
   // --- Props ---
-  let { contentId = $bindable<number | null>(null) } = $props<{ contentId?: number | null }>();
+  // Changed prop name and type to accept an array of IDs or null
+  let { contentIds = $bindable<number[] | null>(null) } = $props<{ contentIds?: number[] | null }>();
 
   // --- State ---
   let contents = $state<Contenu[]>([]);
   let isLoading = $state(true);
   let errorMessage = $state<string | null>(null);
 
-  // --- Effect to load contents based on contentId ---
+  // --- Effect to load contents based on contentIds ---
   $effect(() => {
-    // This effect will re-run whenever contentId changes
-    loadContents(contentId);
+    // This effect will re-run whenever contentIds changes
+    loadContents(contentIds); // Use the new prop name
   });
 
   // --- Functions ---
-  async function loadContents(id: number | null) {
+  // Modified function to accept an array of IDs or null
+  async function loadContents(ids: number[] | null) {
     isLoading = true;
     errorMessage = null;
     try {
       let fetchedContents: Contenu[] = [];
-      if (id !== null) {
-        console.log(`Fetching content for ID: ${id}`);
-        const singleContent = getContenuById(id);
-        if (singleContent) {
-          fetchedContents = [singleContent]; // Wrap the single item in an array
-        } else {
-          // Content with the specified ID not found
-          fetchedContents = [];
-          // Optionally set an error message or specific state
-          // errorMessage = `Content with ID ${id} not found.`;
+      if (ids !== null && ids.length > 0) { // Check if ids is an array and not empty
+        console.log(`Fetching content for IDs: ${ids.join(', ')}`);
+        fetchedContents = ids
+          .map(id => getContenuById(id)) // Get content for each ID
+          .filter((content): content is Contenu => content !== null); // Filter out null results (ID not found)
+        if (fetchedContents.length !== ids.length) {
+          // Optionally handle cases where some IDs were not found
+          console.warn("Some content IDs were not found.");
         }
-      } else {
+      } else if (ids === null) { // Fetch all if ids is null
         console.log("Fetching all content");
         fetchedContents = getAllContenus();
+      } else {
+        // Handle the case where ids is an empty array if needed, currently results in empty list
+        console.log("Received empty array of IDs, fetching no specific content.");
+        fetchedContents = [];
       }
       contents = fetchedContents;
     } catch (error) {
@@ -59,9 +63,8 @@
     errorMessage = null;
     try {
       deleteContenu(idToDelete);
-      // Refresh based on the current mode (single ID or all)
-      // If we were showing a single item and deleted it, loadContents(contentId) will result in an empty list.
-      await loadContents(contentId);
+      // Refresh based on the current mode (multiple IDs or all)
+      await loadContents(contentIds); // Use the new prop name
     } catch (error) {
       console.error("Error deleting content:", error);
       errorMessage = "Failed to delete content.";
@@ -75,8 +78,8 @@
     errorMessage = null;
     try {
       updateFavoriContenu(content.id, !content.favori);
-      // Refresh based on the current mode (single ID or all)
-      await loadContents(contentId);
+      // Refresh based on the current mode (multiple IDs or all)
+      await loadContents(contentIds); // Use the new prop name
     } catch (error) {
       console.error("Error updating favorite status:", error);
       errorMessage = "Failed to update favorite status.";
@@ -106,11 +109,12 @@
       <p class="text-red-500 text-sm my-2 text-center">{errorMessage}</p>
     {/if}
     {#if !isLoading && contents.length === 0 && !errorMessage}
-      <p class="text-[#B0B0B0] text-center">No content found{contentId ? ` for ID ${contentId}` : ''}.</p>
+      <!-- Updated message for multiple IDs -->
+      <p class="text-[#B0B0B0] text-center">No content found{contentIds && contentIds.length > 0 ? ` for the specified IDs` : ''}.</p>
     {:else}
       {#each contents as content (content.id)}
         <div
-          class="bg-gray-900 p-4 rounded-2xl flex justify-between items-center gap-2"
+          class="bg-gray-900 p-4 rounded-2xl flex justify-between items-center gap-2 mb-2" 
         >
           <div class="flex-grow overflow-hidden">
             <a
