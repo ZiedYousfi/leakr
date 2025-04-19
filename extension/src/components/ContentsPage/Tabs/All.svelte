@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ContentList from '@/components/ContentList.svelte';
+
   import {
     getAllContenus,
     deleteContenu,
@@ -86,63 +88,7 @@
     <p class="text-[#B0B0B0] text-center">Loading all content...</p>
   {/if}
 
-  <!-- Content List -->
-  <div
-    class="w-full flex flex-col gap-2 max-h-80 p-2 bg-gray-800 rounded-2xl"
-  >
-    {#if isLoading && contents.length > 0}
-      <p class="text-[#B0B0B0] text-center">Loading more content...</p>
-    {/if}
-    {#if errorMessage}
-      <p class="text-red-500 text-sm my-2 text-center">{errorMessage}</p>
-    {/if}
-    {#if !isLoading && contents.length === 0 && !errorMessage}
-      <p class="text-[#B0B0B0] text-center">No content found.</p>
-    {:else}
-      {#each contents as content (content.id)}
-        <div
-          class="bg-gray-900 p-4 rounded-2xl flex justify-between items-center gap-2"
-        >
-          <div class="flex-grow overflow-hidden">
-            <a
-              href={content.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-[#7E5BEF] hover:underline text-sm truncate block"
-              title={content.url}
-            >
-              {content.tabname ? content.tabname : content.url}
-            </a>
-            <p class="text-xs text-gray-500 mt-1">
-              Added: {formatDate(content.date_ajout)}
-              <!-- TODO: Optionally display creator name here if needed -->
-              <!-- Requires fetching creator info or joining tables -->
-            </p>
-          </div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <button
-              onclick={() => handleToggleFavorite(content)}
-              title={content.favori
-                ? "Remove from favorites"
-                : "Add to favorites"}
-              class={`text-xl ${content.favori ? "text-yellow-400" : "text-[#B0B0B0] hover:text-[#7E5BEF]"}`}
-              disabled={isLoading}
-            >
-              {content.favori ? "★" : "☆"}
-            </button>
-            <button
-              onclick={() => handleDeleteContent(content.id)}
-              title="Delete Content"
-              class="text-red-500 hover:text-red-400 text-lg font-bold"
-              disabled={isLoading}
-            >
-              &times;
-            </button>
-          </div>
-        </div>
-      {/each}
-    {/if}
-  </div>
+  <ContentList></ContentList>
 </div>
 
 <style>
@@ -160,21 +106,5 @@
     color: #b0b0b0; /* Gris argenté */
     min-height: 300px;
     max-height: 500px;
-  }
-
-  /* Style for scrollbar */
-  .overflow-y-auto::-webkit-scrollbar {
-    width: 6px;
-  }
-  .overflow-y-auto::-webkit-scrollbar-track {
-    background: #1a1a1a; /* Darker track */
-    border-radius: 3px;
-  }
-  .overflow-y-auto::-webkit-scrollbar-thumb {
-    background: #555; /* Dark gray thumb */
-    border-radius: 3px;
-  }
-  .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-    background: #7e5bef; /* Violet nuit on hover */
   }
 </style>

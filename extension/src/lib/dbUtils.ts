@@ -262,6 +262,7 @@ export async function exportDatabase(): Promise<Uint8Array> {
   try {
     const stmt = db.prepare("SELECT date_maj, iterations FROM version WHERE id = 1;");
     if (stmt.step()) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const row = stmt.getAsObject() as any;
       dateMaj = row.date_maj as string || dateMaj;
       iteration = row.iterations as number || 0;
@@ -339,6 +340,7 @@ export function findCreatorByUsername(username: string): Createur | null {
 
   try {
     if (stmt.step()) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const row = stmt.getAsObject() as any;
       let parsedAliases: string[] = [];
       try {
@@ -493,6 +495,27 @@ export function getContenusByCreator(id_createur: number): Contenu[] {
   }
   stmt.free();
   return contenus;
+}
+
+/** Récupère un contenu spécifique par son ID */
+export function getContenuById(id: number): Contenu | null {
+  const stmt = db.prepare("SELECT id, url, tabname, date_ajout, id_createur, favori FROM contenus WHERE id = ?");
+  stmt.bind([id]);
+  let contenu: Contenu | null = null;
+  if (stmt.step()) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const row = stmt.getAsObject() as any;
+    contenu = {
+        id: row.id as number,
+        url: row.url as string,
+        tabname: row.tabname as string | null,
+        date_ajout: row.date_ajout as string,
+        id_createur: row.id_createur as number,
+        favori: Boolean(row.favori)
+    };
+  }
+  stmt.free();
+  return contenu;
 }
 
 /** Met à jour le statut favori d'un contenu */
