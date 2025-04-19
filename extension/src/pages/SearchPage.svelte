@@ -115,7 +115,7 @@
 
   {#if searchResult.displayValue}
     <ActionButtons
-      displayValue={searchResult.displayValue} 
+      displayValue={searchResult.displayValue}
       {socialLinks}
       {adultLinks}
       filteredProfileLinks={filteredProfileLinks()}
@@ -130,6 +130,7 @@
   .popup-body {
     background-color: #000;
     min-width: 320px;
+    min-height: 400px; /* Added minimum height */
     display: flex;
     flex-direction: column;
     align-items: center;

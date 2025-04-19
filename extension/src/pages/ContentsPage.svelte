@@ -31,6 +31,23 @@
   ]);
 </script>
 
-<!--  On ne garde qu’un seul composant : -->
-<Header title="Leakr" {onNavigate} />
-<Tabs {tabs} />
+<div class="page-container">
+  <Header title="Leakr" {onNavigate} />
+  <Tabs {tabs} />
+</div>
+
+<style>
+  @import "tailwindcss";
+
+  .page-container {
+    background-color: #000; /* Match SearchPage background */
+    min-width: 320px; /* Match SearchPage min-width */
+    display: flex; /* Match SearchPage layout */
+    flex-direction: column; /* Match SearchPage layout */
+    align-items: center; /* Match SearchPage layout */
+    gap: 1rem; /* Match SearchPage gap */
+    padding: 1rem; /* Match SearchPage padding */
+    color: #e5e7eb; /* Match SearchPage text color */
+    min-height: 100vh; /* Keep full height */
+  }
+</style>
