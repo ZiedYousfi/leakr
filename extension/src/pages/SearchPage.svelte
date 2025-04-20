@@ -2,9 +2,8 @@
   import Header from "../components/Header.svelte";
   import SearchInput from "../components/SearchPage/SearchInput.svelte";
   import ActionButtons from "../components/SearchPage/ActionButtons.svelte";
-  import { detectPlatform, type Platform } from "../lib/detectPlatform"; // Keep for tab URL detection and SocialBlade mapping
-  import { processSearchInput, type SearchResult } from "../lib/searchProcessor"; // Keep for processing input for display/links
-  import { fetchCreatorAndContentIds } from "../lib/creatorFinder"; // Import the creator fetching logic
+  import { detectPlatform, type Platform } from "../lib/detectPlatform"; // Keep for tab URL detection
+  import { fetchCreatorAndContentIds } from "../lib/creatorFinder"; // Import the creator fetching logic and its result type
   import {
     creatorIdentifier,
     identifiedCreator,
@@ -22,61 +21,63 @@
 
   // Local component state
   let currentTabUrl = $state(""); // Still needed to filter out current profile link
+  // State to hold the username and platform determined by creatorFinder
+  let lookupDetails = $state<{ username: string | null; platform: Platform | null } | null>(null);
+
 
   // --- Effects ---
 
   // Effect 1: Get current tab URL and potentially pre-fill identifier on load
   $effect(() => {
     // Ensure stores are reset when the component mounts/becomes active
-    resetCreatorStores(); // Consider if this is the right place or if it should be done on navigate *away*
+    resetCreatorStores();
+    lookupDetails = null; // Reset lookup details as well
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs[0];
       currentTabUrl = tab?.url || "";
       if (tab?.url) {
+        // Still use detectPlatform here just to pre-fill the input,
+        // but the actual lookup logic relies solely on creatorFinder
         const { platform, username } = detectPlatform(tab.url);
-        // If it's a known platform profile and no identifier is set yet, pre-fill it
         if (platform && username && !$creatorIdentifier) {
           creatorIdentifier.set(tab.url); // Set the store value, triggering the lookup effect
         }
       }
     });
-
-    // Cleanup effect (optional, depends on lifecycle needs)
-    // return () => {
-    //   resetCreatorStores(); // Reset when component is destroyed
-    // };
   });
 
   // Effect 2: Trigger creator lookup when the identifier changes
   $effect(() => {
     const currentIdentifier = $creatorIdentifier; // Get reactive value
 
-    // Avoid lookups for null/empty identifiers
     if (!currentIdentifier || currentIdentifier.trim() === "") {
-      // If the identifier becomes empty/null, reset related stores but keep the identifier itself
       identifiedCreator.set(null);
       identifiedCreatorContentIds.set(null);
       potentialUsernameToCreate.set(null);
       creatorOperationError.set(null);
       isCreatorLoading.set(false);
+      lookupDetails = null; // Clear lookup details
       return;
     }
 
-    // Define the async lookup function
     const performLookup = async () => {
       isCreatorLoading.set(true);
-      creatorOperationError.set(null); // Clear previous errors
-      identifiedCreator.set(null); // Clear previous results
+      creatorOperationError.set(null);
+      identifiedCreator.set(null);
       identifiedCreatorContentIds.set(null);
       potentialUsernameToCreate.set(null);
+      lookupDetails = null; // Reset details before new lookup
 
       try {
         const result = await fetchCreatorAndContentIds(currentIdentifier);
 
+        // Store the username and platform found by creatorFinder
+        // This happens regardless of finding the creator, as long as a username was determined
+        lookupDetails = { username: result.usernameFound, platform: result.platform };
+
         if (result.error) {
           creatorOperationError.set(result.error);
-          // If creator not found, store the username we tried to find
           if (result.error.includes("not found") && result.usernameFound) {
             potentialUsernameToCreate.set(result.usernameFound);
           }
@@ -89,26 +90,21 @@
         creatorOperationError.set(
           "An unexpected error occurred during the search."
         );
-        // Reset other states on unexpected error
         identifiedCreator.set(null);
         identifiedCreatorContentIds.set(null);
         potentialUsernameToCreate.set(null);
+        lookupDetails = null; // Clear details on unexpected error
       } finally {
         isCreatorLoading.set(false);
       }
     };
 
-    // Execute the lookup
     performLookup();
   });
 
   // --- Derived State for UI ---
 
-  // Process the current identifier for display purposes (username extraction, etc.)
-  // This runs independently of the DB lookup result
-  let processedInput = $derived<SearchResult>(
-    processSearchInput($creatorIdentifier ?? "")
-  );
+  // REMOVED: processedInput derived state
 
   // Links (remain the same)
   const socialLinks: [string, (v: string) => string][] = [
@@ -143,9 +139,9 @@
     // Add other platforms if needed
   ];
 
-  // Filtered profiles - Use username from processed input
+  // Filtered profiles - Use username from lookupDetails
   let filteredProfileLinks = $derived(() => {
-    const username = processedInput.username; // Use username from processed input
+    const username = lookupDetails?.username; // Use username from creatorFinder result
     if (username) {
       return (
         platformProfileLinks
@@ -159,12 +155,12 @@
     return [] as [string, string][];
   });
 
-  // SocialBlade - Use platform and username from processed input
+  // SocialBlade - Use platform and username from lookupDetails
   let socialBladeUrl = $derived(() => {
-    const platform = processedInput.platform;
-    const username = processedInput.username;
+    const platform = lookupDetails?.platform; // Use platform from creatorFinder result
+    const username = lookupDetails?.username; // Use username from creatorFinder result
     if (!platform || !username) return null;
-    // Keep the existing SocialBlade mapping logic
+
     const map: Record<Exclude<Platform, null | undefined>, string> = {
       twitch: `https://socialblade.com/twitch/user/${username}`,
       instagram: `https://socialblade.com/instagram/user/${username}`,
@@ -219,7 +215,7 @@
       <button
         onclick={() =>
           onNavigate("AddCreatorPage", {
-            username: $potentialUsernameToCreate,
+            username: $potentialUsernameToCreate, // Use the username creatorFinder suggested
           })}
         class="link-button"
       >
@@ -228,10 +224,10 @@
     </p>
   {/if}
 
-  <!-- Action Buttons - Show if there's a value to display/search for -->
-  {#if processedInput.displayValue && !$isCreatorLoading}
+  <!-- Action Buttons - Show if creatorFinder determined a username -->
+  {#if lookupDetails?.username && !$isCreatorLoading}
     <ActionButtons
-      displayValue={processedInput.displayValue}
+      displayValue={lookupDetails.username}
       {socialLinks}
       {adultLinks}
       filteredProfileLinks={filteredProfileLinks()}
