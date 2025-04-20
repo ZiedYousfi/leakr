@@ -14,7 +14,7 @@ if (!target) {
 const initializeOptions = async () => {
   try {
     // Perform any necessary async setup for options page
-    await dbLib.initDatabase(); // Example if DB access is needed
+    await dbLib.initDatabase();
 
     // Mount the Svelte application
     mount(OptionsApp, {

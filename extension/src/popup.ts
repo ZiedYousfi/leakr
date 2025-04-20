@@ -15,7 +15,6 @@ const initializeApp = async () => {
   try {
     // Initialise la base de données
     await dbLib.initDatabase();
-    await dbLib.saveDatabase();
 
     // Monte l'application Svelte
     mount(App, {

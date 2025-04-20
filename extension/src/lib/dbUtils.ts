@@ -360,7 +360,84 @@ export async function exportDatabaseData(): Promise<{
 export async function downloadDatabaseExport(): Promise<void> {
   const { data, filename } = await exportDatabaseData();
   triggerDownload(data, filename, "application/octet-stream");
+
+  console.log(`📥 Download of "${filename}" completed.`);
 }
+
+// --- Fonctions de paramètres ---
+
+/** Interface pour les paramètres */
+export interface Settings {
+  id: number;
+  uuid: string;
+  share_collection: boolean;
+}
+
+/** Récupère les paramètres de l'utilisateur (il ne devrait y avoir qu'une seule ligne) */
+export function getSettings(): Settings | null {
+  const stmt = db.prepare(
+    "SELECT id, uuid, share_collection FROM settings WHERE id = 1"
+  );
+  let settings: Settings | null = null;
+  try {
+    if (stmt.step()) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const row = stmt.getAsObject() as any;
+      settings = {
+        id: row.id as number,
+        uuid: row.uuid as string,
+        share_collection: Boolean(row.share_collection),
+      };
+    } else {
+      console.warn("Aucun paramètre trouvé dans la base de données.");
+      // Optionnel: Insérer des paramètres par défaut si absents
+      // const defaultUuid = crypto.randomUUID(); // Générer un vrai UUID
+      // db.run("INSERT INTO settings (id, uuid, share_collection) VALUES (1, ?, ?)", [defaultUuid, false]);
+      // saveDatabase();
+      // return { id: 1, uuid: defaultUuid, share_collection: false };
+    }
+  } catch (err) {
+    console.error("Erreur lors de la récupération des paramètres:", err);
+  } finally {
+    stmt.free();
+  }
+  return settings;
+}
+
+/** Met à jour le statut de partage de la collection */
+export function updateShareCollection(share: boolean): void {
+  const stmt = db.prepare(
+    "UPDATE settings SET share_collection = ? WHERE id = 1"
+  );
+  try {
+    stmt.run([share ? 1 : 0]);
+    saveDatabase();
+    console.log(`Paramètre share_collection mis à jour à : ${share}`);
+  } catch (err) {
+    console.error(
+      "Erreur lors de la mise à jour du paramètre share_collection:",
+      err
+    );
+  } finally {
+    stmt.free();
+  }
+}
+
+/** Met à jour l'UUID de l'utilisateur (à utiliser avec précaution) */
+export function updateUUID(newUuid: string): void {
+  // Ajouter une validation pour le format UUID si nécessaire
+  const stmt = db.prepare("UPDATE settings SET uuid = ? WHERE id = 1");
+  try {
+    stmt.run([newUuid]);
+    saveDatabase();
+    console.log(`UUID mis à jour à : ${newUuid}`);
+  } catch (err) {
+    console.error("Erreur lors de la mise à jour de l'UUID:", err);
+  } finally {
+    stmt.free();
+  }
+}
+
 
 // --- Fonctions CRUD ---
 
