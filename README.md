@@ -58,8 +58,8 @@ The extension works autonomously, but this monorepo allows adding associated ser
 
 schema:
 
-```mermaid
-flowchart TD
+```b
+
                           ┌─────────────────────────┐
                           │       Extension         │
                           └─────────────────────────┘
