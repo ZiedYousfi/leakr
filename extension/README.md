@@ -1,39 +1,43 @@
-# Leakr - Chrome Extension
+# Leakr - Enhanced Chrome Extension
 
 ## Overview
 
-Leakr is a Chrome extension that allows users to easily find content from Twitch streamers on other platforms. The extension streamlines the search process by automatically extracting the streamer's name from the Twitch URL.
+Leakr is a comprehensive Chrome extension designed to help users easily discover and manage content from their favorite creators across multiple platforms. The extension organizes, categorizes, and centralizes online content with a user-friendly interface.
 
-## Features
+## Key Features
 
-- Automatic detection of the Twitch channel name from any Twitch URL
-- Quick search across multiple platforms with a single click
-- Opens search results in a new tab
-- Simple and intuitive user interface
-- Works directly from the browser
+- **Enhanced Creator Discovery**: Automatically identify creators from Twitch, Instagram, Twitter, YouTube, TikTok, and other platforms
+- **Content Management System**: Save and organize content URLs associated with specific creators
+- **Multi-tab Interface**: Navigate through intuitive tabs for searching, managing content, and organizing creators
+- **Profile Integration**: Associate multiple platform profiles with each creator
+- **Favorites & Collections**: Mark both creators and content as favorites for quick access
+- **Local Database**: All data is stored locally for privacy and offline access
 
 ## Technical Architecture
 
-The extension consists of:
+The extension is built with a modern tech stack:
 
-- A popup interface (`popup.html` and `popup.ts`)
-- A background script (`background.ts`)
-- A manifest configuration file
+- **Frontend**: Svelte with TypeScript for a reactive, component-based UI
+- **Database**: SQL.js for local storage with a well-structured schema
+- **Styling**: TailwindCSS for responsive design
+- **Building**: Vite for fast development and optimized production builds
+- **Chrome API**: Integration with browser tabs and storage
 
-## How it works
+## How It Works
 
-1. The user opens the extension on a Twitch page (the streamer's name is automatically detected) or pastes a Twitch URL into the text field
-2. Three search options are provided:
-   - Simple Google search
-   - Search on KBJ Free
-   - Specific "leaks" search
-3. By clicking one of the buttons, the extension opens a new tab with the search results
-4. The user can then browse the results to find the creator's content on other platforms
+1. **Search & Identification**: The extension automatically detects creator information from platform URLs and usernames
+2. **Content Storage**: Save current browser tabs to associate with specific creators
+3. **Creator Profiles**: Manage multiple platform profiles for each creator
+4. **Quick Access**: Browse saved content through All, Favorites, or Creator-specific tabs
 
 ## Installation
 
 1. Clone the repository
-2. Build the extension (using Vite, as indicated in the configuration files)
+2. Build the extension using Vite:
+   ```
+   npm install
+   npm run build
+   ```
 3. Load the extension in Chrome:
    - Go to chrome://extensions/
    - Enable "Developer mode"
@@ -42,23 +46,18 @@ The extension consists of:
 
 ## Development
 
-This project is built with:
+The extension follows a modular architecture:
+- **Components**: Reusable UI elements in `src/components/`
+- **Pages**: Main views including Search, Contents, and Creators
+- **Library**: Core functionality for database, creator identification, and platform detection
+- **Stores**: Central state management using Svelte stores
 
-- TypeScript
-- Chrome Extension API
-- Vite (for building)
-- TailwindCSS (for styling)
+To extend the extension, modify the relevant components and rebuild.
 
-To modify the extension:
+## Privacy & Security
 
-1. Edit the files in the `src` directory
-2. Rebuild the extension
-3. Reload it in Chrome
-
-## Privacy Considerations
-
-This extension simply initiates a search and does not store or transmit any personal data. It only requires minimal permissions (just "tabs" to open a new search tab).
+Leakr stores all data locally in your browser. No data is transmitted to external servers, ensuring your browsing history and saved content remain private.
 
 ## Disclaimer
 
-This extension is intended for educational purposes only. Users must respect the privacy and rights of content creators and comply with the terms of service of all platforms.
+This extension is intended for personal content organization only. Users must respect content creators' rights and the terms of service for all platforms.
