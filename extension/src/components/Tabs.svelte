@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { ComponentType } from "svelte";
+  import type { Component } from "svelte";
 
   type Tab = {
     title: string;
-    component: ComponentType; // Use ComponentType from 'svelte'
+    component: Component; // Use ComponentType from 'svelte'
     props: object;
   };
 

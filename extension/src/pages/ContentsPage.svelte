@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { ComponentType } from "svelte";
-  import Tabs from "@/components/ContentsPage/Tabs.svelte";
+  import type { Component } from "svelte";
+  import Tabs from "@/components/Tabs.svelte";
   import CreatorTab from "@/components/ContentsPage/Tabs/CreatorTab.svelte";
   import All from "@/components/ContentsPage/Tabs/All.svelte";
   import Favorites from "@/components/ContentsPage/Tabs/Favorites.svelte";
@@ -8,7 +8,7 @@
 
   type Tab = {
     title: string;
-    component: ComponentType;
+    component: Component;
     props: object;
   };
 
@@ -23,17 +23,17 @@
   const tabs: Tab[] = $derived([
     {
       title: "All",
-      component: All as unknown as ComponentType, // Cast to unknown first
+      component: All as unknown as Component, // Cast to unknown first
       props: { params },
     },
     {
       title: "Favorites",
-      component: Favorites as unknown as ComponentType, // Cast to unknown first
+      component: Favorites as unknown as Component, // Cast to unknown first
       props: { params },
     },
     {
       title: "For Creator",
-      component: CreatorTab as unknown as ComponentType, // Cast to unknown first
+      component: CreatorTab as unknown as Component, // Cast to unknown first
       props: { params },
     },
     // ➜ Ajoute ici autant d’onglets que tu veux
