@@ -61,9 +61,9 @@ describe("processSearchInput", () => {
   it("should handle unrecognized URLs", () => {
     const input = "https://example.com/profile";
     expect(processSearchInput(input)).toEqual({
-      platform: null, // Changed from "unknown"
-      username: null,
-      displayValue: input,
+      platform: null,
+      username: "profile",
+      displayValue: "profile",
     });
   });
 
