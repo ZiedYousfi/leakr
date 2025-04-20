@@ -44,7 +44,7 @@
       {#each creators as creator (creator.id)}
         <li>
           <button
-            on:click={() => selectCreator(creator)}
+            onclick={() => selectCreator(creator)}
             class="w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {creator.nom} {#if creator.favori}⭐{/if}
