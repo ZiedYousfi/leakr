@@ -7,16 +7,18 @@ The extension works autonomously, but this monorepo allows adding associated ser
 - Cloud storage for backups
 - Subscriptions
 - Sharing system for content selected by the community
+- Authentication gateway for secure access to services
 
 > 📌 The extension is located in the `extension/` folder (not documented here)
 
 ---
 
-## 📦 Repository Structure
+## 📆 Repository Structure
 
-```b
+```
 .
-├── services/                 # All Go microservices
+├── extension/               # Standalone client-side extension
+├── services/                # All Go microservices
 │   ├── auth-service/        # Authentication and token validation
 │   ├── storage-service/     # Upload, save, retrieve .sqlite files (Cloudflare R2)
 │   ├── community-service/   # Community system: shares, votes, rankings
@@ -38,12 +40,25 @@ The extension works autonomously, but this monorepo allows adding associated ser
 ## 🧠 Architectural Philosophy
 
 - All services are **independent** and **written in Go**
+- Each service handles a specific concern (auth, storage, community, payment)
 - **`auth-service`** is the central validation point for all others
+- Services communicate via secure HTTP APIs
 - The PlanetScale database is only used by services for:
   - Authentication
   - Community data
   - Subscription tracking
 - Cloudflare R2 storage is **managed only** by `storage-service`
+- The extension communicates directly with the services and does not rely on the website
+- The website (in Next.js) is a GUI shell that interfaces with services for:
+  - Community access
+  - Backup/restore management
+  - Account management and payments
+- The infrastructure is entirely **serverless** and **container/VPS-free**
+- Services will be deployed on platforms like Railway, Fly.io or Cloud Run
+- R2 is used for storing SQLite files per user, which are frequently updated but not processed server-side
+- File uploads are performed from the client to `storage-service`, which writes to R2
+- File names include metadata (user ID, date, etc.) and are organized into two buckets: `main/` and `backup/`
+- Backups are manually archived ("Glacier-like") using folder separation or periodic scripts
 
 ---
 
@@ -53,8 +68,11 @@ The extension works autonomously, but this monorepo allows adding associated ser
 - Being readable and modular
 - Facilitating deployment and maintenance
 - Remaining clear, even if you develop each brick at your own pace
+- Allowing independent scaling and development of each microservice
+- Supporting a clean separation of logic: frontend, extension, backend services, storage
+- Providing a clear gateway via `auth-service` for all secure interactions
 
----
+## 🏗️ Architecture
 
 schema:
 
@@ -72,9 +90,9 @@ schema:
                              │            ┌─────────────────────────┐
                              └──────────▶ │   API Gateway / Auth    │◀──[ auth-service ]
                                           └─────────────────────────┘
-                                               ▲     ▲       ▲      ▲
-                                               │     │       │      │
-                                               ▼     ▼       ▼      ▼
+                                            ▲           ▲       ▲
+                                            │           │       │
+                                            ▼           ▼       ▼
                                     [ storage ] [ community ] [ payment ] ...
                                       service     service       service
                                          ▲           ▲             ▲
