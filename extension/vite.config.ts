@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import tailwindcss from "@tailwindcss/vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte"; // Import Svelte plugin
-import path from 'path'; // Import the path module
+import path from "path"; // Import the path module
 
 export default defineConfig({
   plugins: [
@@ -10,8 +10,8 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: 'src/manifest.json',
-          dest: '.',
+          src: "src/manifest.json",
+          dest: ".",
           // Optional: Add transform if you need to modify manifest content during copy
           // transform(content) {
           //   const manifest = JSON.parse(content.toString());
@@ -23,12 +23,12 @@ export default defineConfig({
           // }
         },
         {
-          src: 'src/icon.png',
-          dest: '.',
+          src: "src/icon.png",
+          dest: ".",
         },
         {
-          src: 'node_modules/sql.js/dist/sql-wasm.wasm',
-          dest: '.',
+          src: "node_modules/sql.js/dist/sql-wasm.wasm",
+          dest: ".",
         },
       ],
     }),
@@ -36,7 +36,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   build: {
@@ -56,8 +56,8 @@ export default defineConfig({
           return "[name].js";
         },
         // Ensure HTML files are output at the root and chunks are named predictably
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]',
+        chunkFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash].[ext]",
       },
     },
   },

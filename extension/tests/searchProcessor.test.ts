@@ -18,19 +18,19 @@ describe("processSearchInput", () => {
     });
   });
 
-   it("should process a valid YouTube channel URL with /c/", () => {
+  it("should process a valid YouTube channel URL with /c/", () => {
     expect(processSearchInput("https://youtube.com/c/channelname")).toEqual({
-        platform: "youtube",
-        username: "channelname",
-        displayValue: "channelname",
+      platform: "youtube",
+      username: "channelname",
+      displayValue: "channelname",
     });
   });
 
-   it("should process a valid YouTube channel URL with /channel/", () => {
-     expect(processSearchInput("https://youtube.com/channel/UCxyz")).toEqual({
-        platform: "youtube",
-        username: "UCxyz",
-        displayValue: "UCxyz",
+  it("should process a valid YouTube channel URL with /channel/", () => {
+    expect(processSearchInput("https://youtube.com/channel/UCxyz")).toEqual({
+      platform: "youtube",
+      username: "UCxyz",
+      displayValue: "UCxyz",
     });
   });
 
@@ -43,7 +43,7 @@ describe("processSearchInput", () => {
   });
 
   it("should process a valid X.com URL as Twitter", () => {
-     expect(processSearchInput("https://x.com/elonmusk")).toEqual({
+    expect(processSearchInput("https://x.com/elonmusk")).toEqual({
       platform: "twitter",
       username: "elonmusk",
       displayValue: "elonmusk",
@@ -98,7 +98,7 @@ describe("processSearchInput", () => {
       username: "foobar",
       displayValue: "foobar",
     });
-     expect(processSearchInput("  random string ")).toEqual({
+    expect(processSearchInput("  random string ")).toEqual({
       platform: null, // Changed from "unknown"
       username: null,
       displayValue: "random string",
@@ -111,7 +111,9 @@ describe("processSearchInput", () => {
       username: "foobar",
       displayValue: "foobar",
     });
-     expect(processSearchInput("https://www.youtube.com/@username?sub_confirmation=1")).toEqual({
+    expect(
+      processSearchInput("https://www.youtube.com/@username?sub_confirmation=1")
+    ).toEqual({
       platform: "youtube",
       username: "username",
       displayValue: "username",

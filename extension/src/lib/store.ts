@@ -1,5 +1,5 @@
-import { writable, derived } from 'svelte/store';
-import type { Createur } from '@/lib/dbUtils'; // Ensure this path is correct
+import { writable, derived } from "svelte/store";
+import type { Createur } from "@/lib/dbUtils"; // Ensure this path is correct
 
 /**
  * Stores the identifier (username or URL) used as input for finding a creator.
@@ -42,8 +42,8 @@ export const isCreatorLoading = writable<boolean>(false);
  * Derived store to conveniently get the ID of the identified creator.
  */
 export const identifiedCreatorId = derived(
-    identifiedCreator,
-    $identifiedCreator => $identifiedCreator?.id ?? null
+  identifiedCreator,
+  ($identifiedCreator) => $identifiedCreator?.id ?? null
 );
 
 /**
@@ -51,12 +51,12 @@ export const identifiedCreatorId = derived(
  * Useful when starting a new search or clearing context.
  */
 export function resetCreatorStores() {
-    creatorIdentifier.set(null);
-    identifiedCreator.set(null);
-    identifiedCreatorContentIds.set(null);
-    potentialUsernameToCreate.set(null);
-    creatorOperationError.set(null);
-    isCreatorLoading.set(false);
+  creatorIdentifier.set(null);
+  identifiedCreator.set(null);
+  identifiedCreatorContentIds.set(null);
+  potentialUsernameToCreate.set(null);
+  creatorOperationError.set(null);
+  isCreatorLoading.set(false);
 }
 
 // You can add other application-wide stores below this line if needed.

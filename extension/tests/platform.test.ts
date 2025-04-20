@@ -16,12 +16,12 @@ describe("detectPlatform", () => {
       username: "username",
     });
     expect(detectPlatform("https://youtube.com/c/channelname")).toEqual({
-        platform: "youtube",
-        username: "channelname",
+      platform: "youtube",
+      username: "channelname",
     });
-     expect(detectPlatform("https://youtube.com/channel/UCxyz")).toEqual({
-        platform: "youtube",
-        username: "UCxyz", // Or potentially null depending on desired behavior for channel IDs
+    expect(detectPlatform("https://youtube.com/channel/UCxyz")).toEqual({
+      platform: "youtube",
+      username: "UCxyz", // Or potentially null depending on desired behavior for channel IDs
     });
   });
 
@@ -30,13 +30,13 @@ describe("detectPlatform", () => {
       platform: "twitter",
       username: "elonmusk",
     });
-     expect(detectPlatform("https://x.com/elonmusk")).toEqual({
+    expect(detectPlatform("https://x.com/elonmusk")).toEqual({
       platform: "twitter", // Assuming x.com maps to twitter
       username: "elonmusk",
     });
   });
 
-   it("detecte instagram", () => {
+  it("detecte instagram", () => {
     expect(detectPlatform("https://www.instagram.com/zuck")).toEqual({
       platform: "instagram",
       username: "zuck",
@@ -57,25 +57,27 @@ describe("detectPlatform", () => {
     });
   });
 
-   it("retourne 'null' pour une chaine vide", () => {
+  it("retourne 'null' pour une chaine vide", () => {
     expect(detectPlatform("")).toEqual({
       platform: null,
       username: null,
     });
   });
 
-   it("gère les URLs avec paramètres query", () => {
+  it("gère les URLs avec paramètres query", () => {
     expect(detectPlatform("https://twitch.tv/foobar?source=test")).toEqual({
       platform: "twitch",
       username: "foobar",
     });
-     expect(detectPlatform("https://www.youtube.com/@username?sub_confirmation=1")).toEqual({
+    expect(
+      detectPlatform("https://www.youtube.com/@username?sub_confirmation=1")
+    ).toEqual({
       platform: "youtube",
       username: "username",
     });
   });
 
-   it("gère les URLs sans www.", () => {
+  it("gère les URLs sans www.", () => {
     expect(detectPlatform("https://twitch.tv/foobar")).toEqual({
       platform: "twitch",
       username: "foobar",

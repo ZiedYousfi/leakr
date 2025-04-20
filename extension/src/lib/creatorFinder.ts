@@ -1,6 +1,9 @@
 import {
   findCreatorByUsername,
   getContenuIdsByCreator,
+  addPlateforme, // Added
+  addProfilPlateforme, // Added
+  findProfilByDetails, // Added
   type Createur,
 } from "@/lib/dbUtils";
 import { processSearchInput } from "./searchProcessor"; // Import the processor
@@ -24,10 +27,9 @@ function isLikelyUrl(str: string): boolean {
   return /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed);
 }
 
-
 /**
  * Processes an identifier (URL or username), fetches the corresponding creator
- * and their associated content IDs.
+ * and their associated content IDs, and potentially saves the platform profile link.
  * @param identifier The raw username or URL input.
  * @returns A promise resolving to an object containing the creator, content IDs, platform, and any error.
  */
@@ -40,10 +42,8 @@ export async function fetchCreatorAndContentIds(
   let usernameToSearch: string | null = null;
 
   // 1. Process the input identifier
-  const {
-    platform,
-    username: extractedUsername,
-  } = processSearchInput(identifier);
+  const { platform, username: extractedUsername } =
+    processSearchInput(identifier);
 
   // 2. Determine the username to search
   if (extractedUsername) {
@@ -80,12 +80,89 @@ export async function fetchCreatorAndContentIds(
       try {
         const fetchedIds = getContenuIdsByCreator(creator.id);
         contentIds = fetchedIds;
+
+        // --- BEGIN ADDED PROFILE SAVING LOGIC ---
+        // If a platform was detected and it was likely a URL input, try to add the profile link
+        if (platform && creator && isLikelyUrl(identifier)) {
+          try {
+            // Get platform ID (adds platform if it doesn't exist)
+            const platformIdRaw = addPlateforme(platform); // Use platform directly
+            // Convert bigint to number if necessary, handle null
+            const platformId =
+              typeof platformIdRaw === "bigint"
+                ? Number(platformIdRaw)
+                : (platformIdRaw ?? null);
+
+            if (platformId !== null) {
+              // Check if this specific profile link already exists for this creator/platform
+              const existingProfile = findProfilByDetails(
+                creator.id,
+                platformId,
+                identifier
+              );
+
+              if (!existingProfile) {
+                // Add the new profile link
+                addProfilPlateforme(identifier, creator.id, platformId);
+                console.log(
+                  `creatorFinder: Added profile link "${identifier}" for creator ${creator.id} on platform ${platform} (ID: ${platformId})`
+                ); // Use platform directly
+              } else {
+                console.log(
+                  `creatorFinder: Profile link "${identifier}" already exists for creator ${creator.id} on platform ${platform}.`
+                ); // Use platform directly
+              }
+            } else {
+              console.warn(
+                `creatorFinder: Could not get or create platform ID for "${platform}".`
+              ); // Use platform directly
+            }
+          } catch (dbError) {
+            console.error(
+              `creatorFinder: Error adding platform profile for creator ${creator.id}:`,
+              dbError
+            );
+            // Non-fatal error, continue returning the found creator info
+          }
+        }
+        // --- END ADDED PROFILE SAVING LOGIC ---
       } catch (contentError) {
         console.error(
           `creatorFinder: Error loading content IDs for creator ${creator.id}:`,
           contentError
         );
         error = "Creator found, but failed to load content list.";
+        // Still try to add profile link even if content loading fails, as creator was found
+        // --- BEGIN ADDED PROFILE SAVING LOGIC (Duplicate for safety if content fetch fails) ---
+        if (platform && creator && isLikelyUrl(identifier)) {
+          try {
+            const platformIdRaw = addPlateforme(platform); // Use platform directly
+            const platformId =
+              typeof platformIdRaw === "bigint"
+                ? Number(platformIdRaw)
+                : (platformIdRaw ?? null);
+
+            if (platformId !== null) {
+              const existingProfile = findProfilByDetails(
+                creator.id,
+                platformId,
+                identifier
+              );
+              if (!existingProfile) {
+                addProfilPlateforme(identifier, creator.id, platformId);
+                console.log(
+                  `creatorFinder: Added profile link "${identifier}" for creator ${creator.id} on platform ${platform} (ID: ${platformId}) (after content error)`
+                ); // Use platform directly
+              }
+            }
+          } catch (dbError) {
+            console.error(
+              `creatorFinder: Error adding platform profile for creator ${creator.id} (after content error):`,
+              dbError
+            );
+          }
+        }
+        // --- END ADDED PROFILE SAVING LOGIC (Duplicate) ---
       }
     } else {
       error = `Creator "${usernameToSearch}" not found.`;
@@ -110,4 +187,3 @@ export async function fetchCreatorAndContentIds(
     platform,
   };
 }
-

@@ -141,7 +141,6 @@
 //     expect(result.platform).toBeNull();
 //   });
 
-
 //   it("should return error if username cannot be extracted from URL", async () => {
 //     const identifier = "https://twitter.com/nousername"; // processSearchInput mock returns null username
 //     const result = await fetchCreatorAndContentIds(identifier);
