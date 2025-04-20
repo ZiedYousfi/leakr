@@ -31,42 +31,47 @@
   let showAddConfirmation = $state(false);
   let initialCheckDone = $state(false); // Track if initial URL/param check is complete
   let showResetButton = $state(false); // Controls visibility of the reset button
+  let showManualInputOverride = $state(false); // State to force show manual input
 
-  // --- Effect to find creator based on params or current tab ---
-  $effect(() => {
-    async function initialFetch() {
-      isCreatorLoading.set(true);
-      creatorOperationError.set(null);
-      resetCreatorStores(); // Reset stores at the beginning
-      manualInput = "";
-      showResetButton = false;
-      showAddConfirmation = false;
+  // --- Functions ---
 
-      let identifierToFetch: string | null = params.username || null;
+  // Function to perform the initial creator fetch based on params or current tab
+  async function initialFetch() {
+    isCreatorLoading.set(true);
+    creatorOperationError.set(null);
+    resetCreatorStores(); // Reset stores at the beginning
+    manualInput = "";
+    showResetButton = false;
+    showAddConfirmation = false;
+    showManualInputOverride = false; // Reset override state
 
-      if (!identifierToFetch) {
-        await getCurrentTabUrl(); // Fetch URL if needed
-        if (currentTabUrl) {
-          identifierToFetch = currentTabUrl;
-        }
+    let identifierToFetch: string | null = params.username || null;
+
+    if (!identifierToFetch) {
+      await getCurrentTabUrl(); // Fetch URL if needed
+      if (currentTabUrl) {
+        identifierToFetch = currentTabUrl;
       }
-
-      if (identifierToFetch) {
-        await fetchAndSetCreator(identifierToFetch);
-      } else {
-        console.warn(
-          "CreatorTab: identifier missing from params and could not be extracted from URL."
-        );
-        // No identifier, reset stores and stop loading
-        resetCreatorStores();
-        isCreatorLoading.set(false);
-      }
-      initialCheckDone = true;
     }
+
+    if (identifierToFetch) {
+      await fetchAndSetCreator(identifierToFetch);
+    } else {
+      console.warn(
+        "CreatorTab: identifier missing from params and could not be extracted from URL."
+      );
+      // No identifier, reset stores and stop loading
+      resetCreatorStores();
+      isCreatorLoading.set(false);
+    }
+    initialCheckDone = true;
+  }
+
+  // --- Effect to run initial fetch on mount/param change ---
+  $effect(() => {
     initialFetch();
   });
 
-  // --- Functions ---
 
   // Function to fetch creator and content IDs using the library function and update stores
   async function fetchAndSetCreator(identifier: string) {
@@ -76,8 +81,10 @@
     identifiedCreator.set(null);
     identifiedCreatorContentIds.set(null);
     potentialUsernameToCreate.set(null);
-    manualInput = ""; // Clear local input state
+    // Don't clear manualInput here if we want it to persist across searches initiated manually
+    // manualInput = "";
     showResetButton = false;
+    showManualInputOverride = false; // Reset override on new fetch
     creatorIdentifier.set(identifier); // Set the identifier being used
 
     try {
@@ -166,6 +173,7 @@
     isCreatorLoading.set(true);
     creatorOperationError.set(null);
     showResetButton = false; // Hide reset during operation
+    showManualInputOverride = false; // Hide manual input during operation
 
     try {
       let targetCreatorId: number | bigint | null = $identifiedCreatorId ?? null;
@@ -232,17 +240,28 @@
 
   // Function to reset the component state and stores for a new search
   function resetComponentState() {
-    resetCreatorStores(); // Reset all relevant stores
-    // Reset local component state
+    // Reset local component state first (optional, but can prevent brief flashes)
     manualInput = "";
     showResetButton = false;
     showAddConfirmation = false;
+    showManualInputOverride = false; // Reset override state
     // Keep initialCheckDone = true
-    // Optionally refetch tab URL or clear it
+    // Optionally clear tab URL here if desired
     // currentTabUrl = "";
     // currentTabTitle = null;
-    // The UI should now show the manual input section again if no URL/params
+
+    // Trigger a re-fetch based on current tab if available (or params if they exist)
+    initialFetch(); // Re-run initial logic, which includes resetting stores
   }
+
+  // Function to explicitly show the manual input
+  function showManualInput() {
+    showManualInputOverride = true;
+    // Optionally clear previous manual input or focus the field
+    // manualInput = "";
+    // Consider focusing the input field after it appears
+  }
+
 </script>
 
 <div class="popup-body">
@@ -267,11 +286,16 @@
       </button>
     {/if}
 
-    <!-- Manual Creator Input (Show if initial check done, not loading, no creator found, no username identified for creation, and reset button isn't shown) -->
-    {#if initialCheckDone && !$isCreatorLoading && !$identifiedCreatorId && !$potentialUsernameToCreate && !showResetButton}
+    <!-- Manual Creator Input Area -->
+    <!-- Show if: initial check done, not loading, reset not shown, AND (no creator identified OR manual override toggled) -->
+    {#if initialCheckDone && !$isCreatorLoading && !showResetButton && ((!$identifiedCreatorId && !$potentialUsernameToCreate) || showManualInputOverride)}
       <div class="w-full flex flex-col items-center gap-2 mt-2">
         <p class="text-xs text-yellow-400 text-center px-2">
-          Could not identify creator. Please enter username or profile URL:
+          {#if !$identifiedCreatorId && !$potentialUsernameToCreate}
+            Could not identify creator. Please enter username or profile URL:
+          {:else}
+            Find a different creator by username or profile URL:
+          {/if}
         </p>
         <div class="flex gap-2 w-full max-w-xs">
           <input
@@ -294,6 +318,17 @@
         </div>
       </div>
     {/if}
+
+    <!-- Button to trigger manual input when a creator IS identified -->
+    {#if initialCheckDone && !$isCreatorLoading && !showResetButton && ($identifiedCreatorId || $potentialUsernameToCreate) && !showManualInputOverride}
+      <button
+        onclick={showManualInput}
+        class="text-xs text-[#B0B0B0] hover:text-white underline mt-1"
+      >
+        Search for a different creator?
+      </button>
+    {/if}
+
 
     <!-- Add Content / Reset Button Area -->
     {#if currentTabUrl}
@@ -335,7 +370,7 @@
           </p>
         {/if}
         <!-- Informational message if creator needs to be created -->
-        {#if !$isCreatorLoading && !$identifiedCreatorId && $potentialUsernameToCreate && !showResetButton} <!-- Use store values -->
+        {#if !$isCreatorLoading && !$identifiedCreatorId && $potentialUsernameToCreate && !showResetButton && !showManualInputOverride} <!-- Use store values, hide if manual input shown -->
           <p class="text-yellow-400 text-xs mt-1 text-center px-2">
             Creator "{$potentialUsernameToCreate}" not found. Adding content will create them.
           </p>
@@ -367,8 +402,8 @@
       <!-- Bind ContentList directly to the store -->
       <ContentList bind:contentIds={$identifiedCreatorContentIds} />
     </div>
-  {:else if initialCheckDone && !$isCreatorLoading && !$identifiedCreatorId && !$potentialUsernameToCreate && !$creatorOperationError && !showResetButton}
-    <!-- Show prompt if initial check done, no creator, no potential, no error, and not in reset state -->
+  {:else if initialCheckDone && !$isCreatorLoading && !$identifiedCreatorId && !$potentialUsernameToCreate && !$creatorOperationError && !showResetButton && !showManualInputOverride}
+    <!-- Show prompt if initial check done, no creator, no potential, no error, not reset, and not showing manual input override -->
     <p class="text-[#B0B0B0] text-center mt-4">
       Identify a creator using the current tab or by entering a username/URL
       above.
