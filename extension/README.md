@@ -34,10 +34,12 @@ The extension is built with a modern tech stack:
 
 1. Clone the repository
 2. Build the extension using Vite:
-   ```
+
+   ```bash
    npm install
    npm run build
    ```
+
 3. Load the extension in Chrome:
    - Go to chrome://extensions/
    - Enable "Developer mode"
@@ -47,6 +49,7 @@ The extension is built with a modern tech stack:
 ## Development
 
 The extension follows a modular architecture:
+
 - **Components**: Reusable UI elements in `src/components/`
 - **Pages**: Main views including Search, Contents, and Creators
 - **Library**: Core functionality for database, creator identification, and platform detection
