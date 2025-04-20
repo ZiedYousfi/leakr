@@ -3,6 +3,7 @@
   import Tabs from "@/components/ContentsPage/Tabs.svelte";
   import CreatorTab from "@/components/ContentsPage/Tabs/CreatorTab.svelte";
   import All from "@/components/ContentsPage/Tabs/All.svelte";
+  import Favorites from "@/components/ContentsPage/Tabs/Favorites.svelte";
   import Header from "@/components/Header.svelte";
 
   type Tab = {
@@ -23,6 +24,11 @@
     {
       title: "All",
       component: All as unknown as ComponentType, // Cast to unknown first
+      props: { params },
+    },
+    {
+      title: "Favorites",
+      component: Favorites as unknown as ComponentType, // Cast to unknown first
       props: { params },
     },
     {
