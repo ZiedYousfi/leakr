@@ -1,52 +1,73 @@
 <script lang="ts">
-  import Header from "../components/Header.svelte";
-  const { onNavigate } = $props<{
+  import type { Component } from "svelte";
+  import Tabs from "@/components/Tabs.svelte";
+  import Selector from "@/components/CreatorsPage/Tabs/Selector.svelte";
+  import Profile from "@/components/CreatorsPage/Tabs/Profile.svelte";
+  import Header from "@/components/Header.svelte";
+  // Import other potential tabs here, e.g., AddCreatorTab, EditCreatorTab
+
+  type Tab = {
+    title: string;
+    component: Component;
+    props: object;
+  };
+
+  // Assuming onNavigate and params are props passed to this component
+  let { onNavigate, params } = $props<{
     onNavigate: (page: string, params?: object) => void;
     params: object;
   }>();
-  let creators = [
-    { name: "Alice", bio: "Frontend developer and designer." },
-    { name: "Bob", bio: "Backend engineer and API specialist." },
-    { name: "Charlie", bio: "Fullstack developer and mentor." }
-  ];
+
+  let activeTabIndex = $state(0); // State to hold the active tab index
+
+  // Function to switch to the Profile tab (index 1)
+  function switchToProfileTab() {
+    activeTabIndex = 1;
+  }
+
+  const tabs: Tab[] = $derived([
+    {
+      title: "Select Creator",
+      component: Selector as unknown as Component, // Cast to unknown first
+      // Pass the callback function as a prop
+      props: { params, onCreatorSelected: switchToProfileTab },
+    },
+    {
+      title: "Profile",
+      component: Profile as unknown as Component, // Add Profile tab
+      props: { params }, // Pass any necessary props to Profile
+    },
+  ]);
+
+  // Define widths based on tab index (adjust as needed)
+  const widths = ['500px', '500px']; // Example widths for Selector and Profile tabs
+  let currentMinWidth = $derived(widths[activeTabIndex] ?? '500px');
+
+  // Define heights based on tab index (adjust as needed)
+  const heights = ['600px', '600px']; // Example heights for Selector and Profile tabs
+  let currentMinHeight = $derived(heights[activeTabIndex] ?? '600px');
+
 </script>
 
+<!-- Apply the dynamic min-width and min-height -->
+<div class="page-container" style:min-width={currentMinWidth} style:min-height={currentMinHeight}>
+  <Header title="Leakr: Creators" {onNavigate} />
+  <!-- Bind the activeTabIndex -->
+  <Tabs {tabs} bind:active={activeTabIndex} />
+</div>
+
 <style>
-  .creators-list {
-    max-width: 1000px;
-    margin: 2rem auto;
+  @import "tailwindcss";
+
+  .page-container {
+    background-color: #000; /* Match other pages */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
     padding: 1rem;
-    border-radius: 8px;
-    background: #f9f9f9;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  }
-  .creator {
-    padding: 1rem;
-    border-bottom: 1px solid #eee;
-  }
-  .creator:last-child {
-    border-bottom: none;
-  }
-  .name {
-    font-weight: bold;
-    font-size: 1.2rem;
-  }
-  .bio {
-    color: #555;
-    margin-top: 0.3rem;
+    color: #e5e7eb; /* Match other pages */
+    overflow: hidden;
+    transition: min-width 0.3s ease, min-height 0.3s ease;
   }
 </style>
-
-<div class="creators-list">
-  <Header
-    title="Leakr"
-    onNavigate={onNavigate}
-  />
-  <h2>Creators</h2>
-  {#each creators as creator}
-    <div class="creator">
-      <div class="name">{creator.name}</div>
-      <div class="bio">{creator.bio}</div>
-    </div>
-  {/each}
-</div>

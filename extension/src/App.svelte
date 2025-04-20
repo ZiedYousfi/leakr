@@ -8,7 +8,7 @@
   const pageDimensions = $state({
     search: { width: "320px", height: "400px" },
     contents: { width: "600px", height: "700px" },
-    creators: { width: "450px", height: "550px" },
+    creators: { width: "500px", height: "600px" },
     settings: { width: "350px", height: "450px" },
     default: { width: "400px", height: "500px" },
   });

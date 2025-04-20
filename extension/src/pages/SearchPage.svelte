@@ -188,7 +188,7 @@
 </script>
 
 <div class="popup-body">
-  <Header title="Leakr" {onNavigate} />
+  <Header title="Leakr: Search" {onNavigate} />
   <SearchInput value={$creatorIdentifier ?? ""} onInput={handleInput} />
 
   <!-- Loading Indicator -->

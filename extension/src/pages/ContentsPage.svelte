@@ -51,7 +51,7 @@
 
 <!-- Apply the dynamic min-width and min-height -->
 <div class="page-container" style:min-width={currentMinWidth} style:min-height={currentMinHeight}>
-  <Header title="Leakr" {onNavigate} />
+  <Header title="Leakr: Contents" {onNavigate} />
   <!-- Bind the activeTabIndex -->
   <Tabs {tabs} bind:active={activeTabIndex} />
 </div>
