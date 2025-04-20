@@ -60,30 +60,25 @@ schema:
 
 ```b
 
-                          ┌─────────────────────────┐
-                          │       Extension         │
-                          └─────────────────────────┘
-                                      ▲
-                                      │
-                                      ▼
-                                [ Utilisateur ]
-                                      ▲
-                                      │
-                                      ▼
-                         [ Next.js Site (Vercel) ]
-                                      │
-                                      ▼
-                          ┌─────────────────────────┐
-                          │    API Gateway / Auth   │◀───[ auth-service ]
-                          └─────────────────────────┘
-                               ▲     ▲       ▲      ▲
-                               │     │       │      │
-                               ▼     ▼       ▼      ▼
-                    [ storage ] [ community ] [ payment ] ...
-                      service     service       service
-                          ▲          ▲             ▲
-                          │          │             │
-                          ▼          ▼             ▼
-                   [ Cloudflare ] [ PlanetScale ] [ Stripe ]
-                      R2           (base web)     (abonnements)
-'''
+                             [ User (Client) ]
+                               ▲            ▲
+                               │            │
+                               │            ▼
+                   ┌────────────────────┐  ┌─────────────────────────┐
+                   │ Next.js Site       │  │       Extension         │
+                   │   (Vercel)         │  └─────────────────────────┘
+                   └─────────┬──────────┘              │
+                             │                         ▼
+                             │            ┌─────────────────────────┐
+                             └──────────▶ │   API Gateway / Auth    │◀──[ auth-service ]
+                                          └─────────────────────────┘
+                                               ▲     ▲       ▲      ▲
+                                               │     │       │      │
+                                               ▼     ▼       ▼      ▼
+                                    [ storage ] [ community ] [ payment ] ...
+                                      service     service       service
+                                         ▲           ▲             ▲
+                                         │           │             │
+                                         ▼           ▼             ▼
+                                  [ Cloudflare ] [ PlanetScale ] [ Stripe ]
+                                     R2            (web DB)       (subs)
