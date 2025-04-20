@@ -2,46 +2,113 @@
   import Header from "../components/Header.svelte";
   import SearchInput from "../components/SearchPage/SearchInput.svelte";
   import ActionButtons from "../components/SearchPage/ActionButtons.svelte";
-  import { detectPlatform, type Platform } from "../lib/detectPlatform"; // Keep for tab URL detection
+  import { detectPlatform, type Platform } from "../lib/detectPlatform"; // Keep for tab URL detection and SocialBlade mapping
+  import { processSearchInput, type SearchResult } from "../lib/searchProcessor"; // Keep for processing input for display/links
+  import { fetchCreatorAndContentIds } from "../lib/creatorFinder"; // Import the creator fetching logic
   import {
-    processSearchInput,
-    type SearchResult,
-  } from "../lib/searchProcessor"; // Import the new processor
+    creatorIdentifier,
+    identifiedCreator,
+    identifiedCreatorContentIds,
+    potentialUsernameToCreate,
+    creatorOperationError,
+    isCreatorLoading,
+    resetCreatorStores,
+  } from "../lib/store"; // Import stores
 
   const { onNavigate } = $props<{
     onNavigate: (page: string, params?: object) => void;
     params: object;
   }>();
 
-  // States
-  let inputValue = $state("");
-  let currentTabUrl = $state("");
-  let initialUrlChecked = $state(false); // Flag to prevent overwriting user input
+  // Local component state
+  let currentTabUrl = $state(""); // Still needed to filter out current profile link
 
-  // Derived state for search results based on input value
-  let searchResult = $derived<SearchResult>(processSearchInput(inputValue));
+  // --- Effects ---
 
-  // Effect to get current tab URL and pre-fill input if applicable
+  // Effect 1: Get current tab URL and potentially pre-fill identifier on load
   $effect(() => {
-    if (initialUrlChecked) return; // Only run once initially
+    // Ensure stores are reset when the component mounts/becomes active
+    resetCreatorStores(); // Consider if this is the right place or if it should be done on navigate *away*
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs[0];
       currentTabUrl = tab?.url || "";
       if (tab?.url) {
-        // Still use detectPlatform here for the initial URL check
         const { platform, username } = detectPlatform(tab.url);
-        // Check if the current URL corresponds to a known platform profile
-        if (platform && username) {
-          // Pre-fill the input field only if it's currently empty
-          if (inputValue === "") {
-            inputValue = tab.url; // This will trigger the $derived searchResult update
-          }
+        // If it's a known platform profile and no identifier is set yet, pre-fill it
+        if (platform && username && !$creatorIdentifier) {
+          creatorIdentifier.set(tab.url); // Set the store value, triggering the lookup effect
         }
       }
-      initialUrlChecked = true; // Mark as checked
     });
+
+    // Cleanup effect (optional, depends on lifecycle needs)
+    // return () => {
+    //   resetCreatorStores(); // Reset when component is destroyed
+    // };
   });
+
+  // Effect 2: Trigger creator lookup when the identifier changes
+  $effect(() => {
+    const currentIdentifier = $creatorIdentifier; // Get reactive value
+
+    // Avoid lookups for null/empty identifiers
+    if (!currentIdentifier || currentIdentifier.trim() === "") {
+      // If the identifier becomes empty/null, reset related stores but keep the identifier itself
+      identifiedCreator.set(null);
+      identifiedCreatorContentIds.set(null);
+      potentialUsernameToCreate.set(null);
+      creatorOperationError.set(null);
+      isCreatorLoading.set(false);
+      return;
+    }
+
+    // Define the async lookup function
+    const performLookup = async () => {
+      isCreatorLoading.set(true);
+      creatorOperationError.set(null); // Clear previous errors
+      identifiedCreator.set(null); // Clear previous results
+      identifiedCreatorContentIds.set(null);
+      potentialUsernameToCreate.set(null);
+
+      try {
+        const result = await fetchCreatorAndContentIds(currentIdentifier);
+
+        if (result.error) {
+          creatorOperationError.set(result.error);
+          // If creator not found, store the username we tried to find
+          if (result.error.includes("not found") && result.usernameFound) {
+            potentialUsernameToCreate.set(result.usernameFound);
+          }
+        } else {
+          identifiedCreator.set(result.creator);
+          identifiedCreatorContentIds.set(result.contentIds);
+        }
+      } catch (err) {
+        console.error("SearchPage: Unexpected error during lookup:", err);
+        creatorOperationError.set(
+          "An unexpected error occurred during the search."
+        );
+        // Reset other states on unexpected error
+        identifiedCreator.set(null);
+        identifiedCreatorContentIds.set(null);
+        potentialUsernameToCreate.set(null);
+      } finally {
+        isCreatorLoading.set(false);
+      }
+    };
+
+    // Execute the lookup
+    performLookup();
+  });
+
+  // --- Derived State for UI ---
+
+  // Process the current identifier for display purposes (username extraction, etc.)
+  // This runs independently of the DB lookup result
+  let processedInput = $derived<SearchResult>(
+    processSearchInput($creatorIdentifier ?? "")
+  );
 
   // Links (remain the same)
   const socialLinks: [string, (v: string) => string][] = [
@@ -73,55 +140,98 @@
     ["youtube", (u) => `https://youtube.com/${u}`],
     ["facebook", (u) => `https://facebook.com/${u}`],
     ["onlyfans", (u) => `https://onlyfans.com/${u}`],
+    // Add other platforms if needed
   ];
 
-  // Filtered profiles - Use derived searchResult
+  // Filtered profiles - Use username from processed input
   let filteredProfileLinks = $derived(() => {
-    const username = searchResult.username; // Use derived result
+    const username = processedInput.username; // Use username from processed input
     if (username) {
-      // Map over all platform links, generating the URL with the detected username
       return (
         platformProfileLinks
           .map<[string, string]>(([p, fn]) => [
             p ? p[0].toUpperCase() + p.slice(1) : "",
             fn(username),
           ])
-          // Still filter out the link if it matches the current tab URL
-          .filter(([, url]) => url !== currentTabUrl)
+          .filter(([, url]) => url !== currentTabUrl) // Filter out current tab
       );
     }
-    // Return empty array if no username is detected
     return [] as [string, string][];
   });
-  // SocialBlade - Use derived searchResult
+
+  // SocialBlade - Use platform and username from processed input
   let socialBladeUrl = $derived(() => {
-    const platform = searchResult.platform; // Use derived result
-    const username = searchResult.username; // Use derived result
+    const platform = processedInput.platform;
+    const username = processedInput.username;
     if (!platform || !username) return null;
+    // Keep the existing SocialBlade mapping logic
     const map: Record<Exclude<Platform, null | undefined>, string> = {
       twitch: `https://socialblade.com/twitch/user/${username}`,
       instagram: `https://socialblade.com/instagram/user/${username}`,
       tiktok: `https://socialblade.com/tiktok/user/${username}`,
-      youtube: `https://socialblade.com/youtube/${username}`, // Note: SocialBlade uses different structures for YouTube sometimes
+      youtube: `https://socialblade.com/youtube/${username}`,
       twitter: `https://socialblade.com/twitter/user/${username}`,
-      facebook: "", // No direct SB link usually
-      onlyfans: "", // No SB link
-      linktree: "", // No SB link
-      linkinbio: "", // No SB link
-      fapello: "", // No SB link
-      kbjfree: "", // No SB link
+      facebook: "",
+      onlyfans: "",
+      linktree: "",
+      linkinbio: "",
+      fapello: "",
+      kbjfree: "",
     };
     return map[platform] || null;
   });
+
+  // --- Event Handlers ---
+  function handleInput(value: string) {
+    creatorIdentifier.set(value); // Update the store when input changes
+  }
 </script>
 
 <div class="popup-body">
   <Header title="Leakr" {onNavigate} />
-  <SearchInput value={inputValue} onInput={(value) => (inputValue = value)} />
+  <SearchInput value={$creatorIdentifier ?? ""} onInput={handleInput} />
 
-  {#if searchResult.displayValue}
+  <!-- Loading Indicator -->
+  {#if $isCreatorLoading}
+    <p>Loading...</p>
+  {/if}
+
+  <!-- Error Message -->
+  {#if $creatorOperationError && !$isCreatorLoading}
+    <p class="error-message">Error: {$creatorOperationError}</p>
+  {/if}
+
+  <!-- Creator Found Message -->
+  {#if $identifiedCreator && !$isCreatorLoading}
+    <p class="success-message">
+      Found creator: {$identifiedCreator.nom} (ID: {$identifiedCreator.id})
+      {#if $identifiedCreatorContentIds}
+        ({$identifiedCreatorContentIds.length} content items)
+      {/if}
+    </p>
+    <!-- Optionally navigate or show more details -->
+  {/if}
+
+  <!-- Prompt to Create Creator -->
+  {#if $potentialUsernameToCreate && !$identifiedCreator && !$isCreatorLoading}
+    <p>
+      Creator "{$potentialUsernameToCreate}" not found.
+      <button
+        onclick={() =>
+          onNavigate("AddCreatorPage", {
+            username: $potentialUsernameToCreate,
+          })}
+        class="link-button"
+      >
+        Add them?
+      </button>
+    </p>
+  {/if}
+
+  <!-- Action Buttons - Show if there's a value to display/search for -->
+  {#if processedInput.displayValue && !$isCreatorLoading}
     <ActionButtons
-      displayValue={searchResult.displayValue}
+      displayValue={processedInput.displayValue}
       {socialLinks}
       {adultLinks}
       filteredProfileLinks={filteredProfileLinks()}
@@ -142,6 +252,31 @@
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    color: #e5e7eb;
+    color: #e5e7eb; /* text-gray-200 */
   }
+
+  .error-message {
+    color: #ef4444; /* text-red-500 */
+    font-weight: bold;
+  }
+
+  .success-message {
+    color: #22c55e; /* text-green-500 */
+  }
+
+  .link-button {
+    background: none;
+    border: none;
+    color: #3b82f6; /* text-blue-500 */
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 0.5rem;
+  }
+
+  .link-button:hover {
+    color: #60a5fa; /* text-blue-400 */
+  }
+
+  /* Add styles for loading indicator if needed */
 </style>
