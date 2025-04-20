@@ -279,13 +279,41 @@ export async function saveDatabase(): Promise<void> {
   console.log("💫 Base sauvegardée localement");
 }
 
-export async function exportDatabase(): Promise<Uint8Array> {
-  const data = db.export();
-  const array = new Uint8Array(data);
-  const blob = new Blob([array], { type: "application/octet-stream" });
+/**
+ * Triggers a browser download for the given data.
+ * @param data The data to download as a Uint8Array.
+ * @param filename The desired filename for the download.
+ * @param mimeType The MIME type of the file.
+ */
+function triggerDownload(
+  data: Uint8Array,
+  filename: string,
+  mimeType: string
+): void {
+  const blob = new Blob([data], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  console.log(`📥 Fichier "${filename}" téléchargé.`);
+}
+
+/**
+ * Exports the database content and generates a filename.
+ * Does not trigger the download.
+ * @returns A promise resolving to an object containing the database data and filename.
+ */
+export async function exportDatabaseData(): Promise<{
+  data: Uint8Array;
+  filename: string;
+}> {
+  const data = db.export();
+  const array = new Uint8Array(data);
+
   // Récupère la date et l'iteration depuis la table version
   let dateMaj = new Date().toISOString();
   let iteration = 0;
@@ -306,6 +334,7 @@ export async function exportDatabase(): Promise<Uint8Array> {
       err
     );
   }
+
   let uuid = "unknown";
   try {
     const stmtUuid = db.prepare("SELECT uuid FROM settings LIMIT 1;");
@@ -319,13 +348,18 @@ export async function exportDatabase(): Promise<Uint8Array> {
       err
     );
   }
-  a.download = `leakr_db_${uuid}_${dateMaj.replace(/[:.]/g, "-")}_it${iteration}.sqlite`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  console.log("📦 Base exportée");
-  return array;
+
+  const filename = `leakr_db_${uuid}_${dateMaj.replace(/[:.]/g, "-")}_it${iteration}.sqlite`;
+  console.log("📦 Données de la base préparées pour l'export.");
+  return { data: array, filename: filename };
+}
+
+/**
+ * Exports the database and triggers a download.
+ */
+export async function downloadDatabaseExport(): Promise<void> {
+  const { data, filename } = await exportDatabaseData();
+  triggerDownload(data, filename, "application/octet-stream");
 }
 
 // --- Fonctions CRUD ---
