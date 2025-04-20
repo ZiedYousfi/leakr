@@ -1,21 +1,22 @@
 import {
   findCreatorByUsername,
   getContenuIdsByCreator,
-  addPlateforme, // Added
-  addProfilPlateforme, // Added
-  findProfilByDetails, // Added
+  addPlateforme,
+  addProfilPlateforme,
+  findProfilByDetails,
   type Createur,
 } from "@/lib/dbUtils";
-import { processSearchInput } from "./searchProcessor"; // Import the processor
-import type { Platform } from "./detectPlatform"; // Import Platform type
+import { processSearchInput } from "./searchProcessor";
+import type { Platform } from "./detectPlatform";
+import { refinePotentialUsername } from "./usernameRefiner"; // Import the refiner
 
 export interface FetchCreatorResult {
   creator: Createur | null;
   contentIds: number[] | null;
   error: string | null;
-  identifierUsed: string; // The original input identifier
-  usernameFound: string | null; // The username extracted/used for lookup
-  platform: Platform | null; // The detected platform
+  identifierUsed: string;
+  usernameFound: string | null; // The username extracted/refined/used for lookup
+  platform: Platform | null;
 }
 
 /**
@@ -23,9 +24,44 @@ export interface FetchCreatorResult {
  */
 function isLikelyUrl(str: string): boolean {
   const trimmed = str.trim();
-  // Attrape tout ce qui commence par un schéma suivi de "://"
-  return /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed);
+  // Basic check for protocol - adjust if needed for more complex URL forms
+  return /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed) || /^[a-zA-Z\d_.-]+\.[a-zA-Z]{2,}/.test(trimmed); // Also check for domain.tld format
 }
+
+// REMOVED: COMMON_PATH_WORDS constant is no longer needed
+
+/**
+ * Extracts potential username candidates from a URL's path.
+ * Splits by '/', '-', '_' and filters out empty and numeric-only segments.
+ * @param url The URL string.
+ * @returns An array of potential username strings.
+ */
+function extractPotentialUsernamesFromPath(url: string): string[] {
+  try {
+    // Handle cases where the input might not have a protocol
+    const urlWithProto = url.includes('://') ? url : `https://${url}`;
+    const parsedUrl = new URL(urlWithProto);
+    const pathname = parsedUrl.pathname;
+    // Split by common separators
+    const segments = pathname.split(/[\/\-_]/);
+    // Filter out empty strings and purely numeric strings
+    return segments.filter(segment =>
+        segment.length > 0 &&
+        !/^\d+$/.test(segment)
+        // REMOVED: Check against COMMON_PATH_WORDS is gone
+    );
+  } catch (e) {
+    console.warn(`Could not parse URL path for segment extraction: ${url}`, e);
+    // Fallback: try splitting the original string directly if URL parsing fails
+     const segments = url.split(/[\/\-_]/);
+     return segments.filter(segment =>
+        segment.length > 0 &&
+        !/^\d+$/.test(segment)
+        // REMOVED: Check against COMMON_PATH_WORDS is gone
+    );
+  }
+}
+
 
 /**
  * Processes an identifier (URL or username), fetches the corresponding creator
@@ -40,40 +76,118 @@ export async function fetchCreatorAndContentIds(
   let contentIds: number[] | null = null;
   let error: string | null = null;
   let usernameToSearch: string | null = null;
+  const originalIdentifier = identifier.trim(); // Use trimmed version consistently
 
-  // 1. Process the input identifier
-  const { platform, username: extractedUsername } =
-    processSearchInput(identifier);
+  // 1. Process the input identifier using platform detection
+  const { platform, username: initialExtractedUsername } =
+    processSearchInput(originalIdentifier);
 
-  // 2. Determine the username to search
-  if (extractedUsername) {
-    usernameToSearch = extractedUsername;
-  } else if (!platform && identifier && !isLikelyUrl(identifier)) {
-    // Only accept non-URL raw input as username if no platform detected
-    usernameToSearch = identifier;
-  } else if (platform && !extractedUsername) {
-    // Platform detected but no username extracted from the URL
-    error = "Could not extract a valid username from the provided URL.";
+  let refinedUsername = initialExtractedUsername;
+
+  // 1.5 Attempt keyword-based refinement if no specific platform was detected,
+  //     an initial username (path segment) was extracted, and it was a URL.
+  if (
+    !platform &&
+    initialExtractedUsername &&
+    isLikelyUrl(originalIdentifier)
+  ) {
+    const keywordRefined = refinePotentialUsername(initialExtractedUsername);
+    if (keywordRefined !== initialExtractedUsername) {
+        console.log(`Keyword refinement: "${initialExtractedUsername}" -> "${keywordRefined}"`);
+        refinedUsername = keywordRefined;
+    }
   }
 
-  // 3. Validate usernameToSearch
-  if (!usernameToSearch || usernameToSearch.trim().length === 0) {
-    if (!error) {
-      error = "Invalid or empty username provided or extracted.";
+  // 2. Determine the initial username to search
+  if (refinedUsername) {
+    usernameToSearch = refinedUsername;
+  } else if (!platform && originalIdentifier && !isLikelyUrl(originalIdentifier)) {
+    // Only accept non-URL raw input as username if no platform detected
+    usernameToSearch = originalIdentifier;
+  }
+  // Note: Error handling for cases where platform is detected but username isn't,
+  // or URL processing fails initially, will be done after the next step.
+
+  // 2.5. If still no username and it's a URL, try searching path segments against DB
+  if (!usernameToSearch && isLikelyUrl(originalIdentifier)) {
+    console.log("Attempting path segment DB search for:", originalIdentifier);
+    const potentialUsernames = extractPotentialUsernamesFromPath(originalIdentifier);
+    console.log("Potential usernames from path (unfiltered):", potentialUsernames); // Log unfiltered segments
+
+    for (const segment of potentialUsernames) {
+        // REMOVED: Minimum length check (can be added back if desired)
+        // if (segment.length < 3) {
+        //      console.log(`Skipping short segment: "${segment}"`);
+        //      continue;
+        // }
+
+        console.log(`Testing segment as username: "${segment}"`);
+        try {
+            // Check if this segment corresponds to a known creator
+            const potentialCreator = findCreatorByUsername(segment);
+            if (potentialCreator) {
+                console.log(`Found creator for segment: "${segment}"`);
+                usernameToSearch = segment; // Found a valid username!
+                // If we found it this way, the platform is likely unknown or generic
+                // Keep the original 'platform' value (which should be null here)
+                break; // Stop searching segments once a match is found
+            }
+        } catch (segmentLookupError) {
+            // Log error but continue trying other segments
+            console.error(`Error looking up segment "${segment}":`, segmentLookupError);
+        }
     }
+     // If we found a username via segments, clear any potential previous error state
+     if (usernameToSearch) {
+         error = null;
+     }
+  }
+
+  // 3. Set error messages based on the outcome so far
+  if (!usernameToSearch) {
+      // Only set error if one wasn't already set by segment search failure
+      if (!error) {
+          if (platform && !initialExtractedUsername) {
+              error = `Could not extract a username for ${platform} from the URL.`;
+          } else if (isLikelyUrl(originalIdentifier)) {
+              if (initialExtractedUsername) {
+                   error = `Could not confirm username from URL path segment "${initialExtractedUsername}" or other path parts.`;
+              } else {
+                   error = `Could not identify a known username within the URL: ${originalIdentifier}`;
+              }
+          } else {
+              // Input was likely intended as a direct username but wasn't found or was invalid
+              error = `Invalid or empty username provided: "${originalIdentifier}"`;
+          }
+      }
+  } else if (usernameToSearch.trim().length === 0) {
+      // This case should be less likely now, but handle if refinement/extraction yields empty
+      error = "Extracted username is empty.";
+      usernameToSearch = null; // Prevent search with empty string
+  }
+
+
+  // 4. Validate final usernameToSearch and proceed if valid
+  if (!usernameToSearch) {
+    // Report the username we ended up with before validation failed
+    const finalUsernameFound = usernameToSearch || refinedUsername || initialExtractedUsername;
     return {
       creator: null,
       contentIds: null,
-      error: error,
-      identifierUsed: identifier,
-      usernameFound: null,
+      error: error || "Could not determine a valid username.", // Ensure error is not null
+      identifierUsed: originalIdentifier,
+      usernameFound: finalUsernameFound,
       platform,
     };
   }
 
-  // 4. Try to look up the creator and their content
+  // --- Username is considered valid at this point ---
+  const finalUsernameToSearch = usernameToSearch; // Use a const for clarity
+
+  // 5. Try to look up the creator and their content using the final username
   try {
-    const foundCreator = findCreatorByUsername(usernameToSearch);
+    // Use the final usernameToSearch for lookup
+    const foundCreator = findCreatorByUsername(finalUsernameToSearch);
 
     if (foundCreator) {
       creator = foundCreator;
@@ -81,109 +195,81 @@ export async function fetchCreatorAndContentIds(
         const fetchedIds = getContenuIdsByCreator(creator.id);
         contentIds = fetchedIds;
 
-        // --- BEGIN ADDED PROFILE SAVING LOGIC ---
-        // If a platform was detected and it was likely a URL input, try to add the profile link
-        if (platform && creator && isLikelyUrl(identifier)) {
+        // --- BEGIN PROFILE SAVING LOGIC ---
+        // Save profile link ONLY if a specific platform was detected initially AND it was a URL
+        const shouldSaveProfile = platform && isLikelyUrl(originalIdentifier);
+
+        if (shouldSaveProfile && platform && creator) { // Redundant checks for clarity
           try {
-            // Get platform ID (adds platform if it doesn't exist)
-            const platformIdRaw = addPlateforme(platform); // Use platform directly
-            // Convert bigint to number if necessary, handle null
+            const platformIdRaw = addPlateforme(platform);
             const platformId =
               typeof platformIdRaw === "bigint"
                 ? Number(platformIdRaw)
                 : (platformIdRaw ?? null);
 
             if (platformId !== null) {
-              // Check if this specific profile link already exists for this creator/platform
               const existingProfile = findProfilByDetails(
                 creator.id,
                 platformId,
-                identifier
+                originalIdentifier // Save the original identifier URL
               );
 
               if (!existingProfile) {
-                // Add the new profile link
-                addProfilPlateforme(identifier, creator.id, platformId);
+                addProfilPlateforme(originalIdentifier, creator.id, platformId);
                 console.log(
-                  `creatorFinder: Added profile link "${identifier}" for creator ${creator.id} on platform ${platform} (ID: ${platformId})`
-                ); // Use platform directly
-              } else {
-                console.log(
-                  `creatorFinder: Profile link "${identifier}" already exists for creator ${creator.id} on platform ${platform}.`
-                ); // Use platform directly
+                  `creatorFinder: Added profile link "${originalIdentifier}" for creator ${creator.id} (${finalUsernameToSearch}) on platform ${platform} (ID: ${platformId})`
+                );
               }
             } else {
               console.warn(
                 `creatorFinder: Could not get or create platform ID for "${platform}".`
-              ); // Use platform directly
+              );
             }
           } catch (dbError) {
             console.error(
               `creatorFinder: Error adding platform profile for creator ${creator.id}:`,
               dbError
             );
-            // Non-fatal error, continue returning the found creator info
           }
         }
-        // --- END ADDED PROFILE SAVING LOGIC ---
+        // --- END PROFILE SAVING LOGIC ---
+
       } catch (contentError) {
         console.error(
-          `creatorFinder: Error loading content IDs for creator ${creator.id}:`,
+          `creatorFinder: Error loading content IDs for creator ${creator.id} (${finalUsernameToSearch}):`,
           contentError
         );
         error = "Creator found, but failed to load content list.";
-        // Still try to add profile link even if content loading fails, as creator was found
-        // --- BEGIN ADDED PROFILE SAVING LOGIC (Duplicate for safety if content fetch fails) ---
-        if (platform && creator && isLikelyUrl(identifier)) {
-          try {
-            const platformIdRaw = addPlateforme(platform); // Use platform directly
-            const platformId =
-              typeof platformIdRaw === "bigint"
-                ? Number(platformIdRaw)
-                : (platformIdRaw ?? null);
-
-            if (platformId !== null) {
-              const existingProfile = findProfilByDetails(
-                creator.id,
-                platformId,
-                identifier
-              );
-              if (!existingProfile) {
-                addProfilPlateforme(identifier, creator.id, platformId);
-                console.log(
-                  `creatorFinder: Added profile link "${identifier}" for creator ${creator.id} on platform ${platform} (ID: ${platformId}) (after content error)`
-                ); // Use platform directly
-              }
-            }
-          } catch (dbError) {
-            console.error(
-              `creatorFinder: Error adding platform profile for creator ${creator.id} (after content error):`,
-              dbError
-            );
-          }
-        }
-        // --- END ADDED PROFILE SAVING LOGIC (Duplicate) ---
       }
     } else {
-      error = `Creator "${usernameToSearch}" not found.`;
+      // This else block might be redundant if findCreatorByUsername was already called in step 2.5
+      // However, it handles the case where the initial username (from step 1/1.5/2) was used and not found.
+      error = `Creator "${finalUsernameToSearch}" not found.`;
+       // Add context if refinement/extraction occurred
+       if (initialExtractedUsername && finalUsernameToSearch !== initialExtractedUsername) {
+           error += ` (Processed from "${initialExtractedUsername}")`;
+       } else if (usernameToSearch !== originalIdentifier && !initialExtractedUsername) {
+            error += ` (Extracted from path of "${originalIdentifier}")`;
+       }
     }
   } catch (lookupError) {
+    // This catches errors during the findCreatorByUsername call in *this* step (5)
     console.error(
-      `creatorFinder: Error finding creator "${usernameToSearch}":`,
+      `creatorFinder: Error finding creator "${finalUsernameToSearch}":`,
       lookupError
     );
-    error = `Failed to look up creator "${usernameToSearch}".`;
+    error = `Failed to look up creator "${finalUsernameToSearch}".`;
     creator = null;
     contentIds = null;
   }
 
-  // 5. Return full result
+  // 6. Return full result
   return {
     creator,
     contentIds,
     error,
-    identifierUsed: identifier,
-    usernameFound: usernameToSearch,
-    platform,
+    identifierUsed: originalIdentifier,
+    usernameFound: finalUsernameToSearch, // Return the actual username used for the search
+    platform, // Return the originally detected platform (null if found via path segments)
   };
 }
