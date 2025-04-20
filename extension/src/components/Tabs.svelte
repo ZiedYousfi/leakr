@@ -3,7 +3,7 @@
 
   type Tab = {
     title: string;
-    component: Component; // Use ComponentType from 'svelte'
+    component: Component; // Use Component from 'svelte'
     props: object;
   };
 
