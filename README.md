@@ -88,7 +88,7 @@ schema:
                    └─────────┬──────────┘              │
                              │                         ▼
                              │            ┌─────────────────────────┐
-                             └──────────▶ │   API Gateway / Auth    │◀──[ auth-service ]
+                             └──────────▶ │   API Gateway / Auth    │◀──[ auth-service w/ Clerk]
                                           └─────────────────────────┘
                                             ▲           ▲       ▲
                                             │           │       │
@@ -98,5 +98,5 @@ schema:
                                          ▲           ▲             ▲
                                          │           │             │
                                          ▼           ▼             ▼
-                                  [ Cloudflare ] [ PlanetScale ] [ Stripe ]
+                                  [ Cloudflare ] [ Neon ]       [ Stripe ]
                                      R2            (web DB)       (subs)
