@@ -22,7 +22,8 @@ The extension works autonomously, but this monorepo allows adding associated ser
 │   ├── auth-service/        # Authentication and token validation
 │   ├── storage-service/     # Upload, save, retrieve .sqlite files (Cloudflare R2)
 │   ├── community-service/   # Community system: shares, votes, rankings
-│   └── payment-service/     # Subscription management and Stripe integration
+│   ├── payment-service/     # Subscription management and Stripe integration
+│   └── db-service/          # Database service (Neon DB) with gRPC and REST APIs
 │
 ├── web/                     # Website in Next.js
 │   └── app/                 # Frontend application code (dashboard, community, subscriptions)
@@ -72,7 +73,6 @@ The extension works autonomously, but this monorepo allows adding associated ser
 - Supporting a clean separation of logic: frontend, extension, backend services, storage
 - Providing a clear gateway via `auth-service` for all secure interactions
 
-
 ```b
 
                              [ User (Client) ]
@@ -87,9 +87,9 @@ The extension works autonomously, but this monorepo allows adding associated ser
                              │            ┌─────────────────────────┐
                              └──────────▶ │   API Gateway / Auth    │◀──[ auth-service w/ Clerk]
                                           └─────────────────────────┘
-                                            ▲     │     ▲       ▲
-                                            │     │     │       │
-                                            ▼     │     ▼       ▼
+                                            ▲     │     ▲           ▲
+                                            │     │     │           │
+                                            ▼     │     ▼           ▼
                                     [ storage ]   │   [ community ] [ payment ] ...
                                       service     │     service       service
                                          │        │       ▲             ▲
