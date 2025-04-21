@@ -15,7 +15,7 @@ The extension works autonomously, but this monorepo allows adding associated ser
 
 ## 📆 Repository Structure
 
-```
+```b
 .
 ├── extension/               # Standalone client-side extension
 ├── services/                # All Go microservices
