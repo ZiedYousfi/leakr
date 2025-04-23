@@ -5,7 +5,7 @@ import type { SqlJsStatic, Database } from "sql.js";
 let SQL: SqlJsStatic;
 let db: Database;
 
-const DB_VERSION = "1.0.1"; // 💡 version actuelle de la structure
+const DB_VERSION = "1.1.0"; // 💡 version actuelle de la structure
 
 // 📦 Initialise sql.js et la base (nouvelle ou chargée depuis storage)
 export async function initDatabase(): Promise<void> {
@@ -38,6 +38,8 @@ export interface Createur {
   aliases: string[];
   date_ajout: string; // ISO 8601 format
   favori: boolean;
+  // Variable pour savoir si les infos d'un créateur ont été vérifié par un humain
+  verifie: boolean;
 }
 
 export interface Contenu {
@@ -88,10 +90,12 @@ function createSchema() {
     -- Création des tables créateurs, contenus, plateformes et profils_plateforme
     CREATE TABLE createurs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nom TEXT NOT NULL,
-      aliases TEXT NOT NULL,
+      nom TEXT UNIQUE NOT NULL,
+      aliases TEXT UNIQUE NOT NULL,
       date_ajout TEXT NOT NULL,
       favori BOOLEAN DEFAULT FALSE
+      -- Variable pour savoir si les infos d'un créateur ont été vérifié par un humain
+      verifie BOOLEAN DEFAULT FALSE
     );
 
     CREATE TABLE contenus (
@@ -475,6 +479,7 @@ export function getCreateurs(): Createur[] {
       aliases: JSON.parse((row.aliases as string) || "[]"),
       date_ajout: row.date_ajout as string,
       favori: Boolean(row.favori),
+      verifie: Boolean(row.verifie), // Assurez-vous que la colonne 'verifie' existe dans la table
     });
   }
   stmt.free();
@@ -514,6 +519,7 @@ export function findCreatorByUsername(username: string): Createur | null {
         aliases: parsedAliases,
         date_ajout: row.date_ajout as string,
         favori: Boolean(row.favori),
+        verifie: Boolean(row.verifie), // Assurez-vous que la colonne 'verifie' existe dans la table
       };
     }
   } catch (err) {
