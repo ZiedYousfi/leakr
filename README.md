@@ -33,6 +33,7 @@ The extension works autonomously, but this monorepo allows adding associated ser
 │   ├── storage-service/     # Upload, save, retrieve .sqlite files (Cloudflare R2)
 │   ├── community-service/   # Community system: shares, votes, rankings
 │   ├── payment-service/     # Subscription management and Stripe integration
+│   ├── mailing-list-service/# Mailing list management (Optional, Using MaiLiter)
 │   └── db-service/          # Database service (Neon DB) with gRPC and REST APIs
 │
 ├── web/                     # Website in Next.js
