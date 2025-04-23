@@ -37,7 +37,7 @@ The extension works autonomously, but this monorepo allows adding associated ser
 │   └── db-service/          # Database service (Neon DB) with gRPC and REST APIs
 │
 ├── web/                     # Website in Next.js
-│   └── app/                 # Frontend application code (dashboard, community, subscriptions)
+│   └── leakr-webapp/                 # Frontend application code (dashboard, community, subscriptions)
 │
 ├── infra/                   # Configuration and deployment
 │   ├── cloudflare/          # Config files for Cloudflare R2 (storage)
