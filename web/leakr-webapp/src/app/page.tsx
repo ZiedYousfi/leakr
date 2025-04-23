@@ -16,11 +16,7 @@ export default function Home() {
         <h1 className="text-5xl font-bold text-[#7E5BEF]">Leakr</h1>
 
         <p className="text-lg text-[#B0B0B0] max-w-xl">
-          Leakr helps you discover, manage, and organize content from your
-          favorite creators across platforms like Twitch, YouTube, Twitter, and
-          more. Save content, manage profiles, and keep everything in one place
-          with our browser extension. Explore community findings and secure your
-          digital footprint.
+        🚀 Leakr — Instantly search and discover leaked content from your favorite creators on platforms like OnlyFans, Fansly, and more — all in one click! 🔥 No need to paste links — Leakr detects profiles directly from your current tab and opens curated search results for you. Effortlessly organize, filter, and collect the hottest leaks. ✨ A fast, simple, and privacy-friendly Chrome extension for those who know where to look. 😉
         </p>
 
         {/* <div className="flex gap-4 mt-6">
