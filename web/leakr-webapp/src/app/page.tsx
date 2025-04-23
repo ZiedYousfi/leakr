@@ -1,4 +1,4 @@
-import SubscribeForm from "@/components/prerelease/MailingListSubscribeForm"; // Import the SubscribeForm component
+import SubscribeForm from "@/components/prerelease/MailingListSubscribeForm";
 import ProgressBar from "@/components/prerelease/ProgressBar";
 //import Image from "next/image";
 
@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <>
       <ProgressBar />
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-gray-300 font-[family-name:var(--font-geist-mono)] p-8">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-gray-300 font-[family-name:var(--font-geist-mono)]  ">
         <main className="flex flex-col items-center text-center gap-8">
           {/* <Image
             src="/logo.png"
