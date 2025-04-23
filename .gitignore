@@ -17,3 +17,6 @@ bun.lock
 .env.production.local
 .env.development
 .env.production
+
+# Downloaded api keys
+api_token.txt

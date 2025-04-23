@@ -1,37 +1,28 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
-	"net/mail"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
-	"bytes"
-	"net/http"
+	"github.com/mailerlite/mailerlite-go"
 )
 
-const mailerLiteAPI = "https://api.mailerlite.com/api/v2/subscribers"
+var client *mailerlite.Client
 
-func main() {
-	app := fiber.New()
-	app.Use(logger.New())
-
-	app.Post("/subscribe", subscribeHandler)
-
-	log.Fatal(app.Listen(":3000"))
-	log.Println("mailing-list-service is listening on :3000 ✨")
-}
-
-type SubscribeRequest struct {
-	Email string `json:"email"`
+func init() {
+	apiKey := os.Getenv("MAILERLITE_API_KEY")
+	if apiKey == "" {
+		log.Fatal("MAILERLITE_API_KEY environment variable not set")
+	}
+	client = mailerlite.NewClient(apiKey)
 }
 
 func subscribeHandler(c *fiber.Ctx) error {
-	apiKey := os.Getenv("MAILERLITE_API_KEY")
-	if apiKey == "" {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "API key not configured",
-		})
+	type SubscribeRequest struct {
+		Email string `json:"email"`
 	}
 
 	var req SubscribeRequest
@@ -41,45 +32,53 @@ func subscribeHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate email
-	if _, err := mail.ParseAddress(req.Email); err != nil {
+	// Basic email validation (consider a more robust library for production)
+	if req.Email == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid email address",
+			"error": "Email is required",
 		})
 	}
 
-	// Prepare request to MailerLite
-	jsonStr := []byte(`{"email": "` + req.Email + `"}`)
+	subscriber := &mailerlite.UpsertSubscriber{
+		Email: req.Email,
+		// You might want to add fields, groups, status etc. here
+		// Fields: map[string]interface{}{"name": "John Doe"}, // Example
+		// Groups: []string{"your_group_id"}, // Example
+		// Status: "active", // Example: active, unsubscribed, unconfirmed, bounced, junk
+	}
 
-	httpReq, err := http.NewRequest("POST", mailerLiteAPI, bytes.NewBuffer(jsonStr))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	newSubscriber, _, err := client.Subscriber.Upsert(ctx, subscriber)
 	if err != nil {
+		// Log the specific error from MailerLite for debugging
+		log.Printf("MailerLite Upsert error for email %s: %v", req.Email, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to create request",
-		})
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("X-MailerLite-ApiKey", apiKey)
-
-	client := &http.Client{}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to contact MailerLite",
-		})
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-			"error": "MailerLite API error",
-			"status": resp.Status,
+			"error": "Failed to subscribe email", // More user-friendly message
 		})
 	}
 
+	log.Printf("Successfully subscribed email: %s", newSubscriber.Data.Email)
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Subscription successful ✨",
+		"email":   newSubscriber.Data.Email,
 	})
 }
-// The code above is a simple Fiber application that listens for POST requests on the /subscribe endpoint.
-// It validates the email address, and if valid, it sends a request to the MailerLite API to subscribe the user.
-// The API key is read from an environment variable, and the request is sent with the appropriate headers.
+
+func main() {
+	app := fiber.New()
+
+	// Define the route for subscribing
+	app.Post("/subscribe", subscribeHandler)
+
+	// Get port from environment variable or default
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // Default port if not specified
+	}
+
+	log.Printf("Starting mailing list service on port %s", port)
+	// Start the server
+	log.Fatal(app.Listen(":" + port))
+}
