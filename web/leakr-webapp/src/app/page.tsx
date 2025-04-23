@@ -1,14 +1,17 @@
-import Link from "next/link";
-import SubscribeForm from "@/components/SubscribeForm"; // Import the SubscribeForm component
+import SubscribeForm from "@/components/MailingListSubscribeForm"; // Import the SubscribeForm component
+//import Image from "next/image";
 
 export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-gray-300 font-[family-name:var(--font-geist-mono)] p-8">
       <main className="flex flex-col items-center text-center gap-8">
-        {/* Placeholder for Logo - Consider using an SVG or Image component */}
-        <div className="w-24 h-24 bg-[#7E5BEF] rounded-full mb-4 flex items-center justify-center text-black text-4xl font-bold">
-          L
-        </div>
+        {/* <Image
+          src="/logo.png"
+          alt="Leakr Logo"
+          width={512}
+          height={512}
+          className="w-64 h-64 mb-4"
+        /> */}
 
         <h1 className="text-5xl font-bold text-[#7E5BEF]">Leakr</h1>
 

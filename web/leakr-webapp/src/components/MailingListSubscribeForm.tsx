@@ -28,7 +28,7 @@ const SubscribeForm = () => {
         setMessage(`⚠️ Error: ${data.error || "Something went wrong."}`);
       }
     } catch (error) {
-      setMessage("⚠️ Network error. Please try again later.");
+      setMessage(`⚠️ Network error : ${error} Please try again later.`);
     }
   };
 
@@ -48,7 +48,7 @@ const SubscribeForm = () => {
       />
       <button
         type="submit"
-        className="bg-[#7E5BEF] text-white px-4 py-2 rounded-md hover:bg-[#6a48d7] transition duration-200 ease-in-out"
+        className="bg-[#7E5BEF] text-white px-4 py-2 rounded-md hover:bg-[#6a48d7] transition duration-200 ease-in-out self-center"
       >
         Subscribe ✨
       </button>
