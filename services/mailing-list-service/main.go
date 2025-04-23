@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/mailerlite/mailerlite-go"
 )
 
@@ -52,12 +53,11 @@ func subscribeHandler(c *fiber.Ctx) error {
 
 	newSubscriber, _, err := client.Subscriber.Upsert(ctx, subscriber)
 	if err != nil {
-    log.Printf("MailerLite Upsert error for %s: %v", req.Email, err)
-    return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-        "error": err.Error(),  // expose l’erreur brute
-    })
-}
-
+		log.Printf("MailerLite Upsert error for %s: %v", req.Email, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(), // expose l’erreur brute
+		})
+	}
 
 	log.Printf("Successfully subscribed email: %s", newSubscriber.Data.Email)
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -68,6 +68,16 @@ func subscribeHandler(c *fiber.Ctx) error {
 
 func main() {
 	app := fiber.New()
+
+	// Apply CORS middleware BEFORE defining routes
+	app.Use(cors.New(cors.Config{
+		// Allow specific origins, including localhost for development and www subdomain
+		AllowOrigins: "https://leakr.net, https://www.leakr.net, https://*.leakr.net, https://mailing.leakr.net, http://localhost:3000",
+		// Allow only POST method and potentially OPTIONS for preflight requests
+		AllowMethods: "POST, OPTIONS",
+		// Allow necessary headers, Content-Type is common for JSON APIs
+		AllowHeaders: "Origin, Content-Type, Accept",
+	}))
 
 	// Define the route for subscribing
 	app.Post("/subscribe", subscribeHandler)
