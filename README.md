@@ -85,33 +85,33 @@ The extension works autonomously, but this monorepo allows adding associated ser
 
 ```b
 
-                             [ User (Client) ]
-                               ▲            ▲
-                               │            │
-                               ▼            ▼
-                   ┌────────────────────┐  ┌─────────────────────────┐
-                   │ Next.js Site       │  │       Extension         │
-                   │   (Vercel)         │  └─────────────────────────┘
-                   └─────────┬──────────┘              │
-                             │                         ▼
-                             │            ┌─────────────────────────┐
-                             └──────────▶ │   API Gateway / Auth    │◀──[ auth-service w/ Clerk]
-                                          └─────────────────────────┘
-                                            ▲     │     ▲           ▲
-                                            │     │     │           │
-                                            ▼     │     ▼           ▼
-                                    [ storage ]   │   [ community ] [ payment ] ...
-                                      service     │     service       service
-                                         │        │       ▲             ▲
-                                         │        │       │             │
-              [ Cloudflare R2 ] ◀────────┘        │       └────┬────────┘
-                                                  │            │
-                                                  ▼            ▼
-                                        ┌────────────────────────┐
-                                        │      db-service        │
-                                        │  (ent / REST / gRPC)   │
-                                        └────────────────────────┘
-                                                 │
-                                                 ▼
-                                             [ Neon DB ]
+                        [ User (Client) ]
+                          ▲            ▲
+                          │            │
+                          ▼            ▼
+              ┌────────────────────┐  ┌─────────────────────────┐
+              │ Next.js Site       │  │       Extension         │
+              │   (Vercel)         │  └─────────────────────────┘
+              └─────────┬──────────┘              │
+                        │                         ▼
+                        │            ┌─────────────────────────┐
+                        └──────────▶ │   API Gateway / Auth    │◀──[ auth-service w/ Clerk]
+                                    └─────────────────────────┘
+                                      ▲     │     ▲           ▲
+                                      │     │     │           │
+                                      ▼     │     ▼           ▼
+                              [ storage ]   │   [ community ] [ payment ] ...
+                                service     │     service       service
+                                    │        │       ▲             ▲
+                                    │        │       │             │
+        [ Cloudflare R2 ] ◀────────┘        │       └────┬────────┘
+                                            │            │
+                                            ▼            ▼
+                                  ┌────────────────────────┐
+                                  │      db-service        │
+                                  │  (ent / REST / gRPC)   │
+                                  └────────────────────────┘
+                                            │
+                                            ▼
+                                        [ Neon DB ]
 
