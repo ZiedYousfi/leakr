@@ -1,4 +1,4 @@
-import SubscribeForm from "@/components/MailingListSubscribeForm"; // Import the SubscribeForm component
+import SubscribeForm from "@/components/prerelease/MailingListSubscribeForm"; // Import the SubscribeForm component
 //import Image from "next/image";
 
 export default function Home() {
