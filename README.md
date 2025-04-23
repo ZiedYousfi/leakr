@@ -1,4 +1,14 @@
-# 🏛️ Project Architecture — Monorepo
+# Leakr
+
+🚀 Leakr — Instantly search and discover leaked content from your favorite creators on platforms like OnlyFans, Fansly, and more — all in one click! 🔥 No need to paste links — Leakr detects profiles directly from your current tab and opens curated search results for you. Effortlessly organize, filter, and collect the hottest leaks. ✨ A fast, simple, and privacy-friendly Chrome extension for those who know where to look. 😉
+
+---
+
+## 📜 Licence
+
+This project is licensed under a [BSL-based License](LICENSE).
+
+## 🏛️ Project Architecture — Monorepo
 
 This repository contains all the necessary components around the main extension.
 The extension works autonomously, but this monorepo allows adding associated services:
@@ -13,7 +23,7 @@ The extension works autonomously, but this monorepo allows adding associated ser
 
 ---
 
-## 📆 Repository Structure
+### 📆 Repository Structure
 
 ```b
 .
@@ -38,7 +48,7 @@ The extension works autonomously, but this monorepo allows adding associated ser
 
 ---
 
-## 🧠 Architectural Philosophy
+### 🧠 Architectural Philosophy
 
 - All services are **independent** and **written in Go**
 - Each service handles a specific concern (auth, storage, community, payment)
@@ -63,7 +73,7 @@ The extension works autonomously, but this monorepo allows adding associated ser
 
 ---
 
-## ✨ This repository is designed for
+### ✨ This repository is designed for
 
 - Being a **monorepo** for all services
 - Being readable and modular
