@@ -52,12 +52,12 @@ func subscribeHandler(c *fiber.Ctx) error {
 
 	newSubscriber, _, err := client.Subscriber.Upsert(ctx, subscriber)
 	if err != nil {
-		// Log the specific error from MailerLite for debugging
-		log.Printf("MailerLite Upsert error for email %s: %v", req.Email, err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to subscribe email", // More user-friendly message
-		})
-	}
+    log.Printf("MailerLite Upsert error for %s: %v", req.Email, err)
+    return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+        "error": err.Error(),  // expose l’erreur brute
+    })
+}
+
 
 	log.Printf("Successfully subscribed email: %s", newSubscriber.Data.Email)
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
