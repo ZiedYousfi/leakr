@@ -19,3 +19,10 @@ TODO: Think about routes for community service
 
 POST /webhook
 GET /subscription
+
+## mailing-list-service
+
+POST /subscribe
+Body: { "email": "<example@foxmail.com>" }
+
+Call to MailerLite API with secret key.
