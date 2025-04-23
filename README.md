@@ -15,14 +15,15 @@ The extension works autonomously, but this monorepo allows adding associated ser
 
 ## 📆 Repository Structure
 
-```
+```b
 .
 ├── extension/               # Standalone client-side extension
 ├── services/                # All Go microservices
 │   ├── auth-service/        # Authentication and token validation
 │   ├── storage-service/     # Upload, save, retrieve .sqlite files (Cloudflare R2)
 │   ├── community-service/   # Community system: shares, votes, rankings
-│   └── payment-service/     # Subscription management and Stripe integration
+│   ├── payment-service/     # Subscription management and Stripe integration
+│   └── db-service/          # Database service (Neon DB) with gRPC and REST APIs
 │
 ├── web/                     # Website in Next.js
 │   └── app/                 # Frontend application code (dashboard, community, subscriptions)
@@ -72,10 +73,6 @@ The extension works autonomously, but this monorepo allows adding associated ser
 - Supporting a clean separation of logic: frontend, extension, backend services, storage
 - Providing a clear gateway via `auth-service` for all secure interactions
 
-## 🏗️ Architecture
-
-schema:
-
 ```b
 
                              [ User (Client) ]
@@ -90,13 +87,21 @@ schema:
                              │            ┌─────────────────────────┐
                              └──────────▶ │   API Gateway / Auth    │◀──[ auth-service w/ Clerk]
                                           └─────────────────────────┘
-                                            ▲           ▲       ▲
-                                            │           │       │
-                                            ▼           ▼       ▼
-                                    [ storage ] [ community ] [ payment ] ...
-                                      service     service       service
-                                         ▲           ▲             ▲
-                                         │           │             │
-                                         ▼           ▼             ▼
-                                  [ Cloudflare ] [ Neon ]       [ Stripe ]
-                                     R2            (web DB)       (subs)
+                                            ▲     │     ▲           ▲
+                                            │     │     │           │
+                                            ▼     │     ▼           ▼
+                                    [ storage ]   │   [ community ] [ payment ] ...
+                                      service     │     service       service
+                                         │        │       ▲             ▲
+                                         │        │       │             │
+              [ Cloudflare R2 ] ◀────────┘        │       └────┬────────┘
+                                                  │            │
+                                                  ▼            ▼
+                                        ┌────────────────────────┐
+                                        │      db-service        │
+                                        │  (ent / REST / gRPC)   │
+                                        └────────────────────────┘
+                                                 │
+                                                 ▼
+                                             [ Neon DB ]
+

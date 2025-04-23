@@ -1,0 +1,42 @@
+name: Extension CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-extension:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧾 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🧰 Install Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: 📦 Install dependencies
+        run: bun install
+
+      - name: 🧹 Lint code
+        run: bun run lint
+
+      - name: 🧪 Run tests
+        run: bun run test
+
+      - name: 🛠 Build extension with Vite
+        run: bun run build
+
+      - name: 📁 Zip dist folder
+        run: |
+          cd dist
+          zip -r ../extension.zip ./
+        if: success()
+
+      - name: 📤 Upload zip as artifact
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: chrome-extension
+          path: extension.zip
