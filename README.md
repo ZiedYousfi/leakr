@@ -6,7 +6,7 @@
 
 ## 📜 Licence
 
-This project is licensed under a [BSL-based License](LICENSE).
+This project is licensed under a [BSL-based License](LICENCE).
 
 ## 🏛️ Project Architecture — Monorepo
 
@@ -96,7 +96,7 @@ The extension works autonomously, but this monorepo allows adding associated ser
                         │                         ▼
                         │            ┌─────────────────────────┐
                         └──────────▶ │   API Gateway / Auth    │◀──[ auth-service w/ Clerk]
-                                    └─────────────────────────┘
+                                     └─────────────────────────┘
                                       ▲     │     ▲           ▲
                                       │     │     │           │
                                       ▼     │     ▼           ▼
