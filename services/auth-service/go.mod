@@ -1,4 +1,4 @@
-module leakr/services/auth-service
+module auth-service
 
 go 1.24.0
 
