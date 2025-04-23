@@ -1,8 +1,8 @@
-import React from 'react';
+import React from "react";
 
 const Footer = () => {
   return (
-    <footer className="absolute w-full text-center font-mono text-sm text-gray-400">
+    <footer className="mt-auto w-full text-center font-[var(--font-jetbrains-mono)] text-sm text-gray-400">
       © {new Date().getFullYear()} Leakr. All rights reserved.
     </footer>
   );

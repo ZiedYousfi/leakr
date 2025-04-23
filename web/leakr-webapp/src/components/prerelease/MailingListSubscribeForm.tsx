@@ -36,7 +36,7 @@ const SubscribeForm = () => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col items-start space-y-3 max-w-sm font-mono"
+      className="flex flex-col items-start space-y-3 max-w-sm font-[var(--font-jetbrains-mono)]"
     >
       <input
         type="email"

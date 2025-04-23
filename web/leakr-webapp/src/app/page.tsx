@@ -6,8 +6,8 @@ export default function Home() {
   return (
     <>
       <ProgressBar />
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-gray-300 font-[family-name:var(--font-geist-mono)]  ">
-        <main className="flex flex-col items-center text-center gap-8">
+      <div className="flex flex-col min-h-screen bg-black text-gray-300 font-[family-name:var(--font-jetbrains-mono)]">
+        <main className="flex flex-col items-center text-center gap-8 flex-grow justify-center px-4 mt-[-7vh]">
           {/* <Image
             src="/logo.png"
             alt="Leakr Logo"
@@ -19,7 +19,13 @@ export default function Home() {
           <h1 className="text-5xl font-bold text-[#7E5BEF]">Leakr</h1>
 
           <p className="text-lg text-[#B0B0B0] max-w-xl">
-            🚀 Leakr — Instantly search and discover leaked content from your favorite creators on platforms like OnlyFans, Fansly, and more — all in one click! 🔥 No need to paste links — Leakr detects profiles directly from your current tab and opens curated search results for you. Effortlessly organize, filter, and collect the hottest leaks. ✨ A fast, simple, and privacy-friendly Chrome extension for those who know where to look. 😉
+            🚀 Leakr — Instantly search and discover leaked content from your
+            favorite creators on platforms like OnlyFans, Fansly, and more — all
+            in one click! 🔥 No need to paste links — Leakr detects profiles
+            directly from your current tab and opens curated search results for
+            you. Effortlessly organize, filter, and collect the hottest leaks.
+            ✨ A fast, simple, and privacy-friendly Chrome extension for those
+            who know where to look. 😉
           </p>
 
           {/* <div className="flex gap-4 mt-6">
@@ -37,8 +43,8 @@ export default function Home() {
           <div className="mt-12 flex flex-col items-center gap-4 w-full max-w-sm">
             <h2 className="text-2xl font-semibold text-white">Stay Updated!</h2>
             <p className="text-md text-[#B0B0B0]">
-              Subscribe to our mailing list for the latest updates and news about
-              Leakr.
+              Subscribe to our mailing list for the latest updates and news
+              about Leakr.
             </p>
             <SubscribeForm />
           </div>
