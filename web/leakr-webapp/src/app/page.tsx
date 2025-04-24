@@ -6,19 +6,23 @@ export default function Home() {
   return (
     <>
       <ProgressBar />
-      <div className="flex flex-col min-h-screen bg-black text-gray-300 font-[family-name:var(--font-jetbrains-mono)]">
-        <main className="flex flex-col items-center text-center gap-8 flex-grow justify-center px-4 mt-[-7vh]">
+      {/* Ajustement du padding pour différents écrans */}
+      <div className="flex flex-col min-h-screen bg-black text-gray-300 font-[family-name:var(--font-jetbrains-mono)] px-4 sm:px-6 md:px-8">
+        {/* Ajustement de la marge supérieure et du padding pour différents écrans */}
+        <main className="flex flex-col items-center text-center gap-8 flex-grow justify-center mt-[0vh] sm:mt-[-7vh]">
           {/* <Image
             src="/logo.png"
             alt="Leakr Logo"
             width={512}
             height={512}
-            className="w-64 h-64 mb-4"
+            className="w-48 h-48 sm:w-64 sm:h-64 mb-4" // Taille ajustée pour petits écrans
           /> */}
 
-          <h1 className="text-5xl font-bold text-[#7E5BEF]">Leakr</h1>
+          {/* Taille de la police ajustée pour différents écrans */}
+          <h1 className="text-4xl sm:text-5xl font-bold text-[#7E5BEF]">Leakr</h1>
 
-          <p className="text-lg text-[#B0B0B0] max-w-xl">
+          {/* Taille de la police et largeur max ajustées */}
+          <p className="text-base sm:text-lg text-[#B0B0B0] max-w-md sm:max-w-xl">
             🚀 Leakr — Instantly search and discover leaked content from your
             favorite creators on platforms like OnlyFans, Fansly, and more — all
             in one click! 🔥 No need to paste links — Leakr detects profiles
@@ -28,7 +32,7 @@ export default function Home() {
             who know where to look. 😉
           </p>
 
-          {/* <div className="flex gap-4 mt-6">
+          {/* <div className="flex flex-col sm:flex-row gap-4 mt-6"> // Empilement sur petits écrans
             <Link
               href="/community" // Update with actual community route
               className="px-6 py-2 rounded-md border border-[#B0B0B0] text-[#B0B0B0] font-semibold hover:bg-gray-800 hover:text-white transition-colors"
@@ -39,10 +43,12 @@ export default function Home() {
             <Link href="/extension" className="...">Get the Extension</Link>
           </div> */}
 
-          {/* Mailing List Section */}
-          <div className="mt-12 flex flex-col items-center gap-4 w-full max-w-sm">
-            <h2 className="text-2xl font-semibold text-white">Stay Updated!</h2>
-            <p className="text-md text-[#B0B0B0]">
+          {/* Mailing List Section - Ajustement de la marge supérieure */}
+          <div className="mt-8 sm:mt-12 flex flex-col items-center gap-4 w-full max-w-xs sm:max-w-sm">
+            {/* Taille de la police ajustée */}
+            <h2 className="text-xl sm:text-2xl font-semibold text-white">Stay Updated!</h2>
+            {/* Taille de la police ajustée */}
+            <p className="text-sm sm:text-md text-[#B0B0B0]">
               Subscribe to our mailing list for the latest updates and news
               about Leakr.
             </p>
