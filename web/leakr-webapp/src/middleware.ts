@@ -1,3 +1,5 @@
+import { NextResponse } from 'next/server';
+
 // import { clerkMiddleware } from "@clerk/nextjs/server";
 
 // export default clerkMiddleware();
@@ -10,3 +12,15 @@
 //     "/(api|trpc)(.*)",
 //   ],
 // };
+
+
+// This function can be marked `async` if using `await` inside
+export function middleware() {
+  console.log("middleware running")
+  return NextResponse.next();
+}
+
+// See the documentation for more information about defining matcher: https://nextjs.org/docs/app/building-your-application/routing/middleware#matcher
+export const config = {
+  matcher: '/about/:path*',
+};
