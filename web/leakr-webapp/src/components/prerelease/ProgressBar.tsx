@@ -8,7 +8,7 @@ const SMALL_SCREEN_BREAKPOINT = 912;
 export default function ProgressBar() {
   const [progress, setProgress] = useState(0);
   // État pour le nombre total de blocs, initialisé en fonction de la taille d'écran initiale
-  const [totalBlocks, setTotalBlocks] = useState(30); // Valeur par défaut pour SSR ou avant hydratation
+  const [totalBlocks, setTotalBlocks] = useState(20); // Valeur par défaut pour SSR ou avant hydratation
 
   useEffect(() => {
     // Fonction pour mettre à jour le nombre de blocs en fonction de la largeur de la fenêtre
@@ -27,7 +27,8 @@ export default function ProgressBar() {
     window.addEventListener("resize", updateTotalBlocksBasedOnScreenSize);
 
     // Nettoyer l'écouteur d'événement lors du démontage du composant
-    return () => window.removeEventListener("resize", updateTotalBlocksBasedOnScreenSize);
+    return () =>
+      window.removeEventListener("resize", updateTotalBlocksBasedOnScreenSize);
   }, []); // Le tableau vide assure que cet effet ne s'exécute qu'au montage et au démontage
 
   useEffect(() => {
@@ -41,8 +42,12 @@ export default function ProgressBar() {
   const filledBlocks = Math.round((progress / 100) * totalBlocks);
 
   return (
-    // Ajout de padding horizontal pour les petits écrans et largeur maximale
-    <div className="flex flex-col items-center space-y-4 pt-10 px-4 w-full max-w-full">
+    <div
+      className={`flex flex-col items-center space-y-4
+                pt-6 pb-12 px-4 w-full max-w-full
+                sm:pt-8 sm:pb-14
+                md:pt-10 md:pb-16`}
+    >
       <p className="text-center text-sm text-[#B0B0B0] font-[var(--font-jetbrains-mono)] animate-fade-in">
         This is how close we are to the final version of{" "}
         <span className="text-[#7E5BEF]">Leakr</span>. Stay tuned.
@@ -81,11 +86,15 @@ export default function ProgressBar() {
           0%,
           100% {
             transform: scale(1);
-            filter: drop-shadow(0 0 2px #7e5bef); /* Ombre réduite pour petits blocs */
+            filter: drop-shadow(
+              0 0 2px #7e5bef
+            ); /* Ombre réduite pour petits blocs */
           }
           50% {
             transform: scale(1.2);
-            filter: drop-shadow(0 0 6px #7e5bef); /* Ombre réduite pour petits blocs */
+            filter: drop-shadow(
+              0 0 6px #7e5bef
+            ); /* Ombre réduite pour petits blocs */
           }
         }
         /* Styles pour écrans sm et plus */
@@ -102,7 +111,6 @@ export default function ProgressBar() {
             }
           }
         }
-
 
         @keyframes idle-glimmer {
           0%,
@@ -144,22 +152,22 @@ export default function ProgressBar() {
         @keyframes strong-pulse {
           0%,
           100% {
-             /* Ombre réduite par défaut */
+            /* Ombre réduite par défaut */
             box-shadow:
               0 0 15px #7e5befaa,
               0 0 25px #7e5bef77;
           }
           50% {
-             /* Ombre réduite par défaut */
+            /* Ombre réduite par défaut */
             box-shadow:
               0 0 25px #7e5befdd,
               0 0 40px #7e5befaa;
           }
         }
-         /* Styles pour écrans sm et plus */
+        /* Styles pour écrans sm et plus */
         @media (min-width: 640px) {
           .animate-strong-pulse {
-             /* Ombre originale */
+            /* Ombre originale */
             box-shadow:
               0 0 30px #7e5befaa,
               0 0 50px #7e5bef77;
@@ -167,13 +175,13 @@ export default function ProgressBar() {
           @keyframes strong-pulse {
             0%,
             100% {
-               /* Ombre originale */
+              /* Ombre originale */
               box-shadow:
                 0 0 30px #7e5befaa,
                 0 0 50px #7e5bef77;
             }
             50% {
-               /* Ombre originale */
+              /* Ombre originale */
               box-shadow:
                 0 0 50px #7e5befdd,
                 0 0 80px #7e5befaa;

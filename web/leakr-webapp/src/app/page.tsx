@@ -19,7 +19,9 @@ export default function Home() {
           /> */}
 
           {/* Taille de la police ajustée pour différents écrans */}
-          <h1 className="text-4xl sm:text-5xl font-bold text-[#7E5BEF]">Leakr</h1>
+          <h1 className="text-4xl sm:text-5xl font-bold text-[#7E5BEF]">
+            Leakr
+          </h1>
 
           {/* Taille de la police et largeur max ajustées */}
           <p className="text-base sm:text-lg text-[#B0B0B0] max-w-md sm:max-w-xl">
@@ -46,7 +48,9 @@ export default function Home() {
           {/* Mailing List Section - Ajustement de la marge supérieure */}
           <div className="mt-8 sm:mt-12 flex flex-col items-center gap-4 w-full max-w-xs sm:max-w-sm">
             {/* Taille de la police ajustée */}
-            <h2 className="text-xl sm:text-2xl font-semibold text-white">Stay Updated!</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold text-white">
+              Stay Updated!
+            </h2>
             {/* Taille de la police ajustée */}
             <p className="text-sm sm:text-md text-[#B0B0B0]">
               Subscribe to our mailing list for the latest updates and news
