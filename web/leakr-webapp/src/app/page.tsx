@@ -9,7 +9,7 @@ export default function Home() {
       {/* Ajustement du padding pour différents écrans */}
       <div className="flex flex-col min-h-screen bg-black text-gray-300 font-[family-name:var(--font-jetbrains-mono)] px-4 sm:px-6 md:px-8">
         {/* Ajustement de la marge supérieure et du padding pour différents écrans */}
-        <main className="flex flex-col items-center text-center gap-8 flex-grow justify-center mt-[0vh] sm:mt-[-7vh]">
+        <main className="flex flex-col items-center text-center gap-8 flex-grow justify-center mt-[0vh] sm:mt-[-7vh] md:mt-[-19vh] lg:mt-[-21vh]">
           {/* <Image
             src="/logo.png"
             alt="Leakr Logo"
