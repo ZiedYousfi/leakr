@@ -4,6 +4,7 @@
   import ActionButtons from "../components/SearchPage/ActionButtons.svelte";
   import { detectPlatform, type Platform } from "../lib/detectPlatform"; // Keep for tab URL detection
   import { fetchCreatorAndContentIds } from "../lib/creatorFinder"; // Import the creator fetching logic and its result type
+  import { addCreateur } from "../lib/dbUtils"; // Import addCreateur
   import {
     creatorIdentifier,
     identifiedCreator,
@@ -104,8 +105,6 @@
 
   // --- Derived State for UI ---
 
-  // REMOVED: processedInput derived state
-
   // Links (remain the same)
   const socialLinks: [string, (v: string) => string][] = [
     ["Linktree", (v) => `https://linktr.ee/${encodeURIComponent(v)}`],
@@ -181,6 +180,49 @@
   function handleInput(value: string) {
     creatorIdentifier.set(value); // Update the store when input changes
   }
+
+  async function handleAddCreator() {
+    const usernameToAdd = $potentialUsernameToCreate;
+    if (!usernameToAdd) return;
+
+    // Use a temporary loading flag specific to the add operation
+    // to avoid conflicting with the main lookup loading state if needed,
+    // or reuse $isCreatorLoading if the UX is acceptable.
+    // For simplicity, reusing $isCreatorLoading here.
+    isCreatorLoading.set(true);
+    creatorOperationError.set(null); // Clear previous errors
+
+    try {
+      // Add the creator with an empty alias array for now
+      const newCreatorId = addCreateur(usernameToAdd, []);
+      console.log(`Creator "${usernameToAdd}" added with ID: ${newCreatorId}`);
+
+      // Clear the potential username and trigger a re-search
+      // to fetch the newly added creator's details
+      potentialUsernameToCreate.set(null);
+
+      // Re-trigger the search for the same identifier
+      // to show the "Found creator" message immediately.
+      const currentIdentifier = $creatorIdentifier;
+      // Need to briefly clear and reset to ensure the effect runs again
+      // if the identifier itself hasn't changed.
+      creatorIdentifier.set("");
+      // Use timeout to ensure Svelte registers the change before setting back
+      setTimeout(() => {
+        creatorIdentifier.set(currentIdentifier);
+      }, 0);
+
+    } catch (err) {
+      console.error("SearchPage: Error adding creator:", err);
+      creatorOperationError.set(
+        `Failed to add creator "${usernameToAdd}". It might already exist.`
+      );
+      // Keep potentialUsernameToCreate set so the user can see the error context
+      isCreatorLoading.set(false); // Ensure loading stops on error
+    }
+    // 'finally' block removed as isCreatorLoading will be set to false
+    // by the lookup effect triggered above upon success, or in the catch block on error.
+  }
 </script>
 
 <div class="popup-body">
@@ -213,11 +255,9 @@
     <p>
       Creator "{$potentialUsernameToCreate}" not found.
       <button
-        onclick={() =>
-          onNavigate("AddCreatorPage", {
-            username: $potentialUsernameToCreate, // Use the username creatorFinder suggested
-          })}
+        onclick={handleAddCreator}
         class="link-button"
+        disabled={$isCreatorLoading} 
       >
         Add them?
       </button>
@@ -270,8 +310,14 @@
     margin-left: 0.5rem;
   }
 
-  .link-button:hover {
+  .link-button:hover:not(:disabled) { /* Add :not(:disabled) */
     color: #60a5fa; /* text-blue-400 */
+  }
+
+  .link-button:disabled {
+    color: #9ca3af; /* text-gray-400 */
+    cursor: not-allowed;
+    text-decoration: none;
   }
 
   /* Add styles for loading indicator if needed */
