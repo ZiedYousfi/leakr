@@ -1,6 +1,7 @@
 import initSqlJs from "sql.js";
 import Fuse from "fuse.js";
 import type { SqlJsStatic, Database } from "sql.js";
+import semver from "semver";
 
 let SQL: SqlJsStatic;
 let db: Database;

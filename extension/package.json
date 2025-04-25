@@ -20,7 +20,9 @@
     "@tailwindcss/postcss": "^4.1.4",
     "@tailwindcss/vite": "^4.1.4",
     "@tsconfig/svelte": "^5.0.4",
-    "@types/chrome": "^0.0.315",
+    "@types/chrome": "^0.0.317",
+    "@types/semver": "^7.7.0",
+    "@types/sql.js": "^1.4.9",
     "@typescript-eslint/eslint-plugin": "^8.30.1",
     "@typescript-eslint/parser": "^8.30.1",
     "autoprefixer": "^10.4.21",
@@ -36,8 +38,8 @@
     "vite-plugin-static-copy": "^2.3.1"
   },
   "dependencies": {
-    "@types/sql.js": "^1.4.9",
     "fuse.js": "^7.1.0",
+    "semver": "^7.7.1",
     "sql.js": "^1.13.0"
   }
 }
