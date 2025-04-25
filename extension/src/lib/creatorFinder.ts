@@ -25,7 +25,10 @@ export interface FetchCreatorResult {
 function isLikelyUrl(str: string): boolean {
   const trimmed = str.trim();
   // Basic check for protocol - adjust if needed for more complex URL forms
-  return /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed) || /^[a-zA-Z\d_.-]+\.[a-zA-Z]{2,}/.test(trimmed); // Also check for domain.tld format
+  return (
+    /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed) ||
+    /^[a-zA-Z\d_.-]+\.[a-zA-Z]{2,}/.test(trimmed)
+  ); // Also check for domain.tld format
 }
 
 // REMOVED: COMMON_PATH_WORDS constant is no longer needed
@@ -39,29 +42,26 @@ function isLikelyUrl(str: string): boolean {
 function extractPotentialUsernamesFromPath(url: string): string[] {
   try {
     // Handle cases where the input might not have a protocol
-    const urlWithProto = url.includes('://') ? url : `https://${url}`;
+    const urlWithProto = url.includes("://") ? url : `https://${url}`;
     const parsedUrl = new URL(urlWithProto);
     const pathname = parsedUrl.pathname;
     // Split by common separators
     const segments = pathname.split(/[\/\-_]/);
     // Filter out empty strings and purely numeric strings
-    return segments.filter(segment =>
-        segment.length > 0 &&
-        !/^\d+$/.test(segment)
-        // REMOVED: Check against COMMON_PATH_WORDS is gone
+    return segments.filter(
+      (segment) => segment.length > 0 && !/^\d+$/.test(segment)
+      // REMOVED: Check against COMMON_PATH_WORDS is gone
     );
   } catch (e) {
     console.warn(`Could not parse URL path for segment extraction: ${url}`, e);
     // Fallback: try splitting the original string directly if URL parsing fails
-     const segments = url.split(/[\/\-_]/);
-     return segments.filter(segment =>
-        segment.length > 0 &&
-        !/^\d+$/.test(segment)
-        // REMOVED: Check against COMMON_PATH_WORDS is gone
+    const segments = url.split(/[\/\-_]/);
+    return segments.filter(
+      (segment) => segment.length > 0 && !/^\d+$/.test(segment)
+      // REMOVED: Check against COMMON_PATH_WORDS is gone
     );
   }
 }
-
 
 /**
  * Processes an identifier (URL or username), fetches the corresponding creator
@@ -93,15 +93,21 @@ export async function fetchCreatorAndContentIds(
   ) {
     const keywordRefined = refinePotentialUsername(initialExtractedUsername);
     if (keywordRefined !== initialExtractedUsername) {
-        console.log(`Keyword refinement: "${initialExtractedUsername}" -> "${keywordRefined}"`);
-        refinedUsername = keywordRefined;
+      console.log(
+        `Keyword refinement: "${initialExtractedUsername}" -> "${keywordRefined}"`
+      );
+      refinedUsername = keywordRefined;
     }
   }
 
   // 2. Determine the initial username to search
   if (refinedUsername) {
     usernameToSearch = refinedUsername;
-  } else if (!platform && originalIdentifier && !isLikelyUrl(originalIdentifier)) {
+  } else if (
+    !platform &&
+    originalIdentifier &&
+    !isLikelyUrl(originalIdentifier)
+  ) {
     // Only accept non-URL raw input as username if no platform detected
     usernameToSearch = originalIdentifier;
   }
@@ -111,66 +117,73 @@ export async function fetchCreatorAndContentIds(
   // 2.5. If still no username and it's a URL, try searching path segments against DB
   if (!usernameToSearch && isLikelyUrl(originalIdentifier)) {
     console.log("Attempting path segment DB search for:", originalIdentifier);
-    const potentialUsernames = extractPotentialUsernamesFromPath(originalIdentifier);
-    console.log("Potential usernames from path (unfiltered):", potentialUsernames); // Log unfiltered segments
+    const potentialUsernames =
+      extractPotentialUsernamesFromPath(originalIdentifier);
+    console.log(
+      "Potential usernames from path (unfiltered):",
+      potentialUsernames
+    ); // Log unfiltered segments
 
     for (const segment of potentialUsernames) {
-        // REMOVED: Minimum length check (can be added back if desired)
-        // if (segment.length < 3) {
-        //      console.log(`Skipping short segment: "${segment}"`);
-        //      continue;
-        // }
+      // REMOVED: Minimum length check (can be added back if desired)
+      // if (segment.length < 3) {
+      //      console.log(`Skipping short segment: "${segment}"`);
+      //      continue;
+      // }
 
-        console.log(`Testing segment as username: "${segment}"`);
-        try {
-            // Check if this segment corresponds to a known creator
-            const potentialCreator = findCreatorByUsername(segment);
-            if (potentialCreator) {
-                console.log(`Found creator for segment: "${segment}"`);
-                usernameToSearch = segment; // Found a valid username!
-                // If we found it this way, the platform is likely unknown or generic
-                // Keep the original 'platform' value (which should be null here)
-                break; // Stop searching segments once a match is found
-            }
-        } catch (segmentLookupError) {
-            // Log error but continue trying other segments
-            console.error(`Error looking up segment "${segment}":`, segmentLookupError);
+      console.log(`Testing segment as username: "${segment}"`);
+      try {
+        // Check if this segment corresponds to a known creator
+        const potentialCreator = findCreatorByUsername(segment);
+        if (potentialCreator) {
+          console.log(`Found creator for segment: "${segment}"`);
+          usernameToSearch = segment; // Found a valid username!
+          // If we found it this way, the platform is likely unknown or generic
+          // Keep the original 'platform' value (which should be null here)
+          break; // Stop searching segments once a match is found
         }
+      } catch (segmentLookupError) {
+        // Log error but continue trying other segments
+        console.error(
+          `Error looking up segment "${segment}":`,
+          segmentLookupError
+        );
+      }
     }
-     // If we found a username via segments, clear any potential previous error state
-     if (usernameToSearch) {
-         error = null;
-     }
+    // If we found a username via segments, clear any potential previous error state
+    if (usernameToSearch) {
+      error = null;
+    }
   }
 
   // 3. Set error messages based on the outcome so far
   if (!usernameToSearch) {
-      // Only set error if one wasn't already set by segment search failure
-      if (!error) {
-          if (platform && !initialExtractedUsername) {
-              error = `Could not extract a username for ${platform} from the URL.`;
-          } else if (isLikelyUrl(originalIdentifier)) {
-              if (initialExtractedUsername) {
-                   error = `Could not confirm username from URL path segment "${initialExtractedUsername}" or other path parts.`;
-              } else {
-                   error = `Could not identify a known username within the URL: ${originalIdentifier}`;
-              }
-          } else {
-              // Input was likely intended as a direct username but wasn't found or was invalid
-              error = `Invalid or empty username provided: "${originalIdentifier}"`;
-          }
+    // Only set error if one wasn't already set by segment search failure
+    if (!error) {
+      if (platform && !initialExtractedUsername) {
+        error = `Could not extract a username for ${platform} from the URL.`;
+      } else if (isLikelyUrl(originalIdentifier)) {
+        if (initialExtractedUsername) {
+          error = `Could not confirm username from URL path segment "${initialExtractedUsername}" or other path parts.`;
+        } else {
+          error = `Could not identify a known username within the URL: ${originalIdentifier}`;
+        }
+      } else {
+        // Input was likely intended as a direct username but wasn't found or was invalid
+        error = `Invalid or empty username provided: "${originalIdentifier}"`;
       }
+    }
   } else if (usernameToSearch.trim().length === 0) {
-      // This case should be less likely now, but handle if refinement/extraction yields empty
-      error = "Extracted username is empty.";
-      usernameToSearch = null; // Prevent search with empty string
+    // This case should be less likely now, but handle if refinement/extraction yields empty
+    error = "Extracted username is empty.";
+    usernameToSearch = null; // Prevent search with empty string
   }
-
 
   // 4. Validate final usernameToSearch and proceed if valid
   if (!usernameToSearch) {
     // Report the username we ended up with before validation failed
-    const finalUsernameFound = usernameToSearch || refinedUsername || initialExtractedUsername;
+    const finalUsernameFound =
+      usernameToSearch || refinedUsername || initialExtractedUsername;
     return {
       creator: null,
       contentIds: null,
@@ -199,7 +212,8 @@ export async function fetchCreatorAndContentIds(
         // Save profile link ONLY if a specific platform was detected initially AND it was a URL
         const shouldSaveProfile = platform && isLikelyUrl(originalIdentifier);
 
-        if (shouldSaveProfile && platform && creator) { // Redundant checks for clarity
+        if (shouldSaveProfile && platform && creator) {
+          // Redundant checks for clarity
           try {
             const platformIdRaw = addPlateforme(platform);
             const platformId =
@@ -233,7 +247,6 @@ export async function fetchCreatorAndContentIds(
           }
         }
         // --- END PROFILE SAVING LOGIC ---
-
       } catch (contentError) {
         console.error(
           `creatorFinder: Error loading content IDs for creator ${creator.id} (${finalUsernameToSearch}):`,
@@ -245,12 +258,18 @@ export async function fetchCreatorAndContentIds(
       // This else block might be redundant if findCreatorByUsername was already called in step 2.5
       // However, it handles the case where the initial username (from step 1/1.5/2) was used and not found.
       error = `Creator "${finalUsernameToSearch}" not found.`;
-       // Add context if refinement/extraction occurred
-       if (initialExtractedUsername && finalUsernameToSearch !== initialExtractedUsername) {
-           error += ` (Processed from "${initialExtractedUsername}")`;
-       } else if (usernameToSearch !== originalIdentifier && !initialExtractedUsername) {
-            error += ` (Extracted from path of "${originalIdentifier}")`;
-       }
+      // Add context if refinement/extraction occurred
+      if (
+        initialExtractedUsername &&
+        finalUsernameToSearch !== initialExtractedUsername
+      ) {
+        error += ` (Processed from "${initialExtractedUsername}")`;
+      } else if (
+        usernameToSearch !== originalIdentifier &&
+        !initialExtractedUsername
+      ) {
+        error += ` (Extracted from path of "${originalIdentifier}")`;
+      }
     }
   } catch (lookupError) {
     // This catches errors during the findCreatorByUsername call in *this* step (5)

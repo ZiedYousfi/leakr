@@ -66,18 +66,20 @@ export function refinePotentialUsername(potentialUsername: string): string {
           const currentPartLower = parts[i].toLowerCase();
 
           // Check if the current part *is* or *starts with* any known keyword
-          const isKeywordPart = USERNAME_SUFFIX_KEYWORDS.has(currentPartLower) ||
-                                [...USERNAME_SUFFIX_KEYWORDS].some(keyword => currentPartLower.startsWith(keyword));
-
+          const isKeywordPart =
+            USERNAME_SUFFIX_KEYWORDS.has(currentPartLower) ||
+            [...USERNAME_SUFFIX_KEYWORDS].some((keyword) =>
+              currentPartLower.startsWith(keyword)
+            );
 
           if (isKeywordPart) {
             // Found a keyword part. Assume the username is everything before this part.
             // Join the parts from the beginning up to (but not including) index i
             const candidate = parts.slice(0, i).join(sep);
-             // Only accept refinement if it's not empty
+            // Only accept refinement if it's not empty
             if (candidate) {
-                 refined = candidate;
-                 refinementDone = true;
+              refined = candidate;
+              refinementDone = true;
             }
             break; // Stop checking parts for this separator
           }
@@ -92,22 +94,24 @@ export function refinePotentialUsername(potentialUsername: string): string {
   // Basic cleanup: remove trailing/leading separators if refinement happened
   // and ensure the result isn't empty.
   if (refinementDone) {
-      let needsTrimming = true;
-      while(needsTrimming && refined) {
-          needsTrimming = false;
-          for (const sep of SEPARATORS) {
-              if (refined.endsWith(sep)) {
-                  refined = refined.substring(0, refined.length - 1);
-                  needsTrimming = true;
-              }
-              if (refined.startsWith(sep)) {
-                  refined = refined.substring(1);
-                  needsTrimming = true;
-              }
-          }
+    let needsTrimming = true;
+    while (needsTrimming && refined) {
+      needsTrimming = false;
+      for (const sep of SEPARATORS) {
+        if (refined.endsWith(sep)) {
+          refined = refined.substring(0, refined.length - 1);
+          needsTrimming = true;
+        }
+        if (refined.startsWith(sep)) {
+          refined = refined.substring(1);
+          needsTrimming = true;
+        }
       }
+    }
   }
 
   // Return the refined username only if it's not empty, otherwise return the original.
-  return refined && refined.trim().length > 0 ? refined.trim() : potentialUsername;
+  return refined && refined.trim().length > 0
+    ? refined.trim()
+    : potentialUsername;
 }

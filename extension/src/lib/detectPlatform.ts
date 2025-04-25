@@ -31,7 +31,10 @@ export function detectPlatform(url: string): {
     ["linktree", /linktr\.ee\/([\w\d_.-]+)/i], // Username is group 1
     ["linktree", /linktree\.com\/([\w\d_.-]+)/i], // Username is group 1
     ["linkinbio", /linkin\.bio\/([\w\d_.-]+)/i], // Username is group 1
-    ["fapello", /fapello\.(?:com|ru)\/galleries\/([\w\d_.-]+?)(?:[-_].*)?\/?$/i],
+    [
+      "fapello",
+      /fapello\.(?:com|ru)\/galleries\/([\w\d_.-]+?)(?:[-_].*)?\/?$/i,
+    ],
     ["fapello", /fapello\.(?:com|ru)\/([\w\d_.-]+)\/?$/i],
     ["kbjfree", /kbjfree\.com\/search\?q=([\w\d_.-]+)/i], // Username in group 1 (query param)
     ["kbjfree", /kbjfree\.com\/model\/([\w\d_.-]+)/i], // Username in group 1

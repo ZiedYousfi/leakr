@@ -105,7 +105,7 @@ function createSchema() {
 }
 
 // 🧠 Vérifie la version de la base et lance les migrations si nécessaire
-const DB_VERSION = "1.1.2";                       // version cible
+const DB_VERSION = "1.1.2"; // version cible
 
 // --- Définition des migrations ---
 interface Migration {
@@ -114,7 +114,7 @@ interface Migration {
 }
 
 const migrations: Migration[] = [
-{
+  {
     to: "1.1.0",
     up(db) {
       // 1️⃣ Ajouter la colonne 'verifie'
@@ -130,25 +130,35 @@ const migrations: Migration[] = [
       `);
 
       if (duplicates.length > 0) {
-        console.warn("⚠️ Doublons détectés dans 'aliases'. Nettoyage en cours…");
+        console.warn(
+          "⚠️ Doublons détectés dans 'aliases'. Nettoyage en cours…"
+        );
 
         duplicates[0].values.forEach(([alias]) => {
           // Pour chaque alias en double, on conserve 1 entrée et on modifie les autres
-          const rows = db.exec(`SELECT id FROM createurs WHERE aliases = '${alias}' ORDER BY id ASC;`);
+          const rows = db.exec(
+            `SELECT id FROM createurs WHERE aliases = '${alias}' ORDER BY id ASC;`
+          );
           const ids = rows[0].values.map(([id]) => id);
 
           // On garde le premier, on modifie les autres
           for (let i = 1; i < ids.length; i++) {
             const newAlias = alias + `_dup${i}`;
-            db.run(`UPDATE createurs SET aliases = '${newAlias}' WHERE id = ${ids[i]};`);
+            db.run(
+              `UPDATE createurs SET aliases = '${newAlias}' WHERE id = ${ids[i]};`
+            );
             console.log(`🔧 Alias dupliqué ajusté : ${alias} → ${newAlias}`);
           }
         });
       }
 
       // 3️⃣ Créer les index uniques une fois les données propres
-      db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_createurs_nom_unique ON createurs(nom);");
-      db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_createurs_aliases_unique ON createurs(aliases);");
+      db.run(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_createurs_nom_unique ON createurs(nom);"
+      );
+      db.run(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_createurs_aliases_unique ON createurs(aliases);"
+      );
 
       console.log("✅ Migration 1.1.0 appliquée avec nettoyage des doublons.");
     },
@@ -157,7 +167,9 @@ const migrations: Migration[] = [
   {
     to: "1.1.1",
     up(db) {
-      console.log("🔄 Migration 1.1.1 : Nettoyage des aliases et sécurisation des contraintes…");
+      console.log(
+        "🔄 Migration 1.1.1 : Nettoyage des aliases et sécurisation des contraintes…"
+      );
 
       // 2️⃣ Détecter et corriger les doublons d'aliases
       const duplicates = db.exec(`
@@ -168,24 +180,42 @@ const migrations: Migration[] = [
       `);
 
       if (duplicates.length > 0) {
-        console.warn(`⚠️ ${duplicates[0].values.length} doublons d'aliases détectés.`);
+        console.warn(
+          `⚠️ ${duplicates[0].values.length} doublons d'aliases détectés.`
+        );
 
         duplicates[0].values.forEach(([alias]) => {
-          const rows = db.exec(`SELECT id FROM createurs WHERE aliases = '${alias}' ORDER BY id ASC;`);
+          const rows = db.exec(
+            `SELECT id FROM createurs WHERE aliases = '${alias}' ORDER BY id ASC;`
+          );
           const ids = rows[0].values.map(([id]) => id);
 
           for (let i = 1; i < ids.length; i++) {
-            if (typeof alias === 'string') { // Check if alias is a string
+            if (typeof alias === "string") {
+              // Check if alias is a string
               // Adjust replacement logic to add as a new element, handle empty array
-              const newAlias = alias === '[]' ? `["_dup${i}"]` : alias.replace(/\]$/, `, "_dup${i}"]`);
+              const newAlias =
+                alias === "[]"
+                  ? `["_dup${i}"]`
+                  : alias.replace(/\]$/, `, "_dup${i}"]`);
               // Use parameterized query to prevent potential SQL injection issues
-              db.run(`UPDATE createurs SET aliases = ? WHERE id = ?;`, [newAlias, ids[i]]);
-              console.log(`🔧 Alias dupliqué ajusté pour ID ${ids[i]} : ${newAlias}`);
+              db.run(`UPDATE createurs SET aliases = ? WHERE id = ?;`, [
+                newAlias,
+                ids[i],
+              ]);
+              console.log(
+                `🔧 Alias dupliqué ajusté pour ID ${ids[i]} : ${newAlias}`
+              );
             } else {
               // Handle cases where alias is not a string (e.g., null, number)
               const defaultAlias = `["_dup${i}"]`;
-              db.run(`UPDATE createurs SET aliases = ? WHERE id = ?;`, [defaultAlias, ids[i]]);
-              console.warn(`⚠️ Alias non-string détecté pour ID ${ids[i]}: ${alias}. Réinitialisé à ${defaultAlias}.`);
+              db.run(`UPDATE createurs SET aliases = ? WHERE id = ?;`, [
+                defaultAlias,
+                ids[i],
+              ]);
+              console.warn(
+                `⚠️ Alias non-string détecté pour ID ${ids[i]}: ${alias}. Réinitialisé à ${defaultAlias}.`
+              );
             }
           }
         });
@@ -200,13 +230,19 @@ const migrations: Migration[] = [
       if (invalids.length > 0) {
         invalids[0].values.forEach(([id, aliases]) => {
           db.run(`UPDATE createurs SET aliases = '[]' WHERE id = ${id};`);
-          console.log(`✨ Alias réinitialisé pour le créateur ID ${id} (ancien: "${aliases}")`);
+          console.log(
+            `✨ Alias réinitialisé pour le créateur ID ${id} (ancien: "${aliases}")`
+          );
         });
       }
 
       // 3️⃣ Appliquer les contraintes UNIQUE après nettoyage
-      db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_createurs_nom_unique ON createurs(nom);");
-      db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_createurs_aliases_unique ON createurs(aliases);");
+      db.run(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_createurs_nom_unique ON createurs(nom);"
+      );
+      db.run(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_createurs_aliases_unique ON createurs(aliases);"
+      );
 
       console.log("✅ Migration 1.1.1 terminée avec succès.");
     },
@@ -214,7 +250,9 @@ const migrations: Migration[] = [
   {
     to: "1.1.2",
     up(db) {
-      console.log("🔄 Migration 1.1.2 : Purge des '_dupX' et rétablissement de l'unicité");
+      console.log(
+        "🔄 Migration 1.1.2 : Purge des '_dupX' et rétablissement de l'unicité"
+      );
 
       // 0️⃣ On supprime temporairement l'index pour éviter les erreurs de contrainte
       db.run("DROP INDEX IF EXISTS idx_createurs_aliases_unique;");
@@ -225,7 +263,8 @@ const migrations: Migration[] = [
       let countFixed = 0;
       if (rows.length > 0) {
         rows[0].values.forEach(([id, aliasText]) => {
-          if (typeof aliasText !== "string" || !aliasText.includes("_dup")) return;
+          if (typeof aliasText !== "string" || !aliasText.includes("_dup"))
+            return;
 
           // Tenter de parser la partie JSON valide
           let base: string[] = [];
@@ -235,15 +274,21 @@ const migrations: Migration[] = [
           } catch {
             const m = aliasText.match(/^(\[.*?\])/);
             if (m) {
-              try { base = JSON.parse(m[1]); }
-              catch { base = []; }
+              try {
+                base = JSON.parse(m[1]);
+              } catch {
+                base = [];
+              }
             }
           }
 
           // On retire tout ce qui contient "_dup"
-          const cleaned = base.filter(a => !a.includes("_dup"));
+          const cleaned = base.filter((a) => !a.includes("_dup"));
           const cleanedStr = JSON.stringify(cleaned);
-          db.run(`UPDATE createurs SET aliases = ? WHERE id = ?;`, [cleanedStr, id]);
+          db.run(`UPDATE createurs SET aliases = ? WHERE id = ?;`, [
+            cleanedStr,
+            id,
+          ]);
           countFixed++;
           console.log(`   🔧 ID ${id} → ${cleanedStr}`);
         });
@@ -258,38 +303,45 @@ const migrations: Migration[] = [
         HAVING cnt > 1
       `);
       if (postDup.length === 0) {
-        db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_createurs_aliases_unique ON createurs(aliases);");
+        db.run(
+          "CREATE UNIQUE INDEX IF NOT EXISTS idx_createurs_aliases_unique ON createurs(aliases);"
+        );
         console.log("   ✅ Index UNIQUE rétabli sur createurs(aliases)");
       } else {
-        console.warn("   ⚠️ Des doublons subsistent, index UNIQUE non recréé. À corriger manuellement.");
+        console.warn(
+          "   ⚠️ Des doublons subsistent, index UNIQUE non recréé. À corriger manuellement."
+        );
       }
 
       console.log("🌸 Migration 1.1.2 terminée.");
     },
-  }
+  },
 
   // Ajoutez d'autres migrations ici
-
 
   // { to: "1.2.0", up(db) { /* … */ } },
 ];
 
 function validateMigrations() {
-  const versions = migrations.map(m => m.to);
+  const versions = migrations.map((m) => m.to);
   for (let i = 1; i < versions.length; i++) {
     if (!semver.gt(versions[i], versions[i - 1])) {
-      throw new Error(`🚨 Migration mal ordonnée : ${versions[i - 1]} → ${versions[i]}`);
+      throw new Error(
+        `🚨 Migration mal ordonnée : ${versions[i - 1]} → ${versions[i]}`
+      );
     }
   }
   if (versions[versions.length - 1] !== DB_VERSION) {
-    console.warn(`⚠️ Dernière migration (${versions[versions.length - 1]}) différente de DB_VERSION (${DB_VERSION})`);
+    console.warn(
+      `⚠️ Dernière migration (${versions[versions.length - 1]}) différente de DB_VERSION (${DB_VERSION})`
+    );
   }
 }
 
 // 📦 Initialise sql.js et la base
 export async function initDatabase(): Promise<void> {
   SQL = await initSqlJs({
-    locateFile: (_: string) => chrome.runtime.getURL("sql-wasm.wasm")
+    locateFile: (_: string) => chrome.runtime.getURL("sql-wasm.wasm"),
   });
 
   const stored = await chrome.storage.local.get("leakr_db");
@@ -299,11 +351,11 @@ export async function initDatabase(): Promise<void> {
   } else {
     db = new SQL.Database();
     console.log("✨ Nouvelle base créée");
-    createSchema();            // votre schéma initial
+    createSchema(); // votre schéma initial
     await saveDatabase();
   }
 
-  await checkVersion();       // passe en revue et applique les migrations
+  await checkVersion(); // passe en revue et applique les migrations
 }
 
 // 🧠 Vérifie la version et déclenche les migrations si besoin
@@ -312,7 +364,9 @@ async function checkVersion() {
   if (!stmt.step()) {
     throw new Error("❌ La table version est manquante ou corrompue.");
   }
-  const { version_texte: current } = stmt.getAsObject() as { version_texte: string };
+  const { version_texte: current } = stmt.getAsObject() as {
+    version_texte: string;
+  };
   stmt.free();
   console.log(`📜 Version DB locale : ${current}`);
 
@@ -320,7 +374,9 @@ async function checkVersion() {
     console.warn(`⚠️ Migration nécessaire : ${current} → ${DB_VERSION}`);
     await runMigrations(current);
   } else if (semver.gt(current, DB_VERSION)) {
-    throw new Error(`❌ DB (${current}) > extension (${DB_VERSION}). Downgrade non pris en charge.`);
+    throw new Error(
+      `❌ DB (${current}) > extension (${DB_VERSION}). Downgrade non pris en charge.`
+    );
   } else {
     console.log("✅ Versions synchronisées, aucune migration à appliquer.");
   }
@@ -333,8 +389,8 @@ async function runMigrations(current: string) {
   db.exec("BEGIN TRANSACTION;");
   try {
     const toApply = migrations
-      .filter(m => semver.gt(m.to, current) && semver.lte(m.to, DB_VERSION))
-      .sort((a,b) => semver.compare(a.to, b.to));
+      .filter((m) => semver.gt(m.to, current) && semver.lte(m.to, DB_VERSION))
+      .sort((a, b) => semver.compare(a.to, b.to));
 
     for (const { to, up } of toApply) {
       console.log(`⏳ Migration vers ${to}…`);
@@ -355,7 +411,6 @@ async function runMigrations(current: string) {
     throw err;
   }
 }
-
 
 // 💾 Sauvegarde de la base dans chrome.storage.local
 export async function saveDatabase(): Promise<void> {
@@ -534,7 +589,6 @@ export function updateUUID(newUuid: string): void {
     stmt.free();
   }
 }
-
 
 // --- Fonctions CRUD ---
 
