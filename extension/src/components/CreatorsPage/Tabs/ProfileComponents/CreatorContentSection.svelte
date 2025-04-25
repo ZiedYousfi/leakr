@@ -13,17 +13,23 @@
   });
 
   // Fetch content IDs when the identified creator changes
-  $effect(() => {
-    const creator = $identifiedCreator;
-    if (creator) {
+  let lastLoadedCreatorId: number | null = null;
+
+$effect(() => {
+  const creator = $identifiedCreator;
+  if (creator) {
+    if (lastLoadedCreatorId !== creator.id) {
       loadContentIds(creator.id);
-    } else {
-      // Reset when no creator is identified
-      identifiedCreatorContentIds.set(null); // Clear the store
-      localContentIds = null; // Clear local state
-      errorMessage = null;
+      lastLoadedCreatorId = creator.id;
     }
-  });
+  } else {
+    identifiedCreatorContentIds.set(null);
+    localContentIds = null;
+    errorMessage = null;
+    lastLoadedCreatorId = null;
+  }
+});
+
 
   async function loadContentIds(creatorId: number) {
     // Only load if not already loaded or creator changed
