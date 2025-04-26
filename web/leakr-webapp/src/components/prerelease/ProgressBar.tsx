@@ -48,7 +48,7 @@ export default function ProgressBar() {
                 sm:pt-8 sm:pb-14
                 md:pt-10 md:pb-16`}
     >
-      <p className="text-center text-sm text-[#B0B0B0] font-[var(--font-jetbrains-mono)] animate-fade-in">
+      <p className="text-center text-sm text-[#B0B0B0] font-[var(--font-fira-mono)] animate-fade-in">
         This is how close we are to the final version of{" "}
         <span className="text-[#7E5BEF]">Leakr</span>. Stay tuned.
       </p>

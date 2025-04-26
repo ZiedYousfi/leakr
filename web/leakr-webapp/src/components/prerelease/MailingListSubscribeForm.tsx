@@ -36,7 +36,7 @@ const SubscribeForm = () => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col items-start space-y-3 max-w-sm font-[var(--font-jetbrains-mono)]"
+      className="flex flex-col items-start space-y-3 max-w-sm font-[var(--font-fira-mono)]" // Font matches style guide (Fira Mono)
     >
       <input
         type="email"
@@ -44,15 +44,15 @@ const SubscribeForm = () => {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         required
-        className="w-full bg-black border border-[#B0B0B0] text-[#B0B0B0] px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7E5BEF] focus:border-transparent placeholder:text-gray-600"
+        className="w-full bg-black border border-[#B0B0B0] text-[#E0E0E0] px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7E5BEF] focus:border-transparent placeholder:text-[#4B4B4B] transition duration-200 ease-in-out" // Added transition for consistency
       />
       <button
         type="submit"
-        className="bg-[#7E5BEF] text-white px-4 py-2 rounded-md hover:bg-[#6a48d7] transition duration-200 ease-in-out self-center"
+        className="bg-[#7E5BEF] text-white px-4 py-2 rounded-md hover:bg-[#6a48d7] hover:shadow-[0_0_15px_rgba(126,91,239,0.6)] transition duration-200 ease-in-out self-center" // Colors match style guide (Night Violet bg, White text) + Added hover glow effect
       >
         Subscribe ✨
       </button>
-      {message && <p className="text-sm mt-2 text-[#B0B0B0]">{message}</p>}
+      {message && <p className="text-sm mt-2 text-[#B0B0B0]">{message}</p>} {/* Text color matches style guide (Silver Grey) */}
     </form>
   );
 };

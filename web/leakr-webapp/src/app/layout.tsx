@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from '@vercel/analytics/next';
-import { JetBrains_Mono } from "next/font/google";
-import { Inter } from "next/font/google";
+import { Fira_Mono, Fira_Sans } from "next/font/google";
 import Footer from "@/components/layout/Footer";
 import "./globals.css";
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
+const firaMono = Fira_Mono({
+  variable: "--font-fira-mono",
+  weight: ["400", "500", "700"],
   subsets: ["latin"],
 });
 
-const inter = Inter({
-  variable: "--font-inter",
+const firaSans = Fira_Sans({
+  variable: "--font-fira-sans",
+  weight: ["400", "500", "700"],
   subsets: ["latin"],
 });
 
@@ -30,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${jetbrainsMono.variable} ${inter.variable} antialiased`}
+        className={`${firaMono.variable} ${firaSans.variable} antialiased`}
       >
         <SpeedInsights />
         <Analytics /> {/* Vercel Analytics */}

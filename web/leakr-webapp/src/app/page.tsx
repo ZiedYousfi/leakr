@@ -7,7 +7,7 @@ export default function Home() {
     <>
       <ProgressBar />
       {/* Ajustement du padding pour différents écrans */}
-      <div className="flex flex-col min-h-screen bg-black text-gray-300 font-[family-name:var(--font-jetbrains-mono)] px-4 sm:px-6 md:px-8">
+      <div className="flex flex-col min-h-screen bg-black text-gray-300 font-[family-name:var(--font-fira-mono)] px-4 sm:px-6 md:px-8">
         {/* Ajustement de la marge supérieure et du padding pour différents écrans */}
         <main className="flex flex-col items-center text-center gap-8 flex-grow justify-center mt-[0vh] sm:mt-[-7vh] md:mt-[-19vh] lg:mt-[-21vh]">
           {/* <Image
@@ -24,7 +24,7 @@ export default function Home() {
           </h1>
 
           {/* Taille de la police et largeur max ajustées */}
-          <p className="text-base sm:text-lg text-[#B0B0B0] max-w-md sm:max-w-xl">
+          <p className="text-base sm:text-lg text-[#B0B0B0] max-w-md sm:max-w-xl font-[var(--font-fira-sans)]">
             🚀 Leakr — Instantly search and discover leaked content from your
             favorite creators on platforms like OnlyFans, Fansly, and more — all
             in one click! 🔥 No need to paste links — Leakr detects profiles
@@ -48,11 +48,12 @@ export default function Home() {
           {/* Mailing List Section - Ajustement de la marge supérieure */}
           <div className="mt-8 sm:mt-12 flex flex-col items-center gap-4 w-full max-w-xs sm:max-w-sm">
             {/* Taille de la police ajustée */}
-            <h2 className="text-xl sm:text-2xl font-semibold text-white">
+            <h2 className="text-xl sm:text-2xl font-[var(--font-fira-mono)] text-white">
               Stay Updated!
             </h2>
             {/* Taille de la police ajustée */}
-            <p className="text-sm sm:text-md text-[#B0B0B0]">
+            <p className="text-sm sm:text-md text-[#B0B0B0] font-[var(--font-fira-sans)]">
+              ️✨ Be the first to know when we launch!{" "}
               Subscribe to our mailing list for the latest updates and news
               about Leakr.
             </p>
