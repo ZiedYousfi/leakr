@@ -95,38 +95,37 @@
     }
   }
 </script>
-
 <!-- Content List -->
+  <!-- Apply base font from style guide if configured globally, e.g., font-sans -->
   <div
-    class="w-full flex-1 flex-col gap-2 max-h-350 p-2 bg-gray-800 rounded-2xl overflow-y-auto"
+    class="w-full flex-1 flex-col gap-2 max-h-350 p-2 bg-[#1a1a1a] rounded-2xl overflow-y-auto font-sans" 
   >
     {#if isLoading && contents.length === 0}
-      <p class="text-[#B0B0B0] text-center">Loading content...</p>
+      <p class="text-[#B0B0B0] text-center">Loading content...</p> <!-- Updated text color -->
     {:else if isLoading}
-       <p class="text-[#B0B0B0] text-center text-xs py-1">Refreshing...</p>
+       <p class="text-[#B0B0B0] text-center text-xs py-1">Refreshing...</p> <!-- Updated text color -->
     {/if}
     {#if errorMessage}
-      <p class="text-red-500 text-sm my-2 text-center">{errorMessage}</p>
+      <p class="text-[#FFB6C1] text-sm my-2 text-center">{errorMessage}</p> <!-- Updated error color -->
     {/if}
     {#if !isLoading && contents.length === 0 && !errorMessage}
       <!-- Updated message for multiple IDs -->
-      <p class="text-[#B0B0B0] text-center">No content found{contentIds && contentIds.length > 0 ? ` for the specified IDs` : ''}.</p>
+      <p class="text-[#B0B0B0] text-center">No content found{contentIds && contentIds.length > 0 ? ` for the specified IDs` : ''}.</p> <!-- Updated text color -->
     {:else}
       {#each contents as content (content.id)}
         <div
-          class="bg-gray-900 p-4 rounded-2xl flex justify-between items-center gap-2 mb-2" 
-        >
+          class="bg-[#2a2a2a] p-4 rounded-2xl flex justify-between items-center gap-2 mb-2 border border-[#4B4B4B]" >
           <div class="flex-grow overflow-hidden">
             <a
               href={content.url}
               target="_blank"
               rel="noopener noreferrer"
-              class="text-[#7E5BEF] hover:underline text-sm truncate block"
+              class="text-[#7E5BEF] hover:underline text-sm truncate block font-mono"
               title={content.url}
             >
               {content.tabname ? content.tabname : content.url}
             </a>
-            <p class="text-xs text-gray-500 mt-1">
+            <p class="text-xs text-[#B0B0B0] mt-1"> <!-- Updated secondary text color -->
               Added: {formatDate(content.date_ajout)}
             </p>
           </div>
@@ -136,7 +135,7 @@
               title={content.favori
                 ? "Remove from favorites"
                 : "Add to favorites"}
-              class={`text-xl ${content.favori ? "text-yellow-400" : "text-[#B0B0B0] hover:text-[#7E5BEF]"}`}
+              class={`text-xl ${content.favori ? "text-[#7E5BEF]" : "text-[#B0B0B0] hover:text-[#7E5BEF]"}`}
               disabled={isLoading}
             >
               {content.favori ? "★" : "☆"}
@@ -144,7 +143,7 @@
             <button
               onclick={() => handleDeleteContent(content.id)}
               title="Delete Content"
-              class="text-red-500 hover:text-red-400 text-lg font-bold"
+              class="text-[#FFB6C1] hover:text-[#7E5BEF] text-lg font-bold"
               disabled={isLoading}
             >
               &times;
@@ -159,7 +158,7 @@
   @import "tailwindcss";
 
   .popup-body {
-    background-color: #000000; /* Noir profond */
+    background-color: #000000; /* Deep Black */
     min-width: 350px;
     max-width: 450px;
     display: flex;
@@ -167,24 +166,32 @@
     align-items: center;
     gap: 0.5rem;
     padding: 1rem;
-    color: #b0b0b0; /* Gris argenté */
+    color: #B0B0B0; /* Silver Grey */
     min-height: 300px;
     max-height: 500px;
+    /* Assuming Fira Sans is the default body font, set globally or here */
+    /* font-family: 'Fira Sans', sans-serif; */
   }
 
-  /* Style for scrollbar */
+  /* Style for scrollbar - Already aligns well with the dark theme */
   .overflow-y-auto::-webkit-scrollbar {
     width: 6px;
   }
   .overflow-y-auto::-webkit-scrollbar-track {
-    background: #1a1a1a; /* Darker track */
+    background: #1a1a1a; /* Dark track */
     border-radius: 3px;
   }
   .overflow-y-auto::-webkit-scrollbar-thumb {
-    background: #555; /* Dark gray thumb */
+    background: #4B4B4B; /* Dark Grey thumb (updated from #555) */
     border-radius: 3px;
   }
   .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-    background: #7e5bef; /* Violet nuit on hover */
+    background: #7e5bef; /* Night Violet on hover */
   }
+
+  /* Add base font styles if not handled globally */
+  /* For example, if Fira Sans/Mono are imported via CSS */
+  /* .font-sans { font-family: 'Fira Sans', Inter, sans-serif; } */
+  /* .font-mono { font-family: 'Fira Mono', monospace; } */
+
 </style>
