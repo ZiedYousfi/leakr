@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from '@vercel/analytics/next';
 import { JetBrains_Mono } from "next/font/google";
 import { Inter } from "next/font/google";
 import Footer from "@/components/layout/Footer";
@@ -30,6 +32,8 @@ export default function RootLayout({
       <body
         className={`${jetbrainsMono.variable} ${inter.variable} antialiased`}
       >
+        <SpeedInsights />
+        <Analytics /> {/* Vercel Analytics */}
         {children}
         <Footer />
       </body>
