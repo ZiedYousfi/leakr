@@ -341,6 +341,7 @@ function validateMigrations() {
 // 📦 Initialise sql.js et la base
 export async function initDatabase(): Promise<void> {
   SQL = await initSqlJs({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     locateFile: (_: string) => chrome.runtime.getURL("sql-wasm.wasm"),
   });
 

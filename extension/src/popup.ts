@@ -1,5 +1,6 @@
 // src/popup.ts
 import { mount } from "svelte";
+import "./app.css"; // Import global CSS styles
 import App from "./App.svelte";
 
 import * as dbLib from "./lib/dbUtils";

@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Mono&family=Fira+Sans:wght@400;700&family=Inter:wght@400;700&display=swap');
+/* eslint-disable-next-line css/no-invalid-at-rules */
+@import "tailwindcss";
+
+@layer base {
+  body {
+    /* Use Tailwind's generated CSS variables */
+    /* eslint-disable-next-line css/no-invalid-at-rules */
+    background-color: var(--tw-color-deep-black); /* Changed from theme() */
+    /* eslint-disable-next-line css/no-invalid-at-rules */
+    color: var(--tw-color-off-white); /* Changed from theme() */
+    /* eslint-disable-next-line css/no-invalid-at-rules */
+    font-family: theme('fontFamily.sans'); /* theme() usually works fine for font-family */
+  }
+}
+
+/* Ensure fonts are imported if not done elsewhere (e.g., in app.html) */
+/* Example using Google Fonts: */
