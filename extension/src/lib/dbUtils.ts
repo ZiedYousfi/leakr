@@ -636,9 +636,8 @@ export function getCreateurs(): Createur[] {
 
 /** Trouve un créateur avec correspondance floue sur le nom ou les alias (insensible à la casse) */
 export function findCreatorByUsername(username: string): Createur | null {
-  // Essai direct par nom exact (rapide)
   const stmt = db.prepare(`
-    SELECT id, nom, aliases, date_ajout, favori
+    SELECT id, nom, aliases, date_ajout, favori, verifie
     FROM createurs
     WHERE LOWER(nom) = LOWER(?)
     LIMIT 1
@@ -649,25 +648,29 @@ export function findCreatorByUsername(username: string): Createur | null {
 
   try {
     if (stmt.step()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const row = stmt.getAsObject() as any;
+      const row = stmt.getAsObject() as {
+        id: number;
+        nom: string;
+        aliases: string;
+        date_ajout: string;
+        favori: number;
+        verifie?: number;
+      };
+
       let parsedAliases: string[] = [];
       try {
-        parsedAliases = JSON.parse((row.aliases as string) || "[]");
+        parsedAliases = JSON.parse(row.aliases || "[]");
       } catch (e) {
-        console.error(
-          `Erreur de parsing des aliases pour ${row.id}:`,
-          row.aliases,
-          e
-        );
+        console.error(`Erreur de parsing des aliases pour ${row.id}:`, row.aliases, e);
       }
+
       creator = {
-        id: row.id as number,
-        nom: row.nom as string,
+        id: row.id,
+        nom: row.nom,
         aliases: parsedAliases,
-        date_ajout: row.date_ajout as string,
+        date_ajout: row.date_ajout,
         favori: Boolean(row.favori),
-        verifie: Boolean(row.verifie), // Assurez-vous que la colonne 'verifie' existe dans la table
+        verifie: Boolean(row.verifie),
       };
     }
   } catch (err) {
@@ -676,58 +679,76 @@ export function findCreatorByUsername(username: string): Createur | null {
     stmt.free();
   }
 
-  // 🌸 Si pas trouvé exactement, on fait une recherche floue avec Fuse.js
+  // 🌸 Si pas trouvé exactement, on fait une recherche floue
   if (!creator) {
-    const allCreators = getCreateurs(); // Peut être optimisé si la liste est très grande
+    const allCreators = getCreateurs();
 
     const fuse = new Fuse(allCreators, {
       keys: ["nom", "aliases"],
-      threshold: 0.1, // Ajuste pour rendre plus ou moins strict
+      threshold: 0.1,
       ignoreLocation: true,
       includeScore: true,
     });
 
     const results = fuse.search(username);
-    if (results.length > 0) {
-      const matchedCreator = results[0].item;
+
+    const MIN_SCORE = 0.3;
+    const MIN_LENGTH_RATIO = 0.4;
+    const MIN_INPUT_LENGTH = 3;
+
+    const filteredResult = results.find((result) => {
+      const item = result.item;
+      const score = result.score ?? 1;
       const searchTermLower = username.toLowerCase();
-      const nameLower = matchedCreator.nom.toLowerCase();
-      const aliasesLower = matchedCreator.aliases.map((a) => a.toLowerCase());
+      const nameLower = item.nom.toLowerCase();
+      const aliasesLower = item.aliases.map((a) => a.toLowerCase());
 
-      // Vérifie si le terme recherché n'est pas déjà le nom ou un alias existant (insensible à la casse)
-      if (
-        searchTermLower !== nameLower &&
-        !aliasesLower.includes(searchTermLower)
-      ) {
-        // Ajoute le terme recherché comme nouvel alias
-        const updatedAliases = [...matchedCreator.aliases, username];
-        const updatedAliasesStr = JSON.stringify(updatedAliases);
+      const isAlreadyKnown =
+        searchTermLower === nameLower || aliasesLower.includes(searchTermLower);
 
-        try {
-          const updateStmt = db.prepare(
-            "UPDATE createurs SET aliases = ? WHERE id = ?"
-          );
-          updateStmt.run([updatedAliasesStr, matchedCreator.id]);
-          updateStmt.free();
-          saveDatabase(); // Sauvegarde la modification
-          console.log(
-            `Alias "${username}" ajouté pour le créateur "${matchedCreator.nom}" (ID: ${matchedCreator.id}) suite à une correspondance floue.`
-          );
-          // Met à jour l'objet retourné pour refléter le nouvel alias
-          matchedCreator.aliases = updatedAliases;
-        } catch (updateErr) {
-          console.error(
-            `Erreur lors de l'ajout de l'alias "${username}" pour le créateur ${matchedCreator.id}:`,
-            updateErr
-          );
-        }
+      const lengthRatio = username.length / item.nom.length;
+
+      return (
+        !isAlreadyKnown &&
+        username.length >= MIN_INPUT_LENGTH &&
+        lengthRatio >= MIN_LENGTH_RATIO &&
+        score <= MIN_SCORE
+      );
+    });
+
+    if (filteredResult) {
+      const matchedCreator = filteredResult.item;
+
+      const updatedAliases = [...matchedCreator.aliases, username];
+      const updatedAliasesStr = JSON.stringify(updatedAliases);
+
+      try {
+        const updateStmt = db.prepare(
+          "UPDATE createurs SET aliases = ? WHERE id = ?"
+        );
+        updateStmt.run([updatedAliasesStr, matchedCreator.id]);
+        updateStmt.free();
+        saveDatabase();
+
+        console.log(
+          `Alias "${username}" ajouté pour le créateur "${matchedCreator.nom}" (ID: ${matchedCreator.id}) suite à une correspondance floue.`
+        );
+
+        matchedCreator.aliases = updatedAliases;
+      } catch (updateErr) {
+        console.error(
+          `Erreur lors de l'ajout de l'alias "${username}" pour le créateur ${matchedCreator.id}:`,
+          updateErr
+        );
       }
-      creator = matchedCreator; // Assigne le créateur trouvé (potentiellement mis à jour)
+
+      creator = matchedCreator;
     }
   }
 
   return creator;
 }
+
 
 /** Met à jour le statut favori d'un créateur */
 export function updateFavoriCreateur(id: number, favori: boolean): void {

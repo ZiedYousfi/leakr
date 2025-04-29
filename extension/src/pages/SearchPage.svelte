@@ -172,6 +172,8 @@
       linkinbio: "",
       fapello: "",
       kbjfree: "",
+      erothots: "",
+      pornhub: "",
     };
     return map[platform] || null;
   });
@@ -257,7 +259,7 @@
       <button
         onclick={handleAddCreator}
         class="link-button"
-        disabled={$isCreatorLoading} 
+        disabled={$isCreatorLoading}
       >
         Add them?
       </button>
