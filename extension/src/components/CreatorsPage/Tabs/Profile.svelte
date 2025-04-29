@@ -7,7 +7,7 @@
 
 </script>
 
-<div class="p-4 space-y-4 text-sm max-w-600 max-h-700 overflow-y-auto">
+<div class="p-4 space-y-4 text-sm max-w-[600px] overflow-y-auto">
   {#if $identifiedCreator}
     {@const creator = $identifiedCreator}
     <!-- Pass only the creator object to CreatorHeader -->

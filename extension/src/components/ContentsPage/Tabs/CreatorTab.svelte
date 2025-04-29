@@ -264,13 +264,13 @@
 
 </script>
 
-<div class="popup-body">
+<div class="popup-body w-full flex flex-col items-center gap-2 my-2 p-4 min-w-[350px] max-w-[450px]">
   <!-- Section for Adding Content / Identifying Creator -->
   <div class="w-full flex flex-col items-center gap-2 my-2">
     <!-- Display Current Tab URL -->
     {#if currentTabUrl}
       <p
-        class="text-xs text-[#B0B0B0] text-center opacity-40 select-none"
+        class="current-tab-text text-xs text-center opacity-40 select-none"
         title={currentTabUrl}
       >
         Current Tab: {currentTabUrl}
@@ -280,7 +280,7 @@
       <button
         onclick={getCurrentTabUrl}
         disabled={$isCreatorLoading}
-        class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-[#B0B0B0] text-xs disabled:opacity-50 w-auto"
+        class="retry-button px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs disabled:opacity-50 w-auto"
       >
         {$isCreatorLoading ? "Checking..." : `Retry Tab Check`}
       </button>
@@ -290,7 +290,7 @@
     <!-- Show if: initial check done, not loading, reset not shown, AND (no creator identified OR manual override toggled) -->
     {#if initialCheckDone && !$isCreatorLoading && !showResetButton && ((!$identifiedCreatorId && !$potentialUsernameToCreate) || showManualInputOverride)}
       <div class="w-full flex flex-col items-center gap-2 mt-2">
-        <p class="text-xs text-yellow-400 text-center px-2">
+        <p class="manual-input-prompt text-xs text-yellow-400 text-center px-2">
           {#if !$identifiedCreatorId && !$potentialUsernameToCreate}
             Could not identify creator. Please enter username or profile URL:
           {:else}
@@ -302,7 +302,7 @@
             type="text"
             bind:value={manualInput}
             placeholder="Enter username or URL"
-            class="flex-grow px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#7E5BEF]"
+            class="manual-input-field flex-grow px-2 py-1 bg-gray-800 border border-gray-700 rounded text-sm focus:outline-none focus:ring-1 disabled:opacity-50"
             disabled={$isCreatorLoading}
             onkeydown={(e) => {
               if (e.key === "Enter") handleManualFind();
@@ -311,7 +311,7 @@
           <button
             onclick={handleManualFind}
             disabled={$isCreatorLoading || !manualInput.trim()}
-            class="px-3 py-1 bg-[#7E5BEF] hover:bg-[#6A4ADF] rounded text-white text-sm disabled:opacity-50 flex-shrink-0"
+            class="find-button px-3 py-1 rounded text-sm disabled:opacity-50 flex-shrink-0"
           >
             Find
           </button>
@@ -323,7 +323,7 @@
     {#if initialCheckDone && !$isCreatorLoading && !showResetButton && ($identifiedCreatorId || $potentialUsernameToCreate) && !showManualInputOverride}
       <button
         onclick={showManualInput}
-        class="text-xs text-[#B0B0B0] hover:text-white underline mt-1"
+        class="search-different-link text-xs underline mt-1"
       >
         Search for a different creator?
       </button>
@@ -337,7 +337,7 @@
           <!-- Show Reset Button after successful add -->
           <button
             onclick={resetComponentState}
-            class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white text-sm w-full"
+            class="reset-button px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-sm w-full"
           >
             Start New Search / Reset
           </button>
@@ -348,7 +348,7 @@
             disabled={$isCreatorLoading ||
               !currentTabUrl ||
               (!$identifiedCreatorId && !$potentialUsernameToCreate)}
-            class="px-4 py-2 bg-[#7E5BEF] hover:bg-[#6A4ADF] rounded text-white text-sm disabled:opacity-50 w-full"
+            class="add-button px-4 py-2 rounded text-sm disabled:opacity-50 w-full"
             style={!$identifiedCreatorId && !$potentialUsernameToCreate ? "display: none;" : ""}
           >
             {#if $isCreatorLoading} <!-- Simplified loading check -->
@@ -365,7 +365,7 @@
         {/if}
 
         {#if showAddConfirmation && !showResetButton}
-          <p class="text-green-400 text-xs mt-1 text-center">
+          <p class="confirmation-text text-green-400 text-xs mt-1 text-center">
             Content added successfully!
           </p>
         {/if}
@@ -382,63 +382,115 @@
 
   <!-- Error Message -->
   {#if $creatorOperationError} <!-- Use store value -->
-    <p class="text-red-500 text-sm my-2 text-center">{$creatorOperationError}</p>
+    <p class="error-text text-red-500 text-sm my-2 text-center">{$creatorOperationError}</p>
   {/if}
 
   <!-- Loading Indicator -->
   {#if $isCreatorLoading && !initialCheckDone} <!-- Show initial loading differently? -->
-     <p class="text-[#B0B0B0] text-center">Initializing...</p>
+     <p class="loading-text text-center">Initializing...</p>
   {:else if $isCreatorLoading}
-    <p class="text-[#B0B0B0] text-center">Loading...</p> <!-- General loading -->
+    <p class="loading-text text-center">Loading...</p> <!-- General loading -->
   {/if}
 
 
   <!-- Content List (Only show if creator exists and not loading) -->
   {#if !$isCreatorLoading && $identifiedCreatorId && $identifiedCreator} <!-- Use store values -->
-    <h3 class="text-lg font-semibold text-white mt-3 mb-1">
+    <h3 class="content-heading text-lg font-semibold mt-3 mb-1">
       Content for {$identifiedCreator.nom}
     </h3>
-    <div class="w-full flex flex-col gap-2 overflow-y-auto max-h-60 px-1">
+    <div class="content-list-container w-full flex flex-col gap-2 overflow-y-auto max-h-60 px-1">
       <!-- Bind ContentList directly to the store -->
       <ContentList bind:contentIds={$identifiedCreatorContentIds} />
     </div>
   {:else if initialCheckDone && !$isCreatorLoading && !$identifiedCreatorId && !$potentialUsernameToCreate && !$creatorOperationError && !showResetButton && !showManualInputOverride}
     <!-- Show prompt if initial check done, no creator, no potential, no error, not reset, and not showing manual input override -->
-    <p class="text-[#B0B0B0] text-center mt-4">
+    <p class="prompt-text text-center mt-4">
       Identify a creator using the current tab or by entering a username/URL
       above.
     </p>
   {/if}
 </div>
 
-<style>
-  @import "tailwindcss";
+<style lang="postcss">
+  @reference "tailwindcss";
 
   .popup-body {
-    background-color: #000000; /* Noir profond */
-    min-width: 350px;
-    max-width: 450px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    color: #b0b0b0; /* Gris argenté */
+    background-color: var(--tw-color-deep-black, #000000);
+    color: var(--tw-color-silver-grey, #B0B0B0); /* Default text color */
+  }
+
+  .current-tab-text {
+    color: var(--tw-color-silver-grey, #B0B0B0);
+  }
+
+  .retry-button {
+     color: var(--tw-color-silver-grey, #B0B0B0);
+     /* bg-gray-700, hover:bg-gray-600 are standard, kept in class */
+  }
+
+  .manual-input-field {
+    color: var(--tw-color-off-white, #E0E0E0);
+    /* bg-gray-800, border-gray-700 are standard */
+  }
+  .manual-input-field:focus {
+     border-color: var(--tw-color-night-violet, #7E5BEF); /* Use border-color for ring effect */
+     --tw-ring-color: var(--tw-color-night-violet, #7E5BEF); /* Ensure ring color is set */
+     /* ring-1 is standard, kept in class */
+  }
+
+  .find-button {
+    background-color: var(--tw-color-night-violet, #7E5BEF);
+    color: var(--tw-color-off-white, #E0E0E0);
+  }
+  .find-button:hover:not(:disabled) {
+    background-color: var(--tw-color-night-violet-hover, #6A4ADF); /* Assuming #6A4ADF is hover state */
+  }
+
+  .search-different-link {
+    color: var(--tw-color-silver-grey, #B0B0B0);
+  }
+  .search-different-link:hover {
+    color: var(--tw-color-off-white, #E0E0E0);
+  }
+
+  .reset-button {
+    color: var(--tw-color-off-white, #E0E0E0);
+    /* bg-gray-600, hover:bg-gray-500 are standard */
+  }
+
+  .add-button {
+    background-color: var(--tw-color-night-violet, #7E5BEF);
+    color: var(--tw-color-off-white, #E0E0E0);
+  }
+  .add-button:hover:not(:disabled) {
+    background-color: var(--tw-color-night-violet-hover, #6A4ADF); /* Assuming #6A4ADF is hover state */
+  }
+
+  /* confirmation-text uses standard text-green-400 */
+  /* error-text uses standard text-red-500 */
+
+  .loading-text,
+  .prompt-text {
+    color: var(--tw-color-silver-grey, #B0B0B0);
+  }
+
+  .content-heading {
+    color: var(--tw-color-off-white, #E0E0E0);
   }
 
   /* Style for scrollbar */
-  .overflow-y-auto::-webkit-scrollbar {
+  .content-list-container::-webkit-scrollbar {
     width: 6px;
   }
-  .overflow-y-auto::-webkit-scrollbar-track {
-    background: #1a1a1a;
+  .content-list-container::-webkit-scrollbar-track {
+    background: var(--tw-color-deep-black, #1a1a1a); /* Approximated with deep-black */
     border-radius: 3px;
   }
-  .overflow-y-auto::-webkit-scrollbar-thumb {
-    background: #555;
+  .content-list-container::-webkit-scrollbar-thumb {
+    background: var(--tw-color-dark-grey, #555); /* Approximated with dark-grey */
     border-radius: 3px;
   }
-  .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-    background: #7e5bef;
+  .content-list-container::-webkit-scrollbar-thumb:hover {
+    background: var(--tw-color-night-violet, #7e5bef);
   }
 </style>

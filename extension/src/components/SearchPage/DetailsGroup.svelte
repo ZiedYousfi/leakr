@@ -13,13 +13,18 @@
   }
 </script>
 
-<details class="mb-2">
-  <summary>{title}</summary>
+<details class="mb-2 group">
+  <summary
+    class="list-none flex items-center gap-2 cursor-pointer py-2 px-4 rounded-lg bg-transparent text-off-white font-mono font-bold border border-night-violet transition duration-200 ease-in-out hover:bg-night-violet hover:text-white focus:outline-none focus:ring-2 focus:ring-night-violet focus:ring-offset-2 open:bg-night-violet open:text-white"
+  >
+    <span class="arrow mr-2 transition-transform duration-200 text-night-violet group-hover:text-white open:rotate-90 open:text-white">▶</span>
+    {title}
+  </summary>
 
   {#if links.length}
     {#each links as [label, fn]}
       <button
-        class="action-button detail-button"
+        class="detail-button block mt-2 mx-auto w-[calc(100%-2em)] py-2 px-4 rounded-lg text-center cursor-pointer transition duration-200 ease-in-out font-mono focus:outline-none focus:ring-offset-2"
         onclick={() => openUrl(fn(displayValue))}
       >
         🔗 {label}
@@ -30,7 +35,7 @@
   {#if customLinks.length}
     {#each customLinks as [label, url]}
       <button
-        class="action-button detail-button"
+        class="detail-button block mt-2 mx-auto w-[calc(100%-2em)] py-2 px-4 rounded-lg text-center cursor-pointer transition duration-200 ease-in-out font-mono focus:outline-none focus:ring-offset-2"
         onclick={() => openUrl(url)}
       >
         🌐 Open {label}
@@ -39,49 +44,29 @@
   {/if}
 </details>
 
-<style>
-  details summary {
-    background: #232136;
-    color: #fff;
-    padding: 0.5em 1em;
-    border-radius: 0.5em;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    border: 1px solid #7e5bef;
-    transition: background 0.2s, color 0.2s;
-  }
-  details[open] summary {
-    background: #7e5bef;
-    color: #fff;
-  }
-  details summary::before {
-    content: "▶";
-    margin-right: 0.5em;
-    transition: transform 0.2s;
-  }
-  details[open] summary::before {
-    transform: rotate(90deg);
-  }
-  details summary:hover {
-    background: #5a4e8c;
-  }
-  details summary:focus {
-    outline: 2px solid #7e5bef;
-  }
+<style lang="postcss">
+  @reference ("tailwindcss/base");
   .detail-button {
-    background: #232136;
-    color: #a18aff;
-    border: 1px solid #7e5bef;
-    font-style: italic;
-    display: block;
-    margin: 0.5em auto 0;
-    width: calc(100% - 2em);
+    background-color: transparent;
+    color: var(--tw-color-silver-grey, #B0B0B0); /* Fallback added */
+    border: 1px solid var(--tw-color-dark-grey, #4B4B4B); /* Fallback added */
+    /* Standard classes handle layout, padding, font, etc. */
   }
+
   .detail-button:hover {
-    background: #7e5bef;
-    color: #fff;
+    background-color: var(--tw-color-dark-grey, #4B4B4B); /* Fallback added */
+    color: var(--tw-color-off-white, #E0E0E0); /* Fallback added */
+  }
+
+  .detail-button:focus {
+    /* Replicates focus:ring-2 focus:ring-silver-grey focus:ring-offset-2 */
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    --tw-ring-color: var(--tw-color-silver-grey, #B0B0B0); /* Fallback added */
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+    /* Ensure ring offset color is set if needed, Tailwind defaults usually handle this */
+    /* --tw-ring-offset-color: #fff; */ /* Default offset color */
   }
 </style>

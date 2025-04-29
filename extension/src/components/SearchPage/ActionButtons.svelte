@@ -21,9 +21,9 @@
   }
 </script>
 
-<div id="actions">
+<div id="actions" class="flex flex-col gap-2 w-full max-w-xs">
   <button
-    class="action-button"
+    class="action-button flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out border cursor-pointer w-full text-center focus:outline-none focus:ring-offset-2"
     onclick={() =>
       openUrl(
         `https://www.google.com/search?q=${encodeURIComponent(displayValue || "")}`
@@ -32,7 +32,7 @@
     🔍 Google Search
   </button>
   <button
-    class="action-button"
+    class="action-button flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out border cursor-pointer w-full text-center focus:outline-none focus:ring-offset-2"
     onclick={() =>
       openUrl(
         `https://www.kbjfree.com/search?q=${encodeURIComponent(displayValue || "")}`
@@ -41,7 +41,7 @@
     🔍 KBJFree
   </button>
   <button
-    class="action-button"
+    class="action-button flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out border cursor-pointer w-full text-center focus:outline-none focus:ring-offset-2"
     onclick={() =>
       openUrl(
         `https://www.google.com/search?q=${encodeURIComponent(displayValue || "")}+leaks`
@@ -74,37 +74,38 @@
   {/if}
 </div>
 
-<style>
-  #actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-    max-width: 20rem;
-  }
+<style lang="postcss">
+  @reference "tailwindcss";
+
   .action-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    background-color: #7e5bef;
-    color: white;
-    font-family: "JetBrains Mono", monospace;
-    font-weight: 600;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: background-color 0.2s ease;
-    border: none;
-    cursor: pointer;
-    width: 100%;
-    text-align: center;
+    background-color: transparent;
+    color: var(--tw-color-off-white, #E0E0E0); /* Added fallback */
+    font-family: var(--tw-font-mono); /* Use Tailwind's font variable */
+    border-color: var(--tw-color-night-violet, #7E5BEF); /* Added fallback */
+    /* Standard classes handle the rest: flex, items-center, justify-center, gap-2, py-2, px-4, rounded-lg, font-semibold, transition, duration-200, ease-in-out, border, cursor-pointer, w-full, text-center */
   }
+
   .action-button:hover {
-    background-color: #a18aff;
+    background-color: var(--tw-color-night-violet, #7E5BEF); /* Added fallback */
+    color: var(--tw-color-white, #FFFFFF); /* Added fallback */
+    animation: var(--tw-animation-pulse-glow); /* Use Tailwind's animation variable */
   }
+
   .action-button:focus {
-    outline: 2px solid #a18aff;
-    outline-offset: 2px;
+     /* Replicates focus:ring-2 focus:ring-night-violet focus:ring-offset-2 */
+     /* focus:outline-none is handled by the class attribute */
+     outline: 2px solid transparent;
+     outline-offset: 2px;
+     /* The ring-offset-2 class handles the offset width */
+     --tw-ring-color: var(--tw-color-night-violet, #7E5BEF); /* Added fallback */
+     --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+     --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+     box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+     /* Ensure ring offset color is set if needed, Tailwind defaults usually handle this via the ring-offset-2 class */
+     /* --tw-ring-offset-color: #fff; */ /* Default offset color, usually set by ring-offset-* class */
   }
+
+  /* Keyframes are defined in tailwind.config.mjs and automatically available */
+  /* @keyframes pulse-glow { ... } */
+
 </style>

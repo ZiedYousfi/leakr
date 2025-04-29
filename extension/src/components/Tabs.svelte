@@ -21,10 +21,10 @@
   });
 </script>
 
-<nav class="tab-nav">
+<nav class="tab-nav flex border-b">
   {#each tabs as tab, i}
     <button
-      class="tab-button {i === active ? 'active' : ''}"
+      class="tab-button py-2 px-4 text-sm -mb-px border-b-2 border-transparent transition duration-200 ease-in-out outline-none focus-visible:ring-1 focus-visible:ring-night-violet rounded-sm {i === active ? 'active font-bold' : ''}"
       onclick={() => (active = i)}
     >
       {tab.title}
@@ -38,43 +38,43 @@
   <svelte:component this={activeComponent} {...activeProps} />
 {/if}
 
-<style>
+<style lang="postcss">
+  @reference "tailwindcss";
+
   .tab-nav {
-    display: flex;
-    border-bottom: 1px solid #333; /* Darker border for separation */
-    /*margin-bottom: 0.05rem; /* Smaller space below the tabs */
-    /*padding-left: 0.25rem; /* Smaller padding for tighter alignment */
+    /* Use custom theme color for border */
+    border-color: var(--tw-color-dark-grey, #4B4B4B);
   }
 
   .tab-button {
-    font-family: monospace; /* Keep the techy font */
-    background-color: transparent; /* Default transparent background */
-    color: #b0b0b0; /* Silver gray text */
-    border: none;
-    border-bottom: 2px solid transparent; /* Placeholder for active indicator */
-    padding: 0.5rem 1rem; /* Comfortable padding */
-    cursor: pointer;
-    font-size: 0.9rem;
-    margin-bottom: -1px; /* Overlap the nav border */
-    transition:
-      color 0.2s ease-in-out,
-      border-color 0.2s ease-in-out;
-    outline: none; /* Remove default focus outline */
+    /* Use custom theme font and color */
+    font-family: var(--tw-font-mono, monospace);
+    color: var(--tw-color-silver-grey, #B0B0B0);
+    cursor: pointer; /* Keep cursor style */
   }
 
   .tab-button:hover {
-    color: #ffffff; /* Brighter on hover */
+    /* Use custom theme color */
+    color: var(--tw-color-off-white, #E0E0E0);
   }
 
   .tab-button.active {
-    color: #7e5bef; /* Night violet for active tab text */
-    border-bottom: 2px solid #7e5bef; /* Night violet underline for active tab */
-    font-weight: bold;
+    /* Use custom theme color for text and border */
+    color: var(--tw-color-night-violet, #7E5BEF);
+    border-bottom-color: var(--tw-color-night-violet, #7E5BEF);
+    /* font-weight: bold; is handled by utility class */
   }
 
-  /* Optional: Add a subtle focus style */
-  .tab-button:focus-visible {
-    box-shadow: 0 0 0 1px #7e5bef; /* Violet outline on focus */
-    border-radius: 2px;
-  }
+  /*
+     Note:
+     - Standard layout (flex, py-2, px-4, text-sm, -mb-px),
+     - Borders (border-b, border-b-2, border-transparent),
+     - Transitions (transition, duration-200, ease-in-out),
+     - Outlines (outline-none),
+     - Focus styles (focus-visible:ring-1, focus-visible:ring-night-violet, rounded-sm),
+     - Font weight (font-bold)
+     are kept as utility classes in the HTML for better maintainability
+     and adherence to Tailwind's principles.
+     - Only custom theme values (colors, fonts) are applied here using CSS variables.
+  */
 </style>

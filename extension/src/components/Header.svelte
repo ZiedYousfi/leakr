@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  //import SettingsIcon from './SettingsIcon.svelte'; // Assuming you create a SettingsIcon.svelte component
 
   let showNav = $state(false);
   let headerElement: HTMLElement | undefined; // Reference to the header element
@@ -42,12 +41,12 @@
   });
 </script>
 
-<header class="popup-header" bind:this={headerElement}>
-  <h1 class="popup-title">{title}</h1>
-  <div class="header-actions">
+<header class="popup-header flex items-center justify-between relative mb-4" bind:this={headerElement}>
+  <h1 class="popup-title mr-auto">{title}</h1>
+  <div class="header-actions flex items-center gap-2">
     <button
       type="button"
-      class="icon-button settings-button"
+      class="icon-button settings-button flex items-center justify-center cursor-pointer p-0"
       aria-label="Settings"
       onclick={() => navigate('settings')}
     >
@@ -58,7 +57,7 @@
     </button>
     <button
       id="burger-menu"
-      class="icon-button burger-menu"
+      class="icon-button burger-menu flex items-center justify-center cursor-pointer p-0"
       aria-label="Menu"
       onclick={toggleNav}
     >
@@ -67,112 +66,96 @@
   </div>
 
   {#if showNav}
-    <nav id="popup-nav" class="popup-nav">
-      <button type="button" class="nav-link" onclick={() => navigate('search')}>Search</button>
-      <button type="button" class="nav-link" onclick={() => navigate('contents')}>Contents</button>
-      <button type="button" class="nav-link" onclick={() => navigate('creators')}>Creators</button>
-      <!-- Settings button removed from here -->
+    <nav id="popup-nav" class="popup-nav absolute top-14 right-0 rounded-lg shadow-lg flex flex-col min-w-32 z-10 transition-opacity transition-visibility opacity-100 visible">
+      <button type="button" class="nav-link text-left cursor-pointer w-full whitespace-nowrap bg-none border-none py-2 px-6 transition" onclick={() => navigate('search')}>Search</button>
+      <button type="button" class="nav-link text-left cursor-pointer w-full whitespace-nowrap bg-none border-none py-2 px-6 transition" onclick={() => navigate('contents')}>Contents</button>
+      <button type="button" class="nav-link text-left cursor-pointer w-full whitespace-nowrap bg-none border-none py-2 px-6 transition" onclick={() => navigate('creators')}>Creators</button>
     </nav>
   {/if}
 </header>
 
-<style>
+<style lang="postcss">
+  @reference "tailwindcss";
+
   .popup-header {
     width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: relative;
-    margin-bottom: 1rem;
+    /* Tailwind classes: flex items-center justify-between relative mb-4 */
   }
+
   .popup-title {
-    font-family: "JetBrains Mono", "Inter", monospace;
-    color: #7e5bef;
-    font-size: 1.5rem;
+    font-family: var(--tw-font-mono, "Fira Mono", monospace);
+    color: var(--tw-color-night-violet, #7E5BEF);
+    font-size: 1.5rem; /* Kept custom size */
     letter-spacing: 0.05em;
     font-weight: 700;
-    background: linear-gradient(90deg, #7e5bef 80%, #b0b0b0 100%);
+    background: linear-gradient(90deg, var(--tw-color-night-violet, #7E5BEF) 80%, var(--tw-color-silver-grey, #B0B0B0) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-shadow: 0 2px 8px #000a;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); /* Kept custom shadow */
     margin: 0;
-    /* Make space for icons */
-    margin-right: auto;
+    /* Tailwind classes: mr-auto */
   }
+
   .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem; /* Add space between icons */
+    /* Tailwind classes: flex items-center gap-2 */
   }
+
   .icon-button {
     width: 2rem;
     height: 2rem;
     background: none;
     border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 0;
-    color: #b0b0b0; /* Icon color */
+    color: var(--tw-color-silver-grey, #B0B0B0);
     transition: color 0.2s;
+    /* Tailwind classes: flex items-center justify-center cursor-pointer p-0 */
   }
+
   .icon-button:hover {
-    color: #7e5bef; /* Icon hover color */
+    color: var(--tw-color-night-violet, #7E5BEF);
   }
+
   .settings-button svg {
-     width: 20px; /* Adjust size as needed */
+     width: 20px; /* Kept custom size */
      height: 20px;
   }
+
   .burger-menu {
-    /* Inherits from .icon-button, specific styles below */
+    /* Inherits from .icon-button */
     flex-direction: column;
-    justify-content: center;
-    gap: 0.3rem;
-    z-index: 10;
+    justify-content: center; /* Centering handled by flex */
+    gap: 0.3rem; /* Kept custom gap */
+    z-index: 10; /* Kept custom z-index */
   }
+
   .burger-menu span {
     display: block;
     height: 3px;
     width: 100%;
-    background: currentColor; /* Use button color */
+    background: currentColor; /* Uses .icon-button color */
     border-radius: 2px;
     transition: all 0.3s;
   }
+
   .popup-nav {
-    position: absolute;
-    top: 3.5rem; /* Adjusted top position */
-    right: 0;
-    background: #1a1a1a;
-    border: 1px solid #7e5bef;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 16px #000a;
-    display: flex;
-    flex-direction: column;
-    min-width: 8rem;
-    padding: 0.5rem 0;
-    z-index: 9;
-    transition: opacity 0.2s, visibility 0.2s;
-    opacity: 1;
-    visibility: visible;
+    /* Tailwind classes: absolute top-14 right-0 rounded-lg shadow-lg flex flex-col min-w-32 z-10 transition-opacity transition-visibility opacity-100 visible */
+    background: var(--tw-color-deep-black, #000000); /* Using deep-black from theme */
+    border: 1px solid var(--tw-color-night-violet, #7E5BEF);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6); /* Kept custom shadow */
+    /* Tailwind py-2 handles vertical padding */
   }
+
   .nav-link {
-    color: #b0b0b0;
+    /* Tailwind classes: text-left cursor-pointer w-full whitespace-nowrap bg-none border-none py-2 px-6 transition */
+    color: var(--tw-color-silver-grey, #B0B0B0);
     text-decoration: none;
-    padding: 0.5rem 1.5rem;
-    font-family: "JetBrains Mono", "Inter", monospace;
-    font-size: 1rem;
-    transition: background 0.2s, color 0.2s;
-    white-space: nowrap;
-    background: none; /* Ensure button background is transparent */
-    border: none; /* Ensure button border is none */
-    text-align: left; /* Align text left */
-    cursor: pointer; /* Add cursor pointer */
-    width: 100%; /* Make button full width */
+    font-family: var(--tw-font-mono, "Fira Mono", monospace);
+    font-size: 1rem; /* Tailwind text-base equivalent */
+    transition: background 0.2s, color 0.2s; /* Combined with Tailwind transition */
   }
+
   .nav-link:hover {
-    background: #7e5bef;
-    color: #fff;
+    background: var(--tw-color-night-violet, #7E5BEF);
+    color: var(--tw-color-off-white, #E0E0E0); /* Using off-white from theme */
   }
 </style>

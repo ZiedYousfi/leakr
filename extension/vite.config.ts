@@ -6,6 +6,7 @@ import path from "path"; // Import the path module
 
 export default defineConfig({
   plugins: [
+    tailwindcss(),
     svelte(),
     viteStaticCopy({
       targets: [
@@ -32,7 +33,6 @@ export default defineConfig({
         },
       ],
     }),
-    tailwindcss(),
   ],
   resolve: {
     alias: {

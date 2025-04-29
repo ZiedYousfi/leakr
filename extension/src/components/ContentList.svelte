@@ -8,7 +8,6 @@
   } from "@/lib/dbUtils";
 
   // --- Props ---
-  // Changed prop name and type to accept an array of IDs or null
   let { contentIds = $bindable<number[] | null>(null) } = $props<{ contentIds?: number[] | null }>();
 
   // --- State ---
@@ -18,31 +17,27 @@
 
   // --- Effect to load contents based on contentIds ---
   $effect(() => {
-    // This effect will re-run whenever contentIds changes
-    loadContents(contentIds); // Use the new prop name
+    loadContents(contentIds);
   });
 
   // --- Functions ---
-  // Modified function to accept an array of IDs or null
   async function loadContents(ids: number[] | null) {
     isLoading = true;
     errorMessage = null;
     try {
       let fetchedContents: Contenu[] = [];
-      if (ids !== null && ids.length > 0) { // Check if ids is an array and not empty
+      if (ids !== null && ids.length > 0) {
         console.log(`Fetching content for IDs: ${ids.join(', ')}`);
         fetchedContents = ids
-          .map(id => getContenuById(id)) // Get content for each ID
-          .filter((content): content is Contenu => content !== null); // Filter out null results (ID not found)
+          .map(id => getContenuById(id))
+          .filter((content): content is Contenu => content !== null);
         if (fetchedContents.length !== ids.length) {
-          // Optionally handle cases where some IDs were not found
           console.warn("Some content IDs were not found.");
         }
-      } else if (ids === null) { // Fetch all if ids is null
+      } else if (ids === null) {
         console.log("Fetching all content");
         fetchedContents = getAllContenus();
       } else {
-        // Handle the case where ids is an empty array if needed, currently results in empty list
         console.log("Received empty array of IDs, fetching no specific content.");
         fetchedContents = [];
       }
@@ -56,34 +51,44 @@
     }
   }
 
-  // Delete a specific content item
   async function handleDeleteContent(idToDelete: number) {
     if (!confirm("Are you sure you want to delete this content?")) return;
     isLoading = true;
     errorMessage = null;
     try {
       deleteContenu(idToDelete);
-      // Refresh based on the current mode (multiple IDs or all)
-      await loadContents(contentIds); // Use the new prop name
+      await loadContents(contentIds);
     } catch (error) {
       console.error("Error deleting content:", error);
       errorMessage = "Failed to delete content.";
-      isLoading = false;
+      isLoading = false; // Ensure loading state is reset on error
     }
+    // No finally block needed here as loadContents handles its own finally
   }
 
-  // Toggle favorite status for a content item
   async function handleToggleFavorite(content: Contenu) {
-    isLoading = true;
+    // Optimistic UI update
+    const originalFavori = content.favori;
+    const contentIndex = contents.findIndex(c => c.id === content.id);
+    if (contentIndex !== -1) {
+      contents[contentIndex] = { ...content, favori: !originalFavori };
+    }
+
+    // No need to set isLoading for optimistic update, but maybe for background task
+    // isLoading = true;
     errorMessage = null;
     try {
-      updateFavoriContenu(content.id, !content.favori);
-      // Refresh based on the current mode (multiple IDs or all)
-      await loadContents(contentIds); // Use the new prop name
+      updateFavoriContenu(content.id, !originalFavori);
+      // Optionally reload data if optimistic update isn't sufficient or needs verification
+      // await loadContents(contentIds);
     } catch (error) {
       console.error("Error updating favorite status:", error);
       errorMessage = "Failed to update favorite status.";
-      isLoading = false;
+      // Revert optimistic update on error
+      if (contentIndex !== -1) {
+        contents[contentIndex] = { ...content, favori: originalFavori };
+      }
+      // isLoading = false; // Reset loading if it was set
     }
   }
 
@@ -95,103 +100,138 @@
     }
   }
 </script>
+
 <!-- Content List -->
-  <!-- Apply base font from style guide if configured globally, e.g., font-sans -->
-  <div
-    class="w-full flex-1 flex-col gap-2 max-h-350 p-2 bg-[#1a1a1a] rounded-2xl overflow-y-auto font-sans" 
-  >
-    {#if isLoading && contents.length === 0}
-      <p class="text-[#B0B0B0] text-center">Loading content...</p> <!-- Updated text color -->
-    {:else if isLoading}
-       <p class="text-[#B0B0B0] text-center text-xs py-1">Refreshing...</p> <!-- Updated text color -->
-    {/if}
-    {#if errorMessage}
-      <p class="text-[#FFB6C1] text-sm my-2 text-center">{errorMessage}</p> <!-- Updated error color -->
-    {/if}
-    {#if !isLoading && contents.length === 0 && !errorMessage}
-      <!-- Updated message for multiple IDs -->
-      <p class="text-[#B0B0B0] text-center">No content found{contentIds && contentIds.length > 0 ? ` for the specified IDs` : ''}.</p> <!-- Updated text color -->
-    {:else}
-      {#each contents as content (content.id)}
-        <div
-          class="bg-[#2a2a2a] p-4 rounded-2xl flex justify-between items-center gap-2 mb-2 border border-[#4B4B4B]" >
-          <div class="flex-grow overflow-hidden">
-            <a
-              href={content.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-[#7E5BEF] hover:underline text-sm truncate block font-mono"
-              title={content.url}
-            >
-              {content.tabname ? content.tabname : content.url}
-            </a>
-            <p class="text-xs text-[#B0B0B0] mt-1"> <!-- Updated secondary text color -->
-              Added: {formatDate(content.date_ajout)}
-            </p>
-          </div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <button
-              onclick={() => handleToggleFavorite(content)}
-              title={content.favori
-                ? "Remove from favorites"
-                : "Add to favorites"}
-              class={`text-xl ${content.favori ? "text-[#7E5BEF]" : "text-[#B0B0B0] hover:text-[#7E5BEF]"}`}
-              disabled={isLoading}
-            >
-              {content.favori ? "★" : "☆"}
-            </button>
-            <button
-              onclick={() => handleDeleteContent(content.id)}
-              title="Delete Content"
-              class="text-[#FFB6C1] hover:text-[#7E5BEF] text-lg font-bold"
-              disabled={isLoading}
-            >
-              &times;
-            </button>
-          </div>
+<div
+  class="content-list-container w-full flex-1 flex-col gap-2 max-h-[50vh] p-2 rounded-2xl overflow-y-auto"
+>
+  {#if isLoading && contents.length === 0}
+    <p class="loading-text text-center">Loading content...</p>
+  {:else if isLoading}
+    <p class="loading-text text-center text-xs py-1">Refreshing...</p>
+  {/if}
+  {#if errorMessage}
+    <p class="error-text text-sm my-2 text-center">{errorMessage}</p>
+  {/if}
+  {#if !isLoading && contents.length === 0 && !errorMessage}
+    <p class="no-content-text text-center">
+      No content found{contentIds && contentIds.length > 0 ? ` for the specified IDs` : ''}.
+    </p>
+  {:else}
+    {#each contents as content (content.id)}
+      <div
+        class="content-item p-4 rounded-2xl flex justify-between items-center gap-2 mb-2 border"
+      >
+        <div class="flex-grow overflow-hidden">
+          <a
+            href={content.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="content-link hover:underline text-sm truncate block"
+            title={content.url}
+          >
+            {content.tabname ? content.tabname : content.url}
+          </a>
+          <p class="date-text text-xs mt-1">
+            Added: {formatDate(content.date_ajout)}
+          </p>
         </div>
-      {/each}
-    {/if}
-  </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <button
+            onclick={() => handleToggleFavorite(content)}
+            title={content.favori ? "Remove from favorites" : "Add to favorites"}
+            class={`favorite-button text-xl ${content.favori ? 'is-favorited' : ''}`}
+            disabled={isLoading}
+          >
+            {content.favori ? "★" : "☆"}
+          </button>
+          <button
+            onclick={() => handleDeleteContent(content.id)}
+            title="Delete Content"
+            class="delete-button text-lg font-bold"
+            disabled={isLoading}
+          >
+            &times;
+          </button>
+        </div>
+      </div>
+    {/each}
+  {/if}
+</div>
 
-<style>
-  @import "tailwindcss";
+<style lang="postcss">
+  @reference "tailwindcss";
 
-  .popup-body {
-    background-color: #000000; /* Deep Black */
-    min-width: 350px;
-    max-width: 450px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    color: #B0B0B0; /* Silver Grey */
-    min-height: 300px;
-    max-height: 500px;
-    /* Assuming Fira Sans is the default body font, set globally or here */
-    /* font-family: 'Fira Sans', sans-serif; */
+  .content-list-container {
+    background-color: #1a1a1a; /* Specific color, no theme var */
+    font-family: var(--tw-font-sans, 'Fira Sans', Inter, sans-serif);
+    /* max-height and overflow-y are handled by Tailwind classes */
   }
 
-  /* Style for scrollbar - Already aligns well with the dark theme */
-  .overflow-y-auto::-webkit-scrollbar {
+  .loading-text {
+    color: var(--tw-color-silver-grey, #B0B0B0);
+  }
+
+  .error-text {
+    color: var(--tw-color-pale-pink, #FFB6C1);
+  }
+
+  .no-content-text {
+    color: var(--tw-color-silver-grey, #B0B0B0);
+  }
+
+  .content-item {
+    background-color: #2a2a2a; /* Specific color, no theme var */
+    border-color: var(--tw-color-dark-grey, #4B4B4B);
+  }
+
+  .content-link {
+    color: var(--tw-color-night-violet, #7E5BEF);
+    font-family: var(--tw-font-mono, 'Fira Mono', monospace);
+  }
+  /* hover:underline is handled by Tailwind utility class */
+
+  .date-text {
+    color: var(--tw-color-silver-grey, #B0B0B0);
+  }
+
+  .favorite-button {
+    color: var(--tw-color-silver-grey, #B0B0B0);
+    transition: color 0.2s ease-in-out;
+  }
+  .favorite-button:hover {
+    color: var(--tw-color-night-violet, #7E5BEF);
+  }
+  .favorite-button.is-favorited {
+    color: var(--tw-color-night-violet, #7E5BEF);
+  }
+  .favorite-button:disabled,
+  .delete-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .delete-button {
+    color: var(--tw-color-pale-pink, #FFB6C1);
+    transition: color 0.2s ease-in-out;
+  }
+  .delete-button:hover {
+    color: var(--tw-color-night-violet, #7E5BEF);
+  }
+
+  /* Style for scrollbar */
+  .content-list-container::-webkit-scrollbar {
     width: 6px;
   }
-  .overflow-y-auto::-webkit-scrollbar-track {
-    background: #1a1a1a; /* Dark track */
+  .content-list-container::-webkit-scrollbar-track {
+    background: #1a1a1a; /* Specific color, no theme var */
     border-radius: 3px;
   }
-  .overflow-y-auto::-webkit-scrollbar-thumb {
-    background: #4B4B4B; /* Dark Grey thumb (updated from #555) */
+  .content-list-container::-webkit-scrollbar-thumb {
+    background: var(--tw-color-dark-grey, #4B4B4B);
     border-radius: 3px;
   }
-  .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-    background: #7e5bef; /* Night Violet on hover */
+  .content-list-container::-webkit-scrollbar-thumb:hover {
+    background: var(--tw-color-night-violet, #7E5BEF);
   }
-
-  /* Add base font styles if not handled globally */
-  /* For example, if Fira Sans/Mono are imported via CSS */
-  /* .font-sans { font-family: 'Fira Sans', Inter, sans-serif; } */
-  /* .font-mono { font-family: 'Fira Mono', monospace; } */
-
 </style>

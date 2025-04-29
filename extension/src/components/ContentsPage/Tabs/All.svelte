@@ -34,36 +34,48 @@
   }
 </script>
 
-<div class="popup-body">
-  <h1 class="text-lg font-semibold mb-3 text-white">All Content</h1>
+<div class="popup-body-custom flex flex-col items-center gap-2 p-4">
+  <h1 class="all-content-title text-lg font-semibold mb-3">All Content</h1>
 
   <!-- Error Message -->
   {#if errorMessage}
-    <p class="text-red-500 text-sm my-2 text-center">{errorMessage}</p>
+    <p class="error-message text-red-500 text-sm my-2 text-center">{errorMessage}</p>
   {/if}
 
   <!-- Loading Indicator -->
   {#if isLoading && contents.length === 0}
-    <p class="text-[#B0B0B0] text-center">Loading all content...</p>
+    <p class="loading-text text-center">Loading all content...</p>
   {/if}
 
-  <ContentList></ContentList>
+  <!-- Pass content IDs to ContentList -->
+  <ContentList contentIds={contents.map(c => c.id)} />
 </div>
 
-<style>
-  @import "tailwindcss";
+<style lang="postcss">
+  @reference "tailwindcss";
 
-  .popup-body {
-    background-color: #000000; /* Noir profond */
+  .popup-body-custom {
+    background-color: var(--tw-color-deep-black, #000000);
+    color: var(--tw-color-silver-grey, #B0B0B0); /* Default text color */
     min-width: 350px;
     max-width: 450px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    color: #b0b0b0; /* Gris argenté */
     min-height: 300px;
     max-height: 500px;
   }
+
+  .all-content-title {
+    /* H1 styles from guidelines */
+    color: var(--tw-color-night-violet, #7E5BEF);
+    font-family: var(--tw-font-mono, 'Fira Mono', monospace);
+    /* text-lg is roughly 1.125rem, H1 guideline is 2.5rem. Adjust if needed */
+    /* font-size: 2.5rem; */ /* Uncomment and remove text-lg if exact size is needed */
+  }
+
+  .loading-text {
+    color: var(--tw-color-silver-grey, #B0B0B0);
+  }
+
+  /* .error-message styling is handled by utility classes (text-red-500, etc.) */
+
+  /* Add other custom styles for elements within this component if needed */
 </style>
