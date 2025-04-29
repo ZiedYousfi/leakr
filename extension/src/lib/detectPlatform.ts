@@ -10,9 +10,8 @@ export type Platform =
   | "linkinbio"
   | "fapello"
   | "kbjfree"
+  | "erothots"
   | null;
-
-// ...existing code...
 
 export function detectPlatform(url: string): {
   platform: Platform;
@@ -38,6 +37,8 @@ export function detectPlatform(url: string): {
     ["fapello", /fapello\.(?:com|ru)\/([\w\d_.-]+)\/?$/i],
     ["kbjfree", /kbjfree\.com\/search\?q=([\w\d_.-]+)/i], // Username in group 1 (query param)
     ["kbjfree", /kbjfree\.com\/model\/([\w\d_.-]+)/i], // Username in group 1
+    ["erothots", /erothots1\.com\/videos\/([\w\d_.-]+)/i],
+    ["erothots", /erothots\.com\/videos\/([\w\d_.-]+)/i],
     // Generic catch-all should be last. It's less reliable for username extraction.
     // Group 1 is domain part, Group 2 is first path part. We return null platform/username here.
     [null, /(?:https?:\/\/)?(?:www\.)?([\w\d_.-]+)\.com\/([\w\d_.-]+)/i],
