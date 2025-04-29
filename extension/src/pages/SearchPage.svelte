@@ -13,7 +13,9 @@
     creatorOperationError,
     isCreatorLoading,
     resetCreatorStores,
+    //identifiedCreatorId, // <-- Import identifiedCreatorId if needed for logic, though not directly used in fetch here
   } from "../lib/store"; // Import stores
+
 
   const { onNavigate } = $props<{
     onNavigate: (page: string, params?: object) => void;
@@ -48,11 +50,11 @@
     });
   });
 
-  // Effect 2: Trigger creator lookup when the identifier changes
   $effect(() => {
     const currentIdentifier = $creatorIdentifier; // Get reactive value
 
     if (!currentIdentifier || currentIdentifier.trim() === "") {
+      // Reset stores and local state if identifier is cleared
       identifiedCreator.set(null);
       identifiedCreatorContentIds.set(null);
       potentialUsernameToCreate.set(null);
@@ -65,6 +67,7 @@
     const performLookup = async () => {
       isCreatorLoading.set(true);
       creatorOperationError.set(null);
+      // Reset parts of the store that should clear on a new fetch attempt
       identifiedCreator.set(null);
       identifiedCreatorContentIds.set(null);
       potentialUsernameToCreate.set(null);
@@ -73,24 +76,25 @@
       try {
         const result = await fetchCreatorAndContentIds(currentIdentifier);
 
-        // Store the username and platform found by creatorFinder
-        // This happens regardless of finding the creator, as long as a username was determined
+        // Still populate lookupDetails for SearchPage UI
         lookupDetails = { username: result.usernameFound, platform: result.platform };
 
-        if (result.error) {
-          creatorOperationError.set(result.error);
-          if (result.error.includes("not found") && result.usernameFound) {
-            potentialUsernameToCreate.set(result.usernameFound);
-          }
+        // Set stores based on result, mirroring CreatorTab's fetchAndSetCreator
+        identifiedCreator.set(result.creator);
+        identifiedCreatorContentIds.set(result.contentIds);
+        creatorOperationError.set(result.error); // Use error from result if any
+
+        // Set potentialUsernameToCreate only if creator not found but username was
+        if (!result.creator && result.usernameFound) {
+          potentialUsernameToCreate.set(result.usernameFound);
         } else {
-          identifiedCreator.set(result.creator);
-          identifiedCreatorContentIds.set(result.contentIds);
+          potentialUsernameToCreate.set(null); // Clear if creator was found or no username identified
         }
-      } catch (err) {
-        console.error("SearchPage: Unexpected error during lookup:", err);
-        creatorOperationError.set(
-          "An unexpected error occurred during the search."
-        );
+
+      } catch (error) {
+        console.error(`SearchPage: Error calling fetchCreatorAndContentIds for "${currentIdentifier}":`, error);
+        creatorOperationError.set(`Failed to process identifier "${currentIdentifier}".`);
+        // Ensure stores reflect the failure state
         identifiedCreator.set(null);
         identifiedCreatorContentIds.set(null);
         potentialUsernameToCreate.set(null);
