@@ -53,9 +53,8 @@ export default function Home() {
             </h2>
             {/* Taille de la police ajustée */}
             <p className="text-sm sm:text-md text-[#B0B0B0] font-[var(--font-fira-sans)]">
-              ️✨ Be the first to know when we launch!{" "}
-              Subscribe to our mailing list for the latest updates and news
-              about Leakr.
+              ️✨ Be the first to know when we launch! Subscribe to our mailing
+              list for the latest updates and news about Leakr.
             </p>
             <SubscribeForm />
           </div>

@@ -7,7 +7,7 @@
     "default_popup": "src/popup.html"
   },
   "options_page": "src/options/options.html",
-  "permissions": ["tabs", "storage", "scripting"],
+  "permissions": ["tabs", "storage", "scripting", "identity", "cookies"],
   "host_permissions": ["<all_urls>"],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"

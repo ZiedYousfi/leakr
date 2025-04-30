@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import { Fira_Mono, Fira_Sans } from "next/font/google";
 import Footer from "@/components/layout/Footer";
 import "./globals.css";
@@ -30,9 +30,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${firaMono.variable} ${firaSans.variable} antialiased`}
-      >
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8988091393037410"
+          crossOrigin="anonymous"
+        ></script>
+      </head>
+      <body className={`${firaMono.variable} ${firaSans.variable} antialiased`}>
         <SpeedInsights />
         <Analytics /> {/* Vercel Analytics */}
         {children}

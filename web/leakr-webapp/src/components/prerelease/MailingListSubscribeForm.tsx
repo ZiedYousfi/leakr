@@ -52,7 +52,8 @@ const SubscribeForm = () => {
       >
         Subscribe ✨
       </button>
-      {message && <p className="text-sm mt-2 text-[#B0B0B0]">{message}</p>} {/* Text color matches style guide (Silver Grey) */}
+      {message && <p className="text-sm mt-2 text-[#B0B0B0]">{message}</p>}{" "}
+      {/* Text color matches style guide (Silver Grey) */}
     </form>
   );
 };

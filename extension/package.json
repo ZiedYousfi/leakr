@@ -39,8 +39,11 @@
     "vite-plugin-static-copy": "^2.3.1"
   },
   "dependencies": {
+    "@clerk/chrome-extension": "^2.3.3",
+    "@clerk/clerk-js": "^5.63.1",
     "fuse.js": "^7.1.0",
     "semver": "^7.7.1",
-    "sql.js": "^1.13.0"
+    "sql.js": "^1.13.0",
+    "svelte-clerk": "^0.11.5"
   }
 }
