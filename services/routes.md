@@ -11,6 +11,14 @@ POST /backup
 POST /verify
 GET /me
 
+## db-service
+
+POST /users
+GET /users
+GET /users/:id
+PUT /users/:id
+DELETE /users/:id
+
 ## community-service
 
 TODO: Think about routes for community service

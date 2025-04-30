@@ -40,5 +40,5 @@ func main() {
 
 	users.SetupRoutes(app, client) // Register the routes
 
-	log.Fatal(app.Listen(":3000"))
+	log.Fatal(app.Listen(":8080"))
 }
