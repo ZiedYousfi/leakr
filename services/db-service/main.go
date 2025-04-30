@@ -1,20 +1,28 @@
 package main
 
 import (
-    "context"
-    "log"
+	"context"
+	"log"
+	"os"
 
-    "db-service/ent"
-    _ "github.com/lib/pq"
+	"db-service/ent"
 
-		"github.com/gofiber/fiber/v2"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 
-		//dbservice "db-service/handlers"
-		users "db-service/handlers/users"
+	"github.com/gofiber/fiber/v2"
+
+	//dbservice "db-service/handlers"
+	users "db-service/handlers/users"
 )
 
 func main() {
-	client, err := ent.Open("your_driver", "your_dsn")
+
+	_ = godotenv.Load()
+
+  dsn := os.Getenv("DATABASE_URL")
+
+	client, err := ent.Open("postgres", dsn)
 	if err != nil {
 			log.Fatalf("failed opening connection to db: %v", err)
 	}

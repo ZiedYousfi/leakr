@@ -55,8 +55,7 @@ The extension works autonomously, but this monorepo allows adding associated ser
 - Each service handles a specific concern (auth, storage, community, payment)
 - **`auth-service`** is the central validation point for all others
 - Services communicate via secure HTTP APIs
-- The PlanetScale database is only used by services for:
-  - Authentication
+- The Neon database is only used by services for:
   - Community data
   - Subscription tracking
 - Cloudflare R2 storage is **managed only** by `storage-service`
