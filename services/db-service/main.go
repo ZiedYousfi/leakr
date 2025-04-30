@@ -14,6 +14,7 @@ import (
 
 	//dbservice "db-service/handlers"
 	users "db-service/handlers/users"
+	"db-service/middleware"
 )
 
 func main() {
@@ -35,7 +36,7 @@ func main() {
 
 	app := fiber.New()
 
-	// ... add middleware (logging, cors, auth, etc.) ...
+	app.Use(middleware.AuthMiddleware())
 
 	users.SetupRoutes(app, client) // Register the routes
 
