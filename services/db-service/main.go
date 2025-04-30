@@ -20,19 +20,18 @@ func main() {
 
 	_ = godotenv.Load()
 
-  dsn := os.Getenv("DATABASE_URL")
+	dsn := os.Getenv("DATABASE_URL")
 
 	client, err := ent.Open("postgres", dsn)
 	if err != nil {
-			log.Fatalf("failed opening connection to db: %v", err)
+		log.Fatalf("failed opening connection to db: %v", err)
 	}
 	defer client.Close()
 
 	// Run migrations (optional, good for dev)
 	if err := client.Schema.Create(context.Background()); err != nil {
-			log.Fatalf("failed creating schema resources: %v", err)
+		log.Fatalf("failed creating schema resources: %v", err)
 	}
-
 
 	app := fiber.New()
 
