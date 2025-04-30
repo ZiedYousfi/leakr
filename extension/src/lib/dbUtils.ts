@@ -634,8 +634,9 @@ export function getCreateurs(): Createur[] {
   return createurs;
 }
 
-/** Trouve un créateur avec correspondance floue sur le nom ou les alias (insensible à la casse) */
+/** 🌸 Trouve un créateur : exact (nom ou alias), alias exact, puis flou adaptatif */
 export function findCreatorByUsername(username: string): Createur | null {
+  // 1️⃣ Recherche SQL sur le nom exact
   const stmt = db.prepare(`
     SELECT id, nom, aliases, date_ajout, favori, verifie
     FROM createurs
@@ -645,7 +646,6 @@ export function findCreatorByUsername(username: string): Createur | null {
   stmt.bind([username]);
 
   let creator: Createur | null = null;
-
   try {
     if (stmt.step()) {
       const row = stmt.getAsObject() as {
@@ -656,14 +656,12 @@ export function findCreatorByUsername(username: string): Createur | null {
         favori: number;
         verifie?: number;
       };
-
       let parsedAliases: string[] = [];
       try {
         parsedAliases = JSON.parse(row.aliases || "[]");
       } catch (e) {
-        console.error(`Erreur de parsing des aliases pour ${row.id}:`, row.aliases, e);
+        console.error(`🌪 Erreur parsing aliases #${row.id}:`, e);
       }
-
       creator = {
         id: row.id,
         nom: row.nom,
@@ -674,81 +672,99 @@ export function findCreatorByUsername(username: string): Createur | null {
       };
     }
   } catch (err) {
-    console.error("Erreur lors de la recherche exacte :", err);
+    console.error("🌀 Erreur recherche exacte :", err);
   } finally {
     stmt.free();
   }
 
-  // 🌸 Si pas trouvé exactement, on fait une recherche floue
+  // 2️⃣ Si pas de nom exact, on charge tous et on vérifie l'alias exact
   if (!creator) {
     const allCreators = getCreateurs();
+    const searchTermLower = username.toLowerCase();
 
+    // ✨ Alias exact
+    const aliasExact = allCreators.find((item) =>
+      item.aliases.map((a) => a.toLowerCase()).includes(searchTermLower)
+    );
+    if (aliasExact) {
+      console.log(
+        `🌟 Alias exact "${username}" trouvé pour "${aliasExact.nom}".`
+      );
+      return aliasExact;
+    }
+
+    // 3️⃣ Sinon, on invoque Fuse pour correspondance floue
     const fuse = new Fuse(allCreators, {
       keys: ["nom", "aliases"],
-      threshold: 0.1,
+      threshold: 0.3,
       ignoreLocation: true,
       includeScore: true,
     });
-
     const results = fuse.search(username);
 
-    const MIN_SCORE = 0.3;
-    const MIN_LENGTH_RATIO = 0.4;
-    const MIN_INPUT_LENGTH = 3;
+    // Ajustement adaptatif du score
+    let MIN_SCORE = 0.5;
+    if (username.length <= 3) MIN_SCORE = 0.3;
+    else if (username.length >= 8) MIN_SCORE = 0.7;
+    const MIN_LENGTH_RATIO = 0.3;
+    const MIN_INPUT_LENGTH = 2;
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-    const filteredResult = results.find((result) => {
-      const item = result.item;
-      const score = result.score ?? 1;
-      const searchTermLower = username.toLowerCase();
+    const filtered = results.find(({ item, score = 1 }) => {
       const nameLower = item.nom.toLowerCase();
       const aliasesLower = item.aliases.map((a) => a.toLowerCase());
-
-      const isAlreadyKnown =
+      const isExactKnown =
         searchTermLower === nameLower || aliasesLower.includes(searchTermLower);
-
+      const normOK =
+        normalize(searchTermLower) === normalize(nameLower) ||
+        item.aliases.map(normalize).includes(normalize(searchTermLower));
+      const substrOK =
+        nameLower.includes(searchTermLower) ||
+        aliasesLower.some((a) => a.includes(searchTermLower));
+      const isFuzzyMatch = normOK || substrOK;
       const lengthRatio = username.length / item.nom.length;
 
+      console.log(
+        `🔮 Test "${username}"→"${item.nom}":`,
+        `exact? ${isExactKnown}, fuzzy? ${isFuzzyMatch},`,
+        `score=${score.toFixed(3)}, ratio=${lengthRatio.toFixed(2)},`,
+        `seuil=${MIN_SCORE}`
+      );
       return (
-        !isAlreadyKnown &&
+        !isExactKnown &&
+        isFuzzyMatch &&
         username.length >= MIN_INPUT_LENGTH &&
         lengthRatio >= MIN_LENGTH_RATIO &&
         score <= MIN_SCORE
       );
     });
 
-    if (filteredResult) {
-      const matchedCreator = filteredResult.item;
-
-      const updatedAliases = [...matchedCreator.aliases, username];
-      const updatedAliasesStr = JSON.stringify(updatedAliases);
-
+    if (filtered) {
+      const matched = filtered.item;
+      const updatedAliases = Array.from(
+        new Set([...matched.aliases, username])
+      );
+      const updatedStr = JSON.stringify(updatedAliases);
       try {
-        const updateStmt = db.prepare(
-          "UPDATE createurs SET aliases = ? WHERE id = ?"
-        );
-        updateStmt.run([updatedAliasesStr, matchedCreator.id]);
-        updateStmt.free();
+        const up = db.prepare("UPDATE createurs SET aliases = ? WHERE id = ?");
+        up.run([updatedStr, matched.id]);
+        up.free();
         saveDatabase();
-
         console.log(
-          `Alias "${username}" ajouté pour le créateur "${matchedCreator.nom}" (ID: ${matchedCreator.id}) suite à une correspondance floue.`
+          `🌺 Alias "${username}" ajouté à "${matched.nom}" (ID:${matched.id}).`
         );
-
-        matchedCreator.aliases = updatedAliases;
-      } catch (updateErr) {
-        console.error(
-          `Erreur lors de l'ajout de l'alias "${username}" pour le créateur ${matchedCreator.id}:`,
-          updateErr
-        );
+        matched.aliases = updatedAliases;
+      } catch (e) {
+        console.error(`🔥 Erreur ajout alias "${username}":`, e);
       }
-
-      creator = matchedCreator;
+      creator = matched;
+    } else {
+      console.warn(`❌ Aucun créateur trouvé pour "${username}" même en flou.`);
     }
   }
 
   return creator;
 }
-
 
 /** Met à jour le statut favori d'un créateur */
 export function updateFavoriCreateur(id: number, favori: boolean): void {
