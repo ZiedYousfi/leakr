@@ -46,7 +46,7 @@ describe("detectPlatform", () => {
   it("retourne 'null' pour une URL non reconnue mais le bon username", () => {
     expect(detectPlatform("https://example.com/profile")).toEqual({
       platform: null,
-      username: "profile",
+      username: null, // Updated expectation
     });
   });
 

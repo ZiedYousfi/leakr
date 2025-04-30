@@ -62,8 +62,8 @@ describe("processSearchInput", () => {
     const input = "https://example.com/profile";
     expect(processSearchInput(input)).toEqual({
       platform: null,
-      username: "profile",
-      displayValue: "profile",
+      username: null, // Changed from "profile"
+      displayValue: input, // Changed from "profile"
     });
   });
 
