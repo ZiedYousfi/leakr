@@ -57,7 +57,7 @@ function createSchema() {
     CREATE TABLE settings (
       id INTEGER PRIMARY KEY,
       uuid TEXT NOT NULL,
-      share_collection BOOLEAN DEFAULT FALSE
+      share_collection BOOLEAN DEFAULT TRUE
     );
 
     -- Insérer une valeur par défaut pour le UUID
