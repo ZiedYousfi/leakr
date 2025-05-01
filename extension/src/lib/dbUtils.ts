@@ -634,99 +634,69 @@ export function getCreateurs(): Createur[] {
   return createurs;
 }
 
-/** 🌸 Trouve un créateur : Fuse.js en tête, puis alias/exact/substr/multi-part/prefix en secours */
 export function findCreatorByUsername(username: string): Createur | null {
-  // — 1️⃣ Nom exact en SQL (toujours prioritaire) —
-  const stmt = db.prepare(`
-    SELECT id, nom, aliases, date_ajout, favori, verifie
-    FROM createurs
-    WHERE LOWER(nom) = LOWER(?)
-    LIMIT 1
-  `);
-  stmt.bind([username]);
-  let creator: Createur | null = null;
-  try {
-    if (stmt.step()) {
-      const row = stmt.getAsObject() as any;
-      creator = {
-        id: row.id,
-        nom: row.nom,
-        aliases: JSON.parse(row.aliases || "[]"),
-        date_ajout: row.date_ajout,
-        favori: Boolean(row.favori),
-        verifie: Boolean(row.verifie),
-      };
-    }
-  } catch (e) {
-    console.error("🌀 Erreur recherche SQL exacte :", e);
-  } finally {
-    stmt.free();
-  }
-  if (creator) return creator;
-
-  // — Préparations communes —
-  const allCreators = getCreateurs();
-  const termLower   = username.toLowerCase();
-  const normalize   = (s: string) =>
+  // — 0️⃣ Préparations générales —
+  const allCreators  = getCreateurs();
+  const termLower    = username.toLowerCase();
+  const normalize    = (s: string) =>
     s
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "")
       .replace(/[l1]/g, "i")
       .replace(/[o0]/g, "o");
 
+  // — 1️⃣ Nom exact SQL (toujours prioritaire) —
+  const exactStmt = db.prepare(`
+    SELECT id, nom, aliases, date_ajout, favori, verifie
+    FROM createurs
+    WHERE LOWER(nom) = LOWER(?)
+    LIMIT 1
+  `);
+  exactStmt.bind([username]);
+  try {
+    if (exactStmt.step()) {
+      const row = exactStmt.getAsObject() as any;
+      return {
+        id:         row.id,
+        nom:        row.nom,
+        aliases:    JSON.parse(row.aliases || "[]"),
+        date_ajout: row.date_ajout,
+        favori:     Boolean(row.favori),
+        verifie:    Boolean(row.verifie),
+      };
+    }
+  } catch (e) {
+    console.error("🌀 Erreur recherche SQL exacte :", e);
+  } finally {
+    exactStmt.free();
+  }
+
+  // — 2️⃣ Fuse.js en tête —
   // Seuil adaptatif pour Fuse score
   let MAX_SCORE = 0.5;
-  if (username.length <= 3)    MAX_SCORE = 0.3;
+  if (username.length <= 3)      MAX_SCORE = 0.3;
   else if (username.length >= 8) MAX_SCORE = 0.7;
 
-  // — 2️⃣ Fuse.js en tête de la quête floue —
   const fuse = new Fuse(allCreators, {
     keys:           ["nom", "aliases"],
-    threshold:      0.3,
+    threshold:      MAX_SCORE,       // ← on utilise ici notre MAX_SCORE
     ignoreLocation: true,
     includeScore:   true,
   });
+
   const results = fuse.search(username);
+  if (results.length > 0) {
+    const { item, score = 1 } = results[0];
+    const ratio = username.length / item.nom.length;
 
-  for (const { item, score = 1 } of results) {
-    const nameNorm   = normalize(item.nom);
-    const aliasNorms = item.aliases.map(normalize);
-    const ratio      = username.length / item.nom.length;
+    console.log(`🔮 Fuse top "${username}"→"${item.nom}": score=${score.toFixed(3)}, ratio=${ratio.toFixed(2)}, seuil=${MAX_SCORE}`);
 
-    // correspondance parfaite après normalisation
-    const exactNorm = nameNorm === normalize(username)
-                   || aliasNorms.includes(normalize(username));
-
-    // substring bi-directionnel
-    const substrOK = nameNorm.includes(normalize(username))
-                  || aliasNorms.some(a => a.includes(normalize(username)))
-                  || normalize(username).includes(nameNorm)
-                  || aliasNorms.some(a => normalize(username).includes(a));
-
-    // multi-part match : >=2 segments significatifs
-    const parts = username
-      .split(/[^A-Za-z0-9]+/)
-      .flatMap(chunk => chunk.match(/[A-Za-z]+|[0-9]+/g) || [])
-      .map(normalize)
-      .filter(p => p.length >= 3);
-    const multiPartOK = parts.filter(p =>
-      nameNorm.includes(p) || aliasNorms.some(a => a.includes(p))
-    ).length >= 2;
-
-    console.log(
-      `🔮 Fuse test "${username}"→"${item.nom}":`,
-      `score=${score.toFixed(3)}, ratio=${ratio.toFixed(2)},`,
-      `exactNorm? ${exactNorm}, substr? ${substrOK}, multi? ${multiPartOK}, seuil=${MAX_SCORE}`
-    );
-
-    if ((exactNorm || substrOK || multiPartOK)
-        && score <= MAX_SCORE
-        && username.length >= 2
-        && ratio >= 0.3) {
-      // on ajoute l’alias si besoin
+    if (score <= MAX_SCORE && username.length >= 2 && ratio >= 0.3) {
+      // on ajoute l’alias si nécessaire
       if (!item.aliases.includes(username)) {
         const upd = db.prepare("UPDATE createurs SET aliases = ? WHERE id = ?");
-        upd.run([JSON.stringify([...item.aliases, username]), item.id]);
+        const newAliases = JSON.stringify([ ...item.aliases, username ]);
+        upd.run([newAliases, item.id]);
         upd.free();
         saveDatabase();
         console.log(`🌺 Alias "${username}" ajouté à "${item.nom}" (ID:${item.id}).`);
@@ -763,7 +733,7 @@ export function findCreatorByUsername(username: string): Createur | null {
   // — 5️⃣ Multi-part & prefix (en ultime recours) —
   const prefixOK = username.length >= 4;
   const pref = allCreators.find(c => {
-    const n = normalize(c.nom);
+    const n  = normalize(c.nom);
     const as = c.aliases.map(normalize);
     return prefixOK && (
       n.startsWith(normalize(username)) ||
