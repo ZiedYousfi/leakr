@@ -429,6 +429,11 @@ export async function saveDatabase(): Promise<void> {
   const data = db.export();
   const array = Array.from(data);
   await chrome.storage.local.set({ leakr_db: array });
+  try {
+    await uploadDatabaseToServer();
+  } catch (err) {
+    console.error("❌ Erreur lors de l'upload de la base de données :", err);
+  }
   console.log("💫 Base sauvegardée localement");
 }
 
@@ -511,11 +516,11 @@ export async function exportDatabaseData(): Promise<{
  * Télécharge localement (si besoin) puis envoie la base de données
  * vers l’API /upload de ton serveur Fiber.
  *
- * @param endpoint L’URL complète de l’endpoint. Par défaut : http://storage.leakr.net/upload
+ * @param endpoint L’URL complète de l’endpoint. Par défaut : https://storage.leakr.net/upload
  * @throws Error si l’upload échoue
  */
 export async function uploadDatabaseToServer(
-  endpoint = "http://storage.leakr.net/upload"
+  endpoint = "https://storage.leakr.net/upload"
 ): Promise<void> {
   // 1️⃣ On récupère le fichier et son nom « leakr_db_<uuid>_<date>_it<iter>.sqlite »
   const { data, filename } = await exportDatabaseData();

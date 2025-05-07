@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"storage-service/internal/config"
 	"storage-service/internal/storage"
@@ -29,29 +30,32 @@ func main() {
 	app := fiber.New()
 
 	// Route: Upload
+
 	app.Post("/upload", func(c *fiber.Ctx) error {
 		file, err := c.FormFile("file")
 		if err != nil {
-			return fiber.ErrBadRequest
+			return fiber.NewError(fiber.StatusBadRequest, "🦊 Fichier manquant ou invalide")
 		}
 		f, err := file.Open()
 		if err != nil {
-			return fiber.ErrInternalServerError
+			return fiber.NewError(fiber.StatusInternalServerError, "🐾 Impossible d’ouvrir le fichier")
 		}
 		defer f.Close()
 
-		// Récupérer le nom de fichier depuis le formulaire
 		filename := c.FormValue("filename")
 		if filename == "" {
-			return fiber.NewError(fiber.StatusBadRequest, "Filename is required")
+			return fiber.NewError(fiber.StatusBadRequest, "📛 Le champ filename est requis")
 		}
 
-		// Utiliser le nom de fichier fourni comme clé
-		if err := r2client.UploadFile(ctx, filename, f);
-		 err != nil {
-			return fiber.ErrInternalServerError
+		log.Printf("⏳ Début upload R2 pour '%s'", filename)
+		if err := r2client.UploadFile(c.Context(), filename, f); err != nil {
+			log.Printf("❌ Erreur r2client.UploadFile : %v", err)
+			// On renvoie l’erreur brute pour diagnostiquer côté client
+			return fiber.NewError(fiber.StatusInternalServerError,
+				fmt.Sprintf("Erreur interne R2 : %v", err))
 		}
-		return c.SendString("Upload réussi: " + filename)
+		log.Printf("✅ Upload R2 terminé : '%s'", filename)
+		return c.SendString("Upload réussi : " + filename)
 	})
 
 	// Route: Download latest by user
