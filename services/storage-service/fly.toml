@@ -1,14 +1,12 @@
-# fly.toml app configuration file generated for storage-service-damp-sunset-4065 on 2025-05-07T16:19:22+02:00
+# fly.toml app configuration file generated for storage-service-empty-dust-8194 on 2025-05-07T16:37:31+02:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'storage-service-damp-sunset-4065'
+app = 'storage-service-empty-dust-8194'
 primary_region = 'sea'
 
 [build]
-  [build.args]
-    GO_VERSION = '1.24.0'
 
 [env]
   PORT = '8080'
