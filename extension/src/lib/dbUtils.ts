@@ -655,6 +655,7 @@ export function findCreatorByUsername(username: string): Createur | null {
   exactStmt.bind([username]);
   try {
     if (exactStmt.step()) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const row = exactStmt.getAsObject() as any;
       return {
         id:         row.id,
