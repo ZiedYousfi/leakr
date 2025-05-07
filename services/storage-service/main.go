@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"storage-service/internal/config"
 	"storage-service/internal/storage"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -42,13 +40,18 @@ func main() {
 		}
 		defer f.Close()
 
-		// Générer clé: leakr_db_uuid_timestamp_it1.sqlite
-		key := fmt.Sprintf("leakr_db_%s_%d_it1.sqlite", "user-uuid", time.Now().Unix())
-		if err := r2client.UploadFile(ctx, key, f);
+		// Récupérer le nom de fichier depuis le formulaire
+		filename := c.FormValue("filename")
+		if filename == "" {
+			return fiber.NewError(fiber.StatusBadRequest, "Filename is required")
+		}
+
+		// Utiliser le nom de fichier fourni comme clé
+		if err := r2client.UploadFile(ctx, filename, f);
 		 err != nil {
 			return fiber.ErrInternalServerError
 		}
-		return c.SendString("Upload réussi: " + key)
+		return c.SendString("Upload réussi: " + filename)
 	})
 
 	// Route: Download latest by user
