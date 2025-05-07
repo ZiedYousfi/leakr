@@ -38,9 +38,10 @@ Refer to [../../infra/cloudflare/r2-uploader/wrangler.jsonc](../../infra/cloudfl
 The following routes are handled by this service:
 
 - `POST /upload`: Uploads a database file.
-  - Requires authentication (e.g., JWT validated by `auth-service`).
+  - Requires authentication (e.g., JWT validated by `auth-service`). (Don't do it for now for the sake of simplicity and testing.)
   - Expects a multipart/form-data request with the file.
   - Filename should ideally contain metadata (user ID, timestamp, iteration).
+  - For uploads, the service will receive the file. To handle potential rapid successive uploads from the same user, the service may temporarily cache the received file (e.g., in memory or on local disk) before streaming/uploading it to the appropriate R2 bucket using the AWS SDK for Go (V2) configured for R2. This caching helps prevent redundant R2 operations if a user uploads multiple times in a short period.
 - `GET /download/user/{uuid}`: Downloads the latest database file for a specific user.
   - Requires authentication.
   - The `uuid` is the user identifier.
