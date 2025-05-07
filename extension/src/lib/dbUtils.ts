@@ -508,6 +508,39 @@ export async function exportDatabaseData(): Promise<{
 }
 
 /**
+ * Télécharge localement (si besoin) puis envoie la base de données
+ * vers l’API /upload de ton serveur Fiber.
+ *
+ * @param endpoint L’URL complète de l’endpoint. Par défaut : http://storage.leakr.net/upload
+ * @throws Error si l’upload échoue
+ */
+export async function uploadDatabaseToServer(
+  endpoint = "http://storage.leakr.net/upload"
+): Promise<void> {
+  // 1️⃣ On récupère le fichier et son nom « leakr_db_<uuid>_<date>_it<iter>.sqlite »
+  const { data, filename } = await exportDatabaseData();
+
+  // 2️⃣ On emballe le Uint8Array dans un Blob pour FormData
+  const blob = new Blob([data], { type: "application/octet-stream" });
+
+  // 3️⃣ Construction du payload multipart/form‑data
+  const form = new FormData();
+  form.append("file", blob, filename); // ← champ "file"
+  form.append("filename", filename);   // ← champ "filename" attendu côté serveur
+
+  // 4️⃣ Lancement de l’incantation réseau
+  const res = await fetch(endpoint, { method: "POST", body: form });
+
+  // 5️⃣ Gestion douce‑amère des retours
+  if (!res.ok) {
+    const msg = await res.text().catch(() => res.statusText);
+    throw new Error(`❌ Upload échoué (${res.status}) : ${msg}`);
+  }
+
+  console.log(`🦊✨ Upload réussi : ${filename}`);
+}
+
+/**
  * Exports the database and triggers a download.
  */
 export async function downloadDatabaseExport(): Promise<void> {
