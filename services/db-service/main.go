@@ -11,8 +11,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/gofiber/fiber/v2"
-
-	//dbservice "db-service/handlers"
+	
 	users "db-service/handlers/users"
 	"db-service/middleware"
 )
