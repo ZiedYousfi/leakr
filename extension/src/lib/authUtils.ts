@@ -3,7 +3,8 @@ import {
   CLIENT_SECRET,
   AUTHORIZE_ENDPOINT,
   TOKEN_ENDPOINT,
-  USERINFO_ENDPOINT, // Ensure USERINFO_ENDPOINT is defined in authVars.ts
+  USERINFO_ENDPOINT,
+  LEAKR_UUID_ENDPOINT,
 } from "./authVars";
 
 // 1. Génére l'URI de redirection pour chrome.identity
@@ -36,15 +37,7 @@ export async function authenticateWithClerk(): Promise<void> {
     chrome.identity.launchWebAuthFlow(
       { url: authUrl, interactive: true },
       async (redirectedTo) => {
-        // Récupération et suppression du state stocké
-        const stored = await new Promise<{ oauth_state?: string }>((res) =>
-          chrome.storage.session.get("oauth_state", (result) => {
-            chrome.storage.session.remove("oauth_state");
-            res(result);
-          })
-        );
-        const storedState = stored.oauth_state;
-
+        // Check for runtime error first
         if (chrome.runtime.lastError) {
           console.error("Auth flow error:", chrome.runtime.lastError.message);
           return reject(
@@ -53,13 +46,25 @@ export async function authenticateWithClerk(): Promise<void> {
             )
           );
         }
+
+        // If redirectedTo is missing, fail early
         if (!redirectedTo) {
+          console.error("No redirect URI received after auth flow. Possible popup block or network error.");
           return reject(
             new Error(
-              "Aucun redirect URI reçu après le flux d'authentification."
+              "Aucun redirect URI reçu après le flux d'authentification. Vérifiez que la page d'autorisation Clerk est accessible et non bloquée par une extension ou un bloqueur de popups."
             )
           );
         }
+
+        // Récupération et suppression du state stocké
+        const stored = await new Promise<{ oauth_state?: string }>((res) =>
+          chrome.storage.session.get("oauth_state", (result) => {
+            chrome.storage.session.remove("oauth_state");
+            res(result);
+          })
+        );
+        const storedState = stored.oauth_state;
 
         const urlObj = new URL(redirectedTo);
         const code = urlObj.searchParams.get("code");
@@ -279,9 +284,52 @@ export async function getUserInfo(): Promise<UserInfo | null> {
       chrome.storage.local.set({ user_info: info }, res)
     );
     console.log("User info stored:", info);
+
+    // --- Fetch and store leakr_uuid ---
+    if (info.sub) {
+      try {
+        const uuidEndpoint = LEAKR_UUID_ENDPOINT.replace(":clerk_id", encodeURIComponent(info.sub));
+        const uuidResp = await fetch(uuidEndpoint, { method: "GET" });
+        if (uuidResp.ok) {
+          const { uuid } = await uuidResp.json();
+          if (uuid) {
+            await new Promise<void>((res) =>
+              chrome.storage.local.set({ leakr_uuid: uuid }, res)
+            );
+            console.log("Leakr UUID stored:", uuid);
+          }
+        } else {
+          const txt = await uuidResp.text();
+          console.warn(`Failed to fetch leakr_uuid: ${uuidResp.status} - ${txt}`);
+        }
+      } catch (e) {
+        console.warn("Error fetching leakr_uuid:", e);
+      }
+    }
+    // --- end fetch/store leakr_uuid ---
+
     return info;
   } catch (e) {
     console.error("Error fetching user info:", e);
     return null;
   }
+}
+
+// 11. Clear all extension storage (local and session), except the database
+export async function clearAllStorage(): Promise<void> {
+  // This will clear all extension storage EXCEPT the database (leakr_db)
+  await new Promise<void>((res) =>
+    chrome.storage.local.remove(
+      [
+        "access_token",
+        "refresh_token",
+        "user_id",
+        "user_info",
+        "leakr_uuid"
+        // Add other keys here if needed, but DO NOT remove "leakr_db"
+      ],
+      res
+    )
+  );
+  await new Promise<void>((res) => chrome.storage.session.clear(res));
 }

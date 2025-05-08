@@ -13,6 +13,7 @@
     checkAuthStatus,
     logout,
     getAccessToken,
+    clearAllStorage, // <-- Add import
   } from "../lib/authUtils";
   import { onMount } from "svelte";
 
@@ -227,6 +228,33 @@
       }
     }
   }
+
+  async function handleClearAll() {
+    if (
+      confirm(
+        "This will erase ALL extension data EXCEPT your local database (leakr_db). Authentication, settings, and user info will be removed. This cannot be undone. Continue?"
+      )
+    ) {
+      isLoading = true;
+      statusMessage = "Clearing all extension data (except database)...";
+      try {
+        await clearAllStorage();
+        // Optionally, reset local state
+        isAuthenticated = false;
+        settings = null;
+        userUUID = "N/A";
+        shareCollection = false;
+        statusMessage =
+          "All extension data cleared (database not erased). Please reload the extension.";
+      } catch (error) {
+        console.error("Failed to clear all data:", error);
+        statusMessage = `Error clearing data: ${error instanceof Error ? error.message : String(error)}`;
+      } finally {
+        isLoading = false;
+        setTimeout(() => (statusMessage = null), 7000);
+      }
+    }
+  }
 </script>
 
 <main>
@@ -320,6 +348,16 @@
         {isLoading && statusMessage?.startsWith("Uploading")
           ? "Uploading..."
           : "Upload Database (Login Required)"}
+      </button>
+      <button
+        onclick={handleClearAll}
+        disabled={isLoading}
+        style="background-color: #a94442; color: #fff; border-color: #a94442;"
+        title="Erase ALL extension data except the database (irreversible!)"
+      >
+        {isLoading && statusMessage?.startsWith("Clearing")
+          ? "Clearing..."
+          : "Clear All Data (except database)"}
       </button>
     </div>
     <!-- Hidden file input: bind:this still works -->
