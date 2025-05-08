@@ -1,0 +1,5 @@
+// Faster than a .env file x)
+export const CLIENT_ID = "YOUR_CLIENT_ID";
+export const CLIENT_SECRET = "YOUR_CLIENT_SECRET";
+export const AUTHORIZE_ENDPOINT = "YOUR_AUTHORIZE_ENDPOINT";
+export const TOKEN_ENDPOINT = "YOUR_TOKEN_ENDPOINT";
