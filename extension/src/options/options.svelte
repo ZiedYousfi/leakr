@@ -5,6 +5,7 @@
     getSettings,
     updateShareCollection,
     updateUUID,
+    uploadDatabaseToServer
   } from "../lib/dbUtils";
   import type { Settings } from "../lib/dbUtils";
   import { onMount } from "svelte";
@@ -46,6 +47,22 @@
     } catch (error) {
       console.error("Failed to export database:", error);
       statusMessage = `Error exporting database: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      isLoading = false;
+      setTimeout(() => (statusMessage = null), 5000);
+    }
+  }
+
+  async function handleUpload() {
+    isLoading = true;
+    statusMessage = "Uploading database...";
+    try {
+      await uploadDatabaseToServer();
+      statusMessage = "Database upload initiated successfully.";
+      console.log("Database upload initiated.");
+    } catch (error) {
+      console.error("Failed to upload database:", error); // Update error message to reflect upload
+      statusMessage = `Error uploading database: ${error instanceof Error ? error.message : String(error)}`;
     } finally {
       isLoading = false;
       setTimeout(() => (statusMessage = null), 5000);
@@ -213,6 +230,11 @@
         {isLoading && statusMessage?.startsWith("Importing")
           ? "Importing..."
           : "Import Database"}
+      </button>
+      <button onclick={handleUpload} disabled={isLoading}>
+        {isLoading && statusMessage?.startsWith("Uploading")
+          ? "Uploading..."
+          : "Upload Database"}
       </button>
     </div>
     <!-- Hidden file input: bind:this still works -->
