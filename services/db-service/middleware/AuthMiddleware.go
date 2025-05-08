@@ -2,10 +2,11 @@ package middleware
 
 import (
 	"encoding/json"
-	"github.com/gofiber/fiber/v2"
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func AuthMiddleware() fiber.Handler {
@@ -31,7 +32,7 @@ func AuthMiddleware() fiber.Handler {
 		defer resp.Body.Close()
 
 		body, _ := io.ReadAll(resp.Body)
-		var claims map[string]interface{}
+		var claims map[string]any
 		if err := json.Unmarshal(body, &claims); err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "malformed_response"})
 		}
