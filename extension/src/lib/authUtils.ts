@@ -1,10 +1,6 @@
 // authUtils.ts
 
-// Constantes Clerk – remplace par tes vraies valeurs ou utilise un mécanisme d'env
-const CLIENT_ID = "TON_CLIENT_ID_CLERK";
-const CLIENT_SECRET = "TON_CLIENT_SECRET_CLERK";
-const AUTHORIZE_ENDPOINT = "https://api.clerk.dev/oauth2/v1/authorize";
-const TOKEN_ENDPOINT = "https://api.clerk.dev/oauth2/v1/token";
+import { CLIENT_ID, CLIENT_SECRET, AUTHORIZE_ENDPOINT, TOKEN_ENDPOINT} from './authVars';
 
 // 1. Génére l'URI de redirection pour chrome.identity
 export function getRedirectUri(): string {

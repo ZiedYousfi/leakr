@@ -25,3 +25,4 @@ dist-ssr
 bun.lock
 
 test/*
+src/lib/authVars.ts
