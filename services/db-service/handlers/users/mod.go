@@ -90,6 +90,30 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(u)
 }
 
+// GetUserByClerkID handles GET requests to retrieve a user's UUID by Clerk ID.
+func (h *UserHandler) GetUserByClerkID(c *fiber.Ctx) error {
+	clerkID := c.Params("clerk_id")
+	if clerkID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Clerk ID is required"})
+	}
+
+	u, err := h.Client.User.
+		Query().
+		Where(user.ClerkUserIDEQ(clerkID)).
+		Only(context.Background()) // Use request context in real app
+
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found for the given Clerk ID"})
+		}
+		// Log the error internally
+		// log.Printf("Error fetching user by Clerk ID %s: %v", clerkID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve user by Clerk ID"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"uuid": u.ID})
+}
+
 // ListUsers handles GET requests to retrieve all users (add pagination in real app).
 func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 	// Add pagination parameters (e.g., ?page=1&limit=20) in a real application
@@ -198,6 +222,7 @@ func SetupRoutes(app *fiber.App, client *ent.Client) {
 	userGroup.Post("/", userHandler.CreateUser)
 	userGroup.Get("/", userHandler.ListUsers)
 	userGroup.Get("/:id", userHandler.GetUser)
-	userGroup.Put("/:id", userHandler.UpdateUser) // Or Patch
+	userGroup.Get("/clerk/:clerk_id", userHandler.GetUserByClerkID) // New route
+	userGroup.Put("/:id", userHandler.UpdateUser)                   // Or Patch
 	userGroup.Delete("/:id", userHandler.DeleteUser)
 }

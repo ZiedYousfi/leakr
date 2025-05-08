@@ -41,6 +41,7 @@ The service exposes RESTful endpoints under the `/users` path for CRUD operation
 * `POST /users`: Create a new user.
 * `GET /users`: List all users.
 * `GET /users/:id`: Get a specific user by their internal ID.
+* `GET /users/clerk/:clerk_id`: Get a user's UUID by their Clerk user ID.
 * `PUT /users/:id`: Update a specific user by their internal ID.
 * `DELETE /users/:id`: Delete a specific user by their internal ID.
 
