@@ -531,7 +531,7 @@ export async function uploadDatabaseToServer(
   // 3️⃣ Construction du payload multipart/form‑data
   const form = new FormData();
   form.append("file", blob, filename); // ← champ "file"
-  form.append("filename", filename);   // ← champ "filename" attendu côté serveur
+  form.append("filename", filename); // ← champ "filename" attendu côté serveur
 
   // 4️⃣ Lancement de l’incantation réseau
   const res = await fetch(endpoint, { method: "POST", body: form });
@@ -674,9 +674,9 @@ export function getCreateurs(): Createur[] {
 
 export function findCreatorByUsername(username: string): Createur | null {
   // — 0️⃣ Préparations générales —
-  const allCreators  = getCreateurs();
-  const termLower    = username.toLowerCase();
-  const normalize    = (s: string) =>
+  const allCreators = getCreateurs();
+  const termLower = username.toLowerCase();
+  const normalize = (s: string) =>
     s
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "")
@@ -696,12 +696,12 @@ export function findCreatorByUsername(username: string): Createur | null {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const row = exactStmt.getAsObject() as any;
       return {
-        id:         row.id,
-        nom:        row.nom,
-        aliases:    JSON.parse(row.aliases || "[]"),
+        id: row.id,
+        nom: row.nom,
+        aliases: JSON.parse(row.aliases || "[]"),
         date_ajout: row.date_ajout,
-        favori:     Boolean(row.favori),
-        verifie:    Boolean(row.verifie),
+        favori: Boolean(row.favori),
+        verifie: Boolean(row.verifie),
       };
     }
   } catch (e) {
@@ -713,14 +713,14 @@ export function findCreatorByUsername(username: string): Createur | null {
   // — 2️⃣ Fuse.js en tête —
   // Seuil adaptatif pour Fuse score
   let MAX_SCORE = 0.5;
-  if (username.length <= 3)      MAX_SCORE = 0.3;
+  if (username.length <= 3) MAX_SCORE = 0.3;
   else if (username.length >= 8) MAX_SCORE = 0.7;
 
   const fuse = new Fuse(allCreators, {
-    keys:           ["nom", "aliases"],
-    threshold:      MAX_SCORE,       // ← on utilise ici notre MAX_SCORE
+    keys: ["nom", "aliases"],
+    threshold: MAX_SCORE, // ← on utilise ici notre MAX_SCORE
     ignoreLocation: true,
-    includeScore:   true,
+    includeScore: true,
   });
 
   const results = fuse.search(username);
@@ -728,17 +728,21 @@ export function findCreatorByUsername(username: string): Createur | null {
     const { item, score = 1 } = results[0];
     const ratio = username.length / item.nom.length;
 
-    console.log(`🔮 Fuse top "${username}"→"${item.nom}": score=${score.toFixed(3)}, ratio=${ratio.toFixed(2)}, seuil=${MAX_SCORE}`);
+    console.log(
+      `🔮 Fuse top "${username}"→"${item.nom}": score=${score.toFixed(3)}, ratio=${ratio.toFixed(2)}, seuil=${MAX_SCORE}`
+    );
 
     if (score <= MAX_SCORE && username.length >= 2 && ratio >= 0.3) {
       // on ajoute l’alias si nécessaire
       if (!item.aliases.includes(username)) {
         const upd = db.prepare("UPDATE createurs SET aliases = ? WHERE id = ?");
-        const newAliases = JSON.stringify([ ...item.aliases, username ]);
+        const newAliases = JSON.stringify([...item.aliases, username]);
         upd.run([newAliases, item.id]);
         upd.free();
         saveDatabase();
-        console.log(`🌺 Alias "${username}" ajouté à "${item.nom}" (ID:${item.id}).`);
+        console.log(
+          `🌺 Alias "${username}" ajouté à "${item.nom}" (ID:${item.id}).`
+        );
         item.aliases.push(username);
       }
       return item;
@@ -746,8 +750,8 @@ export function findCreatorByUsername(username: string): Createur | null {
   }
 
   // — 3️⃣ Fallback : alias exact en mémoire —
-  const aliasExact = allCreators.find(c =>
-    c.aliases.some(a => a.toLowerCase() === termLower)
+  const aliasExact = allCreators.find((c) =>
+    c.aliases.some((a) => a.toLowerCase() === termLower)
   );
   if (aliasExact) {
     console.log(`🌟 Alias exact "${username}" → "${aliasExact.nom}"`);
@@ -756,12 +760,13 @@ export function findCreatorByUsername(username: string): Createur | null {
 
   // — 4️⃣ Alias-substring bi-directionnel (seuil ≥ 3) —
   const MIN_SUBSTR = 3;
-  const aliasSub = allCreators.find(c =>
+  const aliasSub = allCreators.find((c) =>
     c.aliases
       .map(normalize)
-      .some(a =>
-        a.length >= MIN_SUBSTR &&
-        (normalize(username).includes(a) || a.includes(normalize(username)))
+      .some(
+        (a) =>
+          a.length >= MIN_SUBSTR &&
+          (normalize(username).includes(a) || a.includes(normalize(username)))
       )
   );
   if (aliasSub) {
@@ -771,12 +776,13 @@ export function findCreatorByUsername(username: string): Createur | null {
 
   // — 5️⃣ Multi-part & prefix (en ultime recours) —
   const prefixOK = username.length >= 4;
-  const pref = allCreators.find(c => {
-    const n  = normalize(c.nom);
+  const pref = allCreators.find((c) => {
+    const n = normalize(c.nom);
     const as = c.aliases.map(normalize);
-    return prefixOK && (
-      n.startsWith(normalize(username)) ||
-      as.some(a => a.startsWith(normalize(username)))
+    return (
+      prefixOK &&
+      (n.startsWith(normalize(username)) ||
+        as.some((a) => a.startsWith(normalize(username))))
     );
   });
   if (pref) {
