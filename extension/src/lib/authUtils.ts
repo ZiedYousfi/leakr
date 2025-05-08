@@ -10,18 +10,43 @@ export function getRedirectUri(): string {
 // 2. Lance le flow OIDC avec Clerk
 export async function authenticateWithClerk(): Promise<void> {
   const redirectUri = getRedirectUri();
+  console.log("Generated Redirect URI:", redirectUri); // Added logging
+
   const authUrl = `${AUTHORIZE_ENDPOINT}` +
     `?client_id=${CLIENT_ID}` +
     `&response_type=code` +
     `&scope=openid%20profile%20email` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
+  console.log("Attempting Auth URL:", authUrl); // Added logging
+
   return new Promise((resolve, reject) => {
     chrome.identity.launchWebAuthFlow(
       { url: authUrl, interactive: true },
       async (redirectedTo) => {
-        if (chrome.runtime.lastError || !redirectedTo) {
-          return reject(chrome.runtime.lastError || new Error("Aucun redirect URI reçu"));
+        if (chrome.runtime.lastError) {
+          // Log more details if lastError is present
+          console.error(
+            "chrome.identity.launchWebAuthFlow error:",
+            chrome.runtime.lastError.message
+          );
+          console.error("Auth URL that failed:", authUrl);
+          return reject(
+            new Error(
+              `Authorization failed: ${chrome.runtime.lastError.message}. Check console for Auth URL and Redirect URI.`
+            )
+          );
+        }
+        if (!redirectedTo) {
+          console.error(
+            "chrome.identity.launchWebAuthFlow: No redirect URI received after auth flow."
+          );
+          console.error("Auth URL attempted:", authUrl);
+          return reject(
+            new Error(
+              "Aucun redirect URI reçu après le flux d'authentification."
+            )
+          );
         }
         const urlObj = new URL(redirectedTo);
         const code = urlObj.searchParams.get('code');
