@@ -73,9 +73,9 @@ async function storeTokens(accessToken: string, refreshToken: string): Promise<v
 
 // 5. Récupère l'access_token pour tes appels API
 export async function getAccessToken(): Promise<string | null> {
-  return new Promise((res) => {
-    chrome.storage.local.get(['access_token'], (resStorage) => {
-      res(resStorage.access_token || null);
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['access_token'], (result) => {
+      resolve(result.access_token || null);
     });
   });
 }
@@ -108,4 +108,19 @@ export async function refreshAccessToken(): Promise<void> {
 
   const { access_token, refresh_token } = await resp.json();
   await storeTokens(access_token, refresh_token);
+}
+
+// 7. Vérifie le statut d'authentification
+export async function checkAuthStatus(): Promise<boolean> {
+  const token = await getAccessToken();
+  return !!token;
+}
+
+// 8. Déconnexion
+export async function logout(): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.storage.local.remove(['access_token', 'refresh_token'], () => {
+      resolve();
+    });
+  });
 }

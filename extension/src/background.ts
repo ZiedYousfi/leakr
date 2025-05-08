@@ -3,8 +3,8 @@
 import { authenticateWithClerk, getAccessToken } from './lib/authUtils';
 
 // Écoute les messages depuis popup ou contenu
- 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   switch (msg.type) {
     case 'AUTH_CLERK':
       authenticateWithClerk()

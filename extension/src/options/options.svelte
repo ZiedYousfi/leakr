@@ -1,41 +1,95 @@
 <script lang="ts">
   import {
     downloadDatabaseExport,
-    /*importDatabase*/ initDatabase,
+    initDatabase,
     getSettings,
     updateShareCollection,
     updateUUID,
-    uploadDatabaseToServer
+    uploadDatabaseToServer,
   } from "../lib/dbUtils";
   import type { Settings } from "../lib/dbUtils";
+  import {
+    authenticateWithClerk,
+    checkAuthStatus,
+    logout,
+    getAccessToken,
+  } from "../lib/authUtils";
   import { onMount } from "svelte";
 
   let statusMessage = $state<string | null>(null);
   let isLoading = $state(false);
-  let fileInput: HTMLInputElement | undefined = $state(); // Use $state for element refs if needed, or keep let if only used locally
+  let fileInput: HTMLInputElement | undefined = $state();
   let settings = $state<Settings | null>(null);
   let shareCollection = $state(false);
   let userUUID = $state("Loading...");
+  let isAuthenticated = $state(false);
 
-  // onMount remains suitable for initial data fetching
   onMount(async () => {
     try {
-      await initDatabase(); // Ensure DB is initialized
-      const loadedSettings = getSettings(); // Use a temporary variable
+      isAuthenticated = await checkAuthStatus();
+      if (isAuthenticated) {
+        statusMessage = "Authenticated.";
+        setTimeout(() => (statusMessage = null), 3000);
+      }
+      await initDatabase();
+      const loadedSettings = getSettings();
       if (loadedSettings) {
-        settings = loadedSettings; // Assign to $state variable
+        settings = loadedSettings;
         shareCollection = loadedSettings.share_collection;
         userUUID = loadedSettings.uuid;
       } else {
         statusMessage = "Could not load settings.";
-        // Handle case where settings might be missing - maybe create defaults?
         console.warn("Settings not found in DB.");
       }
     } catch (error) {
-      console.error("Failed to initialize database or load settings:", error);
+      console.error("Failed to initialize or load settings:", error);
       statusMessage = `Error loading settings: ${error instanceof Error ? error.message : String(error)}`;
     }
   });
+
+  async function handleLogin() {
+    isLoading = true;
+    statusMessage = "Attempting login with Clerk...";
+    try {
+      await authenticateWithClerk();
+      const token = await getAccessToken();
+      if (token) {
+        isAuthenticated = true;
+        statusMessage = "Login successful!";
+        // Optionally, reload settings or user-specific data here
+      } else {
+        isAuthenticated = false;
+        statusMessage =
+          "Login completed, but token not found. Please try again.";
+      }
+    } catch (error) {
+      console.error("Login failed:", error);
+      isAuthenticated = false;
+      statusMessage = `Login failed: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      isLoading = false;
+      setTimeout(() => (statusMessage = null), 5000);
+    }
+  }
+
+  async function handleLogout() {
+    isLoading = true;
+    statusMessage = "Logging out...";
+    try {
+      await logout();
+      isAuthenticated = false;
+      statusMessage = "Logged out successfully.";
+      // Clear user-specific settings if necessary
+      // settings = null; // Example
+      // userUUID = "N/A"; // Example
+    } catch (error) {
+      console.error("Logout failed:", error);
+      statusMessage = `Logout failed: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      isLoading = false;
+      setTimeout(() => (statusMessage = null), 5000);
+    }
+  }
 
   async function handleExport() {
     isLoading = true;
@@ -144,6 +198,14 @@
 
   async function regenerateUUID() {
     if (
+      !isAuthenticated &&
+      !confirm(
+        "You are not logged in. Generating a new ID without being logged in might lead to loss of association if you log in later with a different account. Continue?"
+      )
+    ) {
+      return;
+    }
+    if (
       confirm(
         "Are you sure you want to generate a new unique ID? This cannot be undone."
       )
@@ -171,6 +233,29 @@
   <h1>Leakr Options</h1>
 
   <section>
+    <h2>Authentication</h2>
+    {#if isAuthenticated}
+      <p>You are currently logged in.</p>
+      <div class="button-group">
+        <button onclick={handleLogout} disabled={isLoading}>
+          {isLoading && statusMessage?.includes("Logging out")
+            ? "Logging out..."
+            : "Logout"}
+        </button>
+      </div>
+    {:else}
+      <p>Log in to sync your settings and data (feature coming soon).</p>
+      <div class="button-group">
+        <button onclick={handleLogin} disabled={isLoading}>
+          {isLoading && statusMessage?.includes("login")
+            ? "Logging in..."
+            : "Login with Clerk"}
+        </button>
+      </div>
+    {/if}
+  </section>
+
+  <section>
     <h2>User Settings</h2>
     <div class="setting-item">
       <label for="share-toggle">Share Collection Anonymously:</label>
@@ -179,13 +264,13 @@
         id="share-toggle"
         bind:checked={shareCollection}
         onchange={handleShareToggle}
-        disabled={isLoading || !settings}
+        disabled={isLoading || !settings || !isAuthenticated}
       />
       <span class="tooltip"
         >?
         <span class="tooltiptext"
           >Allow sharing anonymized collection data for analysis (feature not
-          yet implemented).</span
+          yet implemented). Requires login.</span
         >
       </span>
     </div>
@@ -217,7 +302,7 @@
     <h2>Database Management</h2>
     <p>
       Manage your local Leakr database. Exports create a backup file, Imports
-      replace the current database.
+      replace the current database. Some features may require login.
     </p>
     <div class="button-group">
       <!-- Access $state variables directly -->
@@ -231,10 +316,10 @@
           ? "Importing..."
           : "Import Database"}
       </button>
-      <button onclick={handleUpload} disabled={isLoading}>
+      <button onclick={handleUpload} disabled={isLoading || !isAuthenticated}>
         {isLoading && statusMessage?.startsWith("Uploading")
           ? "Uploading..."
-          : "Upload Database"}
+          : "Upload Database (Login Required)"}
       </button>
     </div>
     <!-- Hidden file input: bind:this still works -->
