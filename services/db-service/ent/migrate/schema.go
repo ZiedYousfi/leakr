@@ -35,6 +35,7 @@ var (
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "clerk_user_id", Type: field.TypeString, Unique: true},
+		{Name: "username", Type: field.TypeString, Nullable: true},
 		{Name: "role", Type: field.TypeString, Default: "user"},
 		{Name: "is_subscribed", Type: field.TypeBool, Default: false},
 		{Name: "subscription_tier", Type: field.TypeString, Default: "free"},

@@ -16,6 +16,8 @@ const (
 	FieldID = "id"
 	// FieldClerkUserID holds the string denoting the clerk_user_id field in the database.
 	FieldClerkUserID = "clerk_user_id"
+	// FieldUsername holds the string denoting the username field in the database.
+	FieldUsername = "username"
 	// FieldRole holds the string denoting the role field in the database.
 	FieldRole = "role"
 	// FieldIsSubscribed holds the string denoting the is_subscribed field in the database.
@@ -43,6 +45,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldClerkUserID,
+	FieldUsername,
 	FieldRole,
 	FieldIsSubscribed,
 	FieldSubscriptionTier,
@@ -88,6 +91,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByClerkUserID orders the results by the clerk_user_id field.
 func ByClerkUserID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldClerkUserID, opts...).ToFunc()
+}
+
+// ByUsername orders the results by the username field.
+func ByUsername(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUsername, opts...).ToFunc()
 }
 
 // ByRole orders the results by the role field.

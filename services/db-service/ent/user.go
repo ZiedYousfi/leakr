@@ -19,6 +19,8 @@ type User struct {
 	ID int `json:"id,omitempty"`
 	// ID utilisateur fourni par Clerk
 	ClerkUserID string `json:"clerk_user_id,omitempty"`
+	// Nom d'utilisateur, peut provenir de Clerk
+	Username string `json:"username,omitempty"`
 	// Rôle interne de l'utilisateur
 	Role string `json:"role,omitempty"`
 	// Indique si l'utilisateur a un abonnement actif Stripe
@@ -62,7 +64,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldClerkUserID, user.FieldRole, user.FieldSubscriptionTier:
+		case user.FieldClerkUserID, user.FieldUsername, user.FieldRole, user.FieldSubscriptionTier:
 			values[i] = new(sql.NullString)
 		case user.FieldCreatedAt, user.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -92,6 +94,12 @@ func (u *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field clerk_user_id", values[i])
 			} else if value.Valid {
 				u.ClerkUserID = value.String
+			}
+		case user.FieldUsername:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field username", values[i])
+			} else if value.Valid {
+				u.Username = value.String
 			}
 		case user.FieldRole:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -166,6 +174,9 @@ func (u *User) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", u.ID))
 	builder.WriteString("clerk_user_id=")
 	builder.WriteString(u.ClerkUserID)
+	builder.WriteString(", ")
+	builder.WriteString("username=")
+	builder.WriteString(u.Username)
 	builder.WriteString(", ")
 	builder.WriteString("role=")
 	builder.WriteString(u.Role)

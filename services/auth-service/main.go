@@ -23,13 +23,15 @@ type ClerkWebhookEvent struct {
 
 // ClerkUserData represents the user data within a Clerk webhook event.
 type ClerkUserData struct {
-	ID string `json:"id"`
+	ID       string  `json:"id"`
+	Username *string `json:"username"` // Added username
 	// Add other fields if needed
 }
 
 // DBServiceCreateUserPayload is the payload sent to db-service to create a user.
 type DBServiceCreateUserPayload struct {
-	ClerkUserID string `json:"clerk_user_id"`
+	ClerkUserID string  `json:"clerk_user_id"`
+	Username    *string `json:"username"` // Added username
 	// Role, IsSubscribed, SubscriptionTier will use defaults in db-service
 }
 
@@ -170,6 +172,7 @@ func clerkWebhookHandler(c *fiber.Ctx) error {
 
 		payload := DBServiceCreateUserPayload{
 			ClerkUserID: userData.ID,
+			Username:    userData.Username, // Pass username
 		}
 		payloadBytes, err := json.Marshal(payload)
 		if err != nil {
