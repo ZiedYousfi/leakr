@@ -1,10 +1,9 @@
-// authUtils.ts
-
 import {
   CLIENT_ID,
   CLIENT_SECRET,
   AUTHORIZE_ENDPOINT,
   TOKEN_ENDPOINT,
+  USERINFO_ENDPOINT, // Ensure USERINFO_ENDPOINT is defined in authVars.ts
 } from "./authVars";
 
 // 1. Génére l'URI de redirection pour chrome.identity
@@ -15,10 +14,10 @@ export function getRedirectUri(): string {
 // 2. Lance le flow OIDC avec Clerk
 export async function authenticateWithClerk(): Promise<void> {
   const redirectUri = getRedirectUri();
-  console.log("Generated Redirect URI:", redirectUri); // Added logging
+  console.log("Generated Redirect URI:", redirectUri);
 
-  // Generate and store state parameter
-  const state = crypto.randomUUID(); // Using crypto.randomUUID for a sufficiently random string
+  // Génére et stocke le paramètre state
+  const state = crypto.randomUUID();
   await new Promise<void>((resolve) =>
     chrome.storage.session.set({ oauth_state: state }, resolve)
   );
@@ -30,42 +29,31 @@ export async function authenticateWithClerk(): Promise<void> {
     `&response_type=code` +
     `&scope=openid%20profile%20email` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&state=${encodeURIComponent(state)}`; // Add state to auth URL
-
-  console.log("Attempting Auth URL:", authUrl); // Added logging
+    `&state=${encodeURIComponent(state)}`;
+  console.log("Attempting Auth URL:", authUrl);
 
   return new Promise((resolve, reject) => {
     chrome.identity.launchWebAuthFlow(
       { url: authUrl, interactive: true },
       async (redirectedTo) => {
-        // Retrieve and clear stored state
-        const storedStateResult = await new Promise<{ oauth_state?: string }>(
-          (res) =>
-            chrome.storage.session.get("oauth_state", (result) => {
-              chrome.storage.session.remove("oauth_state"); // Clear state immediately after retrieval
-              res(result);
-            })
+        // Récupération et suppression du state stocké
+        const stored = await new Promise<{ oauth_state?: string }>((res) =>
+          chrome.storage.session.get("oauth_state", (result) => {
+            chrome.storage.session.remove("oauth_state");
+            res(result);
+          })
         );
-        const storedState = storedStateResult?.oauth_state;
+        const storedState = stored.oauth_state;
 
         if (chrome.runtime.lastError) {
-          // Log more details if lastError is present
-          console.error(
-            "chrome.identity.launchWebAuthFlow error:",
-            chrome.runtime.lastError.message
-          );
-          console.error("Auth URL that failed:", authUrl);
+          console.error("Auth flow error:", chrome.runtime.lastError.message);
           return reject(
             new Error(
-              `Authorization failed: ${chrome.runtime.lastError.message}. Check console for Auth URL and Redirect URI.`
+              `Authorization failed: ${chrome.runtime.lastError.message}`
             )
           );
         }
         if (!redirectedTo) {
-          console.error(
-            "chrome.identity.launchWebAuthFlow: No redirect URI received after auth flow."
-          );
-          console.error("Auth URL attempted:", authUrl);
           return reject(
             new Error(
               "Aucun redirect URI reçu après le flux d'authentification."
@@ -73,62 +61,41 @@ export async function authenticateWithClerk(): Promise<void> {
           );
         }
 
-        console.log("Redirected To URL:", redirectedTo); // Log the full redirected URL
-
         const urlObj = new URL(redirectedTo);
         const code = urlObj.searchParams.get("code");
         const receivedState = urlObj.searchParams.get("state");
 
-        // Verify state parameter
-        if (!storedState) {
-          console.error(
-            "Stored OAuth state not found. Possible session issue or state was cleared prematurely."
-          );
-          return reject(
-            new Error("Erreur de sécurité : état OAuth stocké non trouvé.")
-          );
-        }
-        if (!receivedState || receivedState !== storedState) {
-          console.error(
-            "OAuth state mismatch or missing.",
-            "Stored:",
-            storedState,
-            "Received:",
-            receivedState
-          );
+        // Vérification du state
+        if (!storedState || receivedState !== storedState) {
           return reject(
             new Error(
               "Erreur de sécurité : la correspondance de l'état OAuth a échoué."
             )
           );
         }
-        console.log("OAuth state verified successfully.");
 
-        // Check for OAuth error parameters in the redirect URL
+        // Vérification des erreurs OAuth dans l'URL
         const errorParam = urlObj.searchParams.get("error");
         if (errorParam) {
-          const errorDescription = urlObj.searchParams.get("error_description");
-          const errorMessage = `OAuth error from authorization server: ${errorParam}${errorDescription ? ` - ${errorDescription}` : ""}`;
-          console.error(errorMessage, "Redirected URL:", redirectedTo);
-          return reject(new Error(errorMessage));
+          const desc = urlObj.searchParams.get("error_description");
+          return reject(
+            new Error(`OAuth error: ${errorParam}${desc ? ` - ${desc}` : ""}`)
+          );
         }
 
         if (!code) {
-          console.error(
-            "No 'code' parameter found in the redirected URL.",
-            "Redirected URL was:",
-            redirectedTo,
-            "Auth URL attempted was:",
-            authUrl
-          );
           return reject(
             new Error(
-              "Pas de code dans la réponse. Vérifiez la console pour l'URL de redirection et les erreurs OAuth potentielles. Assurez-vous que le Redirect URI est correctement configuré dans Clerk."
+              "Pas de code dans la réponse. Vérifiez la configuration du Redirect URI dans Clerk."
             )
           );
         }
+
         try {
+          // Échange le code et récupère les tokens
           await exchangeCodeForToken(code, redirectUri);
+          // Après obtention des tokens, récupère et stocke les infos utilisateur
+          await getUserInfo();
           resolve();
         } catch (e) {
           reject(e);
@@ -138,7 +105,24 @@ export async function authenticateWithClerk(): Promise<void> {
   });
 }
 
-// 3. Échange le code contre access_token + refresh_token
+// Helper: décode le payload JWT
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => `%${("00" + c.charCodeAt(0).toString(16)).slice(-2)}`)
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+// 3. Échange le code contre tokens
 async function exchangeCodeForToken(
   code: string,
   redirectUri: string
@@ -158,64 +142,83 @@ async function exchangeCodeForToken(
   });
 
   if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`Échec du token: ${err}`);
+    const text = await resp.text();
+    throw new Error(`Échec du token: ${resp.status} - ${text}`);
   }
 
-  const { access_token, refresh_token } = await resp.json();
-  await storeTokens(access_token, refresh_token);
+  const { access_token, refresh_token, id_token } = await resp.json();
+  let userId: string | null = null;
+  if (id_token) {
+    const payload = decodeJwtPayload(id_token);
+    if (payload && typeof payload.sub === "string") {
+      userId = payload.sub;
+    } else {
+      userId = null;
+    }
+  }
+  await storeTokens(access_token, refresh_token, userId);
 }
 
-// 4. Stocke les tokens dans chrome.storage.local
+// 4. Stocke tokens et userId
 async function storeTokens(
   accessToken: string,
-  refreshToken: string
+  refreshToken: string,
+  userId: string | null
 ): Promise<void> {
-  return new Promise((res) => {
-    chrome.storage.local.set(
-      { access_token: accessToken, refresh_token: refreshToken },
-      () => res()
-    );
-  });
+  const items: Record<string, string> = {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  };
+  if (userId) items.user_id = userId;
+  return new Promise((res) => chrome.storage.local.set(items, res));
 }
 
-// 5. Récupère l'access_token pour tes appels API
+// 5. Obtient l'access_token
 export async function getAccessToken(): Promise<string | null> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(["access_token"], (result) => {
-      resolve(result.access_token || null);
-    });
-  });
+  return new Promise((res) =>
+    chrome.storage.local.get(["access_token"], (r) =>
+      res(r.access_token || null)
+    )
+  );
 }
 
-// 6. Optionnel: rafraîchir le token quand expiré
+// 6. Rafraîchir le token
 export async function refreshAccessToken(): Promise<void> {
-  const data = await new Promise<{ refresh_token?: string }>((res) => {
-    chrome.storage.local.get(["refresh_token"], (r) => res(r));
-  });
-  const refreshToken = data.refresh_token;
-  if (!refreshToken) throw new Error("Pas de refresh_token disponible");
+  const { refresh_token } = await new Promise<{ refresh_token?: string }>(
+    (res) => chrome.storage.local.get(["refresh_token"], (r) => res(r))
+  );
+  if (!refresh_token) throw new Error("Pas de refresh_token disponible");
 
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     client_id: CLIENT_ID,
     client_secret: CLIENT_SECRET,
-    refresh_token: refreshToken,
+    refresh_token,
   });
-
   const resp = await fetch(TOKEN_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
-
   if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`Échec refresh: ${err}`);
+    const txt = await resp.text();
+    throw new Error(`Échec refresh: ${resp.status} - ${txt}`);
   }
-
-  const { access_token, refresh_token } = await resp.json();
-  await storeTokens(access_token, refresh_token);
+  const {
+    access_token,
+    refresh_token: newRefresh,
+    id_token,
+  } = await resp.json();
+  let userId: string | null = null;
+  if (id_token) {
+    const payload = decodeJwtPayload(id_token);
+    if (payload && typeof payload.sub === "string") {
+      userId = payload.sub;
+    } else {
+      userId = null;
+    }
+  }
+  await storeTokens(access_token, newRefresh, userId);
 }
 
 // 7. Vérifie le statut d'authentification
@@ -226,9 +229,59 @@ export async function checkAuthStatus(): Promise<boolean> {
 
 // 8. Déconnexion
 export async function logout(): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.local.remove(["access_token", "refresh_token"], () => {
-      resolve();
+  return new Promise((res) =>
+    chrome.storage.local.remove(
+      ["access_token", "refresh_token", "user_id", "user_info"],
+      res
+    )
+  );
+}
+
+// 9. Interface pour UserInfo
+export interface UserInfo {
+  sub: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+  email?: string;
+  email_verified?: boolean;
+  picture?: string;
+  preferred_username?: string;
+  locale?: string;
+  updated_at?: number;
+  public_metadata?: Record<string, unknown>;
+  private_metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+// 10. Récupère les infos utilisateur depuis /oauth/userinfo
+export async function getUserInfo(): Promise<UserInfo | null> {
+  const token = await getAccessToken();
+  if (!token) {
+    console.warn("No access token available.");
+    return null;
+  }
+
+  try {
+    const resp = await fetch(USERINFO_ENDPOINT, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
     });
-  });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`Failed to fetch user info: ${resp.status} - ${text}`);
+    }
+
+    const info: UserInfo = await resp.json();
+    // Stockage local des infos utilisateur
+    await new Promise<void>((res) =>
+      chrome.storage.local.set({ user_info: info }, res)
+    );
+    console.log("User info stored:", info);
+    return info;
+  } catch (e) {
+    console.error("Error fetching user info:", e);
+    return null;
+  }
 }
