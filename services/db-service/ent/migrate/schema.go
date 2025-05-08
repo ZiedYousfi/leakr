@@ -15,7 +15,7 @@ var (
 		{Name: "stripe_subscription_id", Type: field.TypeString, Unique: true},
 		{Name: "status", Type: field.TypeString, Default: "inactive"},
 		{Name: "current_period_end", Type: field.TypeTime, Nullable: true},
-		{Name: "user_subscription", Type: field.TypeInt},
+		{Name: "user_subscription", Type: field.TypeUUID},
 	}
 	// SubscriptionsTable holds the schema information for the "subscriptions" table.
 	SubscriptionsTable = &schema.Table{
@@ -33,7 +33,7 @@ var (
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "id", Type: field.TypeUUID},
 		{Name: "clerk_user_id", Type: field.TypeString, Unique: true},
 		{Name: "username", Type: field.TypeString, Nullable: true},
 		{Name: "role", Type: field.TypeString, Default: "user"},

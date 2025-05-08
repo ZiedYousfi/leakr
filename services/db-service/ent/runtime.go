@@ -7,6 +7,8 @@ import (
 	"db-service/ent/subscription"
 	"db-service/ent/user"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -30,29 +32,33 @@ func init() {
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescClerkUserID is the schema descriptor for clerk_user_id field.
-	userDescClerkUserID := userFields[0].Descriptor()
+	userDescClerkUserID := userFields[1].Descriptor()
 	// user.ClerkUserIDValidator is a validator for the "clerk_user_id" field. It is called by the builders before save.
 	user.ClerkUserIDValidator = userDescClerkUserID.Validators[0].(func(string) error)
 	// userDescRole is the schema descriptor for role field.
-	userDescRole := userFields[2].Descriptor()
+	userDescRole := userFields[3].Descriptor()
 	// user.DefaultRole holds the default value on creation for the role field.
 	user.DefaultRole = userDescRole.Default.(string)
 	// userDescIsSubscribed is the schema descriptor for is_subscribed field.
-	userDescIsSubscribed := userFields[3].Descriptor()
+	userDescIsSubscribed := userFields[4].Descriptor()
 	// user.DefaultIsSubscribed holds the default value on creation for the is_subscribed field.
 	user.DefaultIsSubscribed = userDescIsSubscribed.Default.(bool)
 	// userDescSubscriptionTier is the schema descriptor for subscription_tier field.
-	userDescSubscriptionTier := userFields[4].Descriptor()
+	userDescSubscriptionTier := userFields[5].Descriptor()
 	// user.DefaultSubscriptionTier holds the default value on creation for the subscription_tier field.
 	user.DefaultSubscriptionTier = userDescSubscriptionTier.Default.(string)
 	// userDescCreatedAt is the schema descriptor for created_at field.
-	userDescCreatedAt := userFields[5].Descriptor()
+	userDescCreatedAt := userFields[6].Descriptor()
 	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
 	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
 	// userDescUpdatedAt is the schema descriptor for updated_at field.
-	userDescUpdatedAt := userFields[6].Descriptor()
+	userDescUpdatedAt := userFields[7].Descriptor()
 	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
 	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// userDescID is the schema descriptor for id field.
+	userDescID := userFields[0].Descriptor()
+	// user.DefaultID holds the default value on creation for the id field.
+	user.DefaultID = userDescID.Default.(func() uuid.UUID)
 }

@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // SubscriptionUpdate is the builder for updating Subscription entities.
@@ -92,7 +93,7 @@ func (su *SubscriptionUpdate) ClearCurrentPeriodEnd() *SubscriptionUpdate {
 }
 
 // SetUserID sets the "user" edge to the User entity by ID.
-func (su *SubscriptionUpdate) SetUserID(id int) *SubscriptionUpdate {
+func (su *SubscriptionUpdate) SetUserID(id uuid.UUID) *SubscriptionUpdate {
 	su.mutation.SetUserID(id)
 	return su
 }
@@ -193,7 +194,7 @@ func (su *SubscriptionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{subscription.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -206,7 +207,7 @@ func (su *SubscriptionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{subscription.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -297,7 +298,7 @@ func (suo *SubscriptionUpdateOne) ClearCurrentPeriodEnd() *SubscriptionUpdateOne
 }
 
 // SetUserID sets the "user" edge to the User entity by ID.
-func (suo *SubscriptionUpdateOne) SetUserID(id int) *SubscriptionUpdateOne {
+func (suo *SubscriptionUpdateOne) SetUserID(id uuid.UUID) *SubscriptionUpdateOne {
 	suo.mutation.SetUserID(id)
 	return suo
 }
@@ -428,7 +429,7 @@ func (suo *SubscriptionUpdateOne) sqlSave(ctx context.Context) (_node *Subscript
 			Columns: []string{subscription.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -441,7 +442,7 @@ func (suo *SubscriptionUpdateOne) sqlSave(ctx context.Context) (_node *Subscript
 			Columns: []string{subscription.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

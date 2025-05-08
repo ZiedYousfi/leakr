@@ -2,13 +2,15 @@ package user
 
 import (
 	"context"
-	"strconv"
+	// "strconv" // No longer needed for ID parsing
 
 	"github.com/gofiber/fiber/v2"
 	// Replace with the actual path to your generated ent client
 	"db-service/ent"
 	// Replace with the actual path to your generated user package
 	"db-service/ent/user"
+
+	"github.com/google/uuid" // Added for UUID parsing
 )
 
 // UserHandler holds the ent client.
@@ -66,14 +68,14 @@ func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
 // GetUser handles GET requests to retrieve a user by ID.
 func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 	idParam := c.Params("id")
-	id, err := strconv.Atoi(idParam)
+	id, err := uuid.Parse(idParam) // Changed from strconv.Atoi to uuid.Parse
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user ID format"})
 	}
 
 	u, err := h.Client.User.
 		Query().
-		Where(user.ID(id)).
+		Where(user.ID(id)).        // user.ID will expect uuid.UUID after ent regeneration
 		Only(context.Background()) // Use request context in real app
 
 	if err != nil {
@@ -108,7 +110,7 @@ func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 // UpdateUser handles PUT/PATCH requests to update a user by ID.
 func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	idParam := c.Params("id")
-	id, err := strconv.Atoi(idParam)
+	id, err := uuid.Parse(idParam) // Changed from strconv.Atoi to uuid.Parse
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user ID format"})
 	}
@@ -126,7 +128,7 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
 	}
 
-	updater := h.Client.User.UpdateOneID(id)
+	updater := h.Client.User.UpdateOneID(id) // UpdateOneID will expect uuid.UUID
 
 	if input.Username != nil {
 		updater.SetNillableUsername(input.Username) // Set nillable username
@@ -149,7 +151,7 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
 		}
 		// Log the error internally
-		// log.Printf("Error updating user %d: %v", id, err)
+		// log.Printf("Error updating user %s: %v", id, err) // Log id as string or uuid
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update user"})
 	}
 
@@ -159,13 +161,13 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 // DeleteUser handles DELETE requests to delete a user by ID.
 func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
 	idParam := c.Params("id")
-	id, err := strconv.Atoi(idParam)
+	id, err := uuid.Parse(idParam) // Changed from strconv.Atoi to uuid.Parse
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user ID format"})
 	}
 
 	err = h.Client.User.
-		DeleteOneID(id).
+		DeleteOneID(id).           // DeleteOneID will expect uuid.UUID
 		Exec(context.Background()) // Use request context in real app
 
 	if err != nil {
@@ -173,7 +175,7 @@ func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
 		}
 		// Log the error internally
-		// log.Printf("Error deleting user %d: %v", id, err)
+		// log.Printf("Error deleting user %s: %v", id, err) // Log id as string or uuid
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete user"})
 	}
 

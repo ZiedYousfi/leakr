@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // SubscriptionQuery is the builder for querying Subscription entities.
@@ -410,8 +411,8 @@ func (sq *SubscriptionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 }
 
 func (sq *SubscriptionQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*Subscription, init func(*Subscription), assign func(*Subscription, *User)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*Subscription)
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Subscription)
 	for i := range nodes {
 		if nodes[i].user_subscription == nil {
 			continue

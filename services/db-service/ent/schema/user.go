@@ -6,6 +6,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // User maps your internal users linked to Clerk.
@@ -16,6 +17,10 @@ type User struct {
 // Fields defines the fields for the User entity.
 func (User) Fields() []ent.Field {
 	return []ent.Field{
+		field.UUID("id", uuid.UUID{}).
+			Default(uuid.New).
+			Immutable(),
+
 		field.String("clerk_user_id").
 			NotEmpty().
 			Unique().
