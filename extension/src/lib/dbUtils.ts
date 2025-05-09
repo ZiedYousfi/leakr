@@ -438,6 +438,27 @@ export async function saveDatabase(): Promise<void> {
 }
 
 /**
+ * Resets the database by deleting it from storage and re-initializing.
+ */
+export async function resetDatabase(): Promise<void> {
+  console.warn("🗑️ Attempting to reset the database...");
+  if (db) {
+    try {
+      db.close();
+      console.log("🚪 Previous database instance closed.");
+    } catch (error) {
+      console.error("Error closing existing database instance:", error);
+      // Continue anayway, as the main goal is to remove from storage
+    }
+  }
+  await chrome.storage.local.remove("leakr_db");
+  console.log("🧹 Database removed from chrome.storage.local.");
+  // Re-initialize to create a fresh database
+  await initDatabase();
+  console.log("✨ New database initialized successfully after reset.");
+}
+
+/**
  * Triggers a browser download for the given data.
  * @param data The data to download as a Uint8Array.
  * @param filename The desired filename for the download.

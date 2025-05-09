@@ -6,6 +6,7 @@
     updateShareCollection,
     // updateUUID, // No longer needed for manual regeneration from options
     uploadDatabaseToServer,
+    resetDatabase, // <-- Add import
   } from "../lib/dbUtils";
   import type { Settings } from "../lib/dbUtils";
   import {
@@ -223,6 +224,43 @@
       }
     }
   }
+
+  async function handleResetDatabase() {
+    if (
+      confirm(
+        "DANGER ZONE! This will completely WIPE your local Leakr database (leakr_db) and create a new, empty one. All your creators, content, and settings within the database will be PERMANENTLY LOST. This action cannot be undone. Are you absolutely sure you want to proceed?"
+      )
+    ) {
+      isLoading = true;
+      statusMessage = "Resetting database to factory defaults...";
+      try {
+        await resetDatabase();
+        // After reset, settings will be default, so re-fetch or set to known defaults
+        const loadedSettings = getSettings(); // Re-fetch new default settings
+        if (loadedSettings) {
+          settings = loadedSettings;
+          shareCollection = loadedSettings.share_collection;
+          userUUID = loadedSettings.uuid;
+        } else {
+          // Fallback if getSettings fails after reset (should not happen with new DB)
+          settings = null;
+          shareCollection = false;
+          userUUID = "N/A";
+        }
+        // Authentication state is not directly tied to the DB content itself,
+        // but a DB reset might imply a desire to start fresh.
+        // For now, we don't touch isAuthenticated here, as clearAllStorage handles auth data.
+        statusMessage =
+          "Database has been reset to factory defaults. Please reload the extension if you encounter any issues.";
+      } catch (error) {
+        console.error("Failed to reset database:", error);
+        statusMessage = `Error resetting database: ${error instanceof Error ? error.message : String(error)}`;
+      } finally {
+        isLoading = false;
+        setTimeout(() => (statusMessage = null), 7000);
+      }
+    }
+  }
 </script>
 
 <main>
@@ -321,6 +359,16 @@
         {isLoading && statusMessage?.startsWith("Clearing")
           ? "Clearing..."
           : "Clear All Data (except database)"}
+      </button>
+      <button
+        onclick={handleResetDatabase}
+        disabled={isLoading}
+        style="background-color: #d9534f; color: #fff; border-color: #d43f3a;"
+        title="DANGER: Resets the entire database to its initial empty state (irreversible!)"
+      >
+        {isLoading && statusMessage?.startsWith("Resetting database")
+          ? "Resetting DB..."
+          : "Reset Database (DANGER)"}
       </button>
     </div>
     <!-- Hidden file input: bind:this still works -->
