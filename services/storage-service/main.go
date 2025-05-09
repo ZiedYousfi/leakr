@@ -6,6 +6,7 @@ import (
 	"log"
 	"storage-service/internal/config"
 	"storage-service/internal/storage"
+	"storage-service/middleware" // Import the middleware package
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -28,6 +29,9 @@ func main() {
 	}
 
 	app := fiber.New()
+
+	// Appliquer le middleware d'authentification à toutes les routes
+	app.Use(middleware.AuthMiddleware())
 
 	// Route: Upload
 
