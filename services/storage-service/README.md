@@ -38,7 +38,7 @@ Refer to [../../infra/cloudflare/r2-uploader/wrangler.jsonc](../../infra/cloudfl
 The following routes are handled by this service:
 
 - `POST /upload`: Uploads a database file.
-  - Requires authentication (e.g., JWT validated by `auth-service`). (Don't do it for now for the sake of simplicity and testing.)
+  - Requires authentication (e.g., JWT validated by `auth-service`).
   - Expects a multipart/form-data request with the file.
   - Filename should be
 
@@ -68,6 +68,7 @@ The following routes are handled by this service:
     - If a different file has the absolute latest filename timestamp (descending, then by iteration descending), its `FileInfo` will be the second object in the array.
     - If both criteria point to the same file, the array will contain only one object.
   - Example response (if two different files satisfy the criteria):
+  
     ```json
     [
       {
@@ -86,7 +87,7 @@ The following routes are handled by this service:
     ```
 
   - Example response (if the same file satisfies both criteria, or only one file exists):
-  
+
     ```json
     [
       {
