@@ -7,6 +7,7 @@ import {
   LEAKR_UUID_ENDPOINT,
   INTROSPECTION_ENDPOINT,
 } from "./authVars";
+import { updateUUID } from "./dbUtils";
 
 /* ----------------------------------------------------------- */
 /* 1. Redirect URI                                             */
@@ -275,12 +276,27 @@ export async function getUserInfo(): Promise<UserInfo | null> {
     if (uuidResp.ok) {
       const { uuid } = await uuidResp.json();
       console.log(`getUserInfo: leakr_uuid received: ${uuid}`);
+
+      // Store leakr_uuid in local storage
       await new Promise<void>((r) =>
         chrome.storage.local.set({ leakr_uuid: uuid }, () => {
           console.log("getUserInfo: Stored leakr_uuid in local storage.");
           r();
         })
       );
+
+      // Update the UUID in the database settings
+      try {
+        updateUUID(uuid); // This function is from dbUtils.ts
+        console.log(
+          `getUserInfo: Updated leakr_uuid in database settings to: ${uuid}`
+        );
+      } catch (dbError) {
+        console.error(
+          "getUserInfo: Failed to update leakr_uuid in database settings:",
+          dbError
+        );
+      }
     } else {
       console.error(
         `getUserInfo: Failed to fetch leakr_uuid, status: ${uuidResp.status}`

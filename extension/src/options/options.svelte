@@ -4,7 +4,7 @@
     initDatabase,
     getSettings,
     updateShareCollection,
-    updateUUID,
+    // updateUUID, // No longer needed for manual regeneration from options
     uploadDatabaseToServer,
   } from "../lib/dbUtils";
   import type { Settings } from "../lib/dbUtils";
@@ -197,38 +197,6 @@
     }
   }
 
-  async function regenerateUUID() {
-    if (
-      !isAuthenticated &&
-      !confirm(
-        "You are not logged in. Generating a new ID without being logged in might lead to loss of association if you log in later with a different account. Continue?"
-      )
-    ) {
-      return;
-    }
-    if (
-      confirm(
-        "Are you sure you want to generate a new unique ID? This cannot be undone."
-      )
-    ) {
-      isLoading = true;
-      statusMessage = "Generating new UUID...";
-      try {
-        const newUuid = crypto.randomUUID();
-        await updateUUID(newUuid);
-        userUUID = newUuid; // Update $state variable
-        if (settings) settings.uuid = newUuid; // Update local state object
-        statusMessage = "New UUID generated successfully.";
-      } catch (error) {
-        console.error("Failed to generate new UUID:", error);
-        statusMessage = `Error generating UUID: ${error instanceof Error ? error.message : String(error)}`;
-      } finally {
-        isLoading = false;
-        setTimeout(() => (statusMessage = null), 5000);
-      }
-    }
-  }
-
   async function handleClearAll() {
     if (
       confirm(
@@ -310,17 +278,12 @@
         id="uuid-display"
         aria-labelledby="uuid-display">{userUUID}</span
       >
-      <button
-        onclick={regenerateUUID}
-        disabled={isLoading || !settings}
-        title="Generate a new unique identifier">Regenerate</button
-      >
       <span class="tooltip"
         >?
         <span class="tooltiptext"
           >A unique identifier for your installation. Used for potential future
-          features like data synchronization or sharing. Regenerating assigns a
-          new ID.</span
+          features like data synchronization or sharing. This ID is set upon
+          first login.</span
         >
       </span>
     </div>
