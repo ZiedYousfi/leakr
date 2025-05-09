@@ -19,10 +19,15 @@ export function getRedirectUri(): string {
 /* 2. Authenticate with Clerk (OIDC Authorization Code + PKCE) */
 /* ----------------------------------------------------------- */
 export async function authenticateWithClerk(): Promise<void> {
+  console.log("authenticateWithClerk: Starting authentication process.");
   const redirectUri = getRedirectUri();
   const state = crypto.randomUUID();
+  console.log(`authenticateWithClerk: redirectUri=${redirectUri}, state=${state}`);
   await new Promise<void>((r) =>
-    chrome.storage.session.set({ oauth_state: state }, r)
+    chrome.storage.session.set({ oauth_state: state }, () => {
+      console.log(`authenticateWithClerk: Stored oauth_state: ${state} in session storage.`);
+      r();
+    })
   );
 
   const authUrl =
@@ -33,31 +38,49 @@ export async function authenticateWithClerk(): Promise<void> {
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
     `&state=${encodeURIComponent(state)}`;
 
+  console.log(`authenticateWithClerk: Launching web auth flow with URL: ${authUrl}`);
   return new Promise((resolve, reject) => {
     chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, async (redirectedTo) => {
+      console.log(`authenticateWithClerk: Web auth flow callback. redirectedTo=${redirectedTo}`);
       if (chrome.runtime.lastError) {
+        console.error(`authenticateWithClerk: Authorization failed: ${chrome.runtime.lastError.message}`);
         return reject(new Error(`Authorization failed: ${chrome.runtime.lastError.message}`));
       }
-      if (!redirectedTo) return reject(new Error("Redirection manquante après auth."));
+      if (!redirectedTo) {
+        console.error("authenticateWithClerk: Redirection manquante après auth.");
+        return reject(new Error("Redirection manquante après auth."));
+      }
 
       const stored = await new Promise<{ oauth_state?: string }>((res) =>
         chrome.storage.session.get("oauth_state", (result) => {
-          chrome.storage.session.remove("oauth_state");
-          res(result);
+          chrome.storage.session.remove("oauth_state", () => {
+            console.log("authenticateWithClerk: Removed oauth_state from session storage.");
+            res(result);
+          });
         })
       );
+      console.log(`authenticateWithClerk: Retrieved stored oauth_state: ${stored.oauth_state}`);
       if (!stored.oauth_state || new URL(redirectedTo).searchParams.get("state") !== stored.oauth_state) {
+        console.error("authenticateWithClerk: State OAuth invalide.");
         return reject(new Error("State OAuth invalide."));
       }
 
       const code = new URL(redirectedTo).searchParams.get("code");
-      if (!code) return reject(new Error("Pas de code d'autorisation retourné."));
+      console.log(`authenticateWithClerk: Authorization code: ${code}`);
+      if (!code) {
+        console.error("authenticateWithClerk: Pas de code d'autorisation retourné.");
+        return reject(new Error("Pas de code d'autorisation retourné."));
+      }
 
       try {
+        console.log("authenticateWithClerk: Exchanging code for token.");
         await exchangeCodeForToken(code, redirectUri);
+        console.log("authenticateWithClerk: Getting user info.");
         await getUserInfo();
+        console.log("authenticateWithClerk: Authentication successful.");
         resolve();
       } catch (e) {
+        console.error("authenticateWithClerk: Error during token exchange or getting user info:", e);
         reject(e);
       }
     });
@@ -84,6 +107,7 @@ async function exchangeCodeForToken(code: string, redirectUri: string): Promise<
   if (!resp.ok) throw new Error(`Échec échange code: ${resp.status}`);
 
   const { access_token, refresh_token } = await resp.json();
+  console.log(`exchangeCodeForToken: Received access_token: ${access_token ? 'present' : 'absent'}, refresh_token: ${refresh_token ? 'present' : 'absent'}`);
   await storeTokens(access_token, refresh_token);
 }
 
@@ -91,8 +115,12 @@ async function exchangeCodeForToken(code: string, redirectUri: string): Promise<
 /* 4. Persistence                                              */
 /* ----------------------------------------------------------- */
 async function storeTokens(access: string, refresh: string): Promise<void> {
+  console.log(`storeTokens: Storing access_token: ${access ? 'present' : 'absent'}, refresh_token: ${refresh ? 'present' : 'absent'}`);
   await new Promise<void>((r) =>
-    chrome.storage.local.set({ access_token: access, refresh_token: refresh }, r)
+    chrome.storage.local.set({ access_token: access, refresh_token: refresh }, () => {
+      console.log("storeTokens: Tokens stored in local storage.");
+      r();
+    })
   );
 }
 
@@ -167,21 +195,41 @@ export interface UserInfo {
 
 export async function getUserInfo(): Promise<UserInfo | null> {
   const access = await getAccessToken();
-  if (!access) return null;
+  if (!access) {
+    console.log("getUserInfo: No access token found.");
+    return null;
+  }
 
+  console.log("getUserInfo: Fetching user info from USERINFO_ENDPOINT.");
   const resp = await fetch(USERINFO_ENDPOINT, { headers: { Authorization: `Bearer ${access}` } });
-  if (!resp.ok) return null;
+  if (!resp.ok) {
+    console.error(`getUserInfo: Failed to fetch user info, status: ${resp.status}`);
+    return null;
+  }
 
   const info: UserInfo = await resp.json();
-  await new Promise<void>((r) => chrome.storage.local.set({ user_info: info }, r));
+  console.log("getUserInfo: User info received:", info);
+  await new Promise<void>((r) => chrome.storage.local.set({ user_info: info }, () => {
+    console.log("getUserInfo: Stored user_info in local storage.");
+    r();
+  }));
 
   if (info.sub) {
+    console.log(`getUserInfo: User sub found: ${info.sub}. Fetching leakr_uuid.`);
     const uuidEndpoint = LEAKR_UUID_ENDPOINT.replace(":clerk_id", encodeURIComponent(info.sub));
     const uuidResp = await fetch(uuidEndpoint, { headers: { Authorization: `Bearer ${access}` } });
     if (uuidResp.ok) {
       const { uuid } = await uuidResp.json();
-      await new Promise<void>((r) => chrome.storage.local.set({ leakr_uuid: uuid }, r));
+      console.log(`getUserInfo: leakr_uuid received: ${uuid}`);
+      await new Promise<void>((r) => chrome.storage.local.set({ leakr_uuid: uuid }, () => {
+        console.log("getUserInfo: Stored leakr_uuid in local storage.");
+        r();
+      }));
+    } else {
+      console.error(`getUserInfo: Failed to fetch leakr_uuid, status: ${uuidResp.status}`);
     }
+  } else {
+    console.log("getUserInfo: No user sub found in user info, cannot fetch leakr_uuid.");
   }
   return info;
 }
@@ -190,17 +238,28 @@ export async function getUserInfo(): Promise<UserInfo | null> {
 /* 9. Logout / Clear                                           */
 /* ----------------------------------------------------------- */
 export async function logout(): Promise<void> {
+  const itemsToClear = ["access_token", "refresh_token", "user_info", "leakr_uuid"];
+  console.log(`logout: Attempting to remove items from local storage: ${itemsToClear.join(", ")}`);
   await new Promise<void>((r) =>
     chrome.storage.local.remove(
-      ["access_token", "refresh_token", "user_info", "leakr_uuid"],
-      r
+      itemsToClear,
+      () => {
+        console.log("logout: Items removed from local storage.");
+        r();
+      }
     )
   );
-  await new Promise<void>((r) => chrome.storage.session.clear(r));
+  console.log("logout: Attempting to clear session storage.");
+  await new Promise<void>((r) => chrome.storage.session.clear(() => {
+    console.log("logout: Session storage cleared.");
+    r();
+  }));
 }
 
 export async function clearAllStorage(): Promise<void> {
+  console.log("clearAllStorage: Initiating clearing of all storage.");
   await logout(); // même nettoyage
+  console.log("clearAllStorage: All storage cleared.");
 }
 
 /* ----------------------------------------------------------- */
