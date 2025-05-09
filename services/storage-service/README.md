@@ -50,7 +50,9 @@ The following routes are handled by this service:
   - `uuid`: Unique identifier for the user.
   - `dateMaj`: Major date component for the timestamp.
   - `iteration`: Iteration number for versioning.
-  
+
+  e.g., `leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite`.
+
   - For uploads, the service will receive the file. To handle potential rapid successive uploads from the same user, the service may temporarily cache the received file (e.g., in memory or on local disk) before streaming/uploading it to the appropriate R2 bucket using the AWS SDK for Go (V2) configured for R2. This caching helps prevent redundant R2 operations if a user uploads multiple times in a short period.
 - `GET /download/user/{uuid}`: Downloads the latest database file for a specific user.
   - Requires authentication.
@@ -58,8 +60,45 @@ The following routes are handled by this service:
 - `GET /download/file/{filename}`: Downloads a specific database file by its filename.
   - Requires authentication.
   - Requires the exact filename as stored in R2.
-- `POST /backup`: (Future Scope) Could be used to move files from the `main` bucket to the `backup` bucket in R2, or trigger other archival logic.
+- `GET /info/user/{uuid}`: Retrieves metadata about the most recent backup file for a specific user.
   - Requires authentication.
+  - The `uuid` is the user identifier.
+  - Returns a JSON array containing one or two `FileInfo` objects:
+    - The first object in the array is always the file considered latest by iteration number (descending), then by filename timestamp (descending).
+    - If a different file has the absolute latest filename timestamp (descending, then by iteration descending), its `FileInfo` will be the second object in the array.
+    - If both criteria point to the same file, the array will contain only one object.
+  - Example response (if two different files satisfy the criteria):
+    ```json
+    [
+      {
+        "filename": "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite",
+        "userID": "1f959aee-206e-4ef0-9ef9-7d50320da348",
+        "timestamp": "2025-05-09 10-36-53",
+        "iteration": "292"
+      },
+      {
+        "filename": "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-10 12-00-00_it150.sqlite",
+        "userID": "1f959aee-206e-4ef0-9ef9-7d50320da348",
+        "timestamp": "2025-05-10 12-00-00",
+        "iteration": "150"
+      }
+    ]
+    ```
+
+  - Example response (if the same file satisfies both criteria, or only one file exists):
+  
+    ```json
+    [
+      {
+        "filename": "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite",
+        "userID": "1f959aee-206e-4ef0-9ef9-7d50320da348",
+        "timestamp": "2025-05-09 10-36-53",
+        "iteration": "292"
+      }
+    ]
+    ```
+
+- `POST /backup`: (Future Scope) Could be used to move files from the `main` bucket to the `backup` bucket in R2, or trigger other archival logic.
 
 For a comprehensive list of all service routes, see [../routes.md](../routes.md).
 
