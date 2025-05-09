@@ -535,6 +535,66 @@ export async function exportDatabaseData(): Promise<{
 }
 
 /**
+ * Loads the database from a Uint8Array.
+ * Replaces the current database with the one from the byte array.
+ * @param data The Uint8Array containing the database file.
+ */
+async function loadDatabaseFromByteArray(data: Uint8Array): Promise<void> {
+  // Close the existing database if it's open
+  if (db) {
+    try {
+      db.close();
+      console.log("🚪 Previous database instance closed before loading new data.");
+    } catch (error) {
+      console.error("Error closing existing database instance during data load:", error);
+      // Continue anyway, as the main goal is to load the new DB
+    }
+  }
+
+  // Load the new database
+  db = new SQL.Database(data);
+  console.log("✨ Database successfully loaded from byte array.");
+
+  // Check version and run migrations if necessary
+  // This also implicitly handles schema creation if 'version' table is missing
+  // or if the imported DB is very old/malformed regarding the version table.
+  try {
+    await checkVersion();
+  } catch (checkVersionError) {
+    console.error("❌ Error during checkVersion after loading from byte array:", checkVersionError);
+    // If checkVersion fails (e.g. version table missing and createSchema fails, or migrations fail),
+    // it might leave 'db' in an inconsistent state or pointing to a problematic DB.
+    // Re-throwing to signal that the overall load process failed.
+    throw new Error(`Database integrity check/migration failed after loading: ${checkVersionError instanceof Error ? checkVersionError.message : String(checkVersionError)}`);
+  }
+
+
+  // Save the newly loaded database
+  // saveDatabase itself has try-catch for its specific operations
+  await saveDatabase();
+  console.log("✅ Loaded database processed and saved successfully.");
+}
+
+/**
+ * Imports a database from a .sqlite file.
+ * Reads the file and then uses loadDatabaseFromByteArray to process it.
+ * @param file The .sqlite file to import.
+ */
+export async function importDatabase(file: File): Promise<void> {
+  console.log(`🔄 Attempting to import database from file: ${file.name}`);
+  try {
+    const fileBuffer = await file.arrayBuffer();
+    const data = new Uint8Array(fileBuffer);
+    await loadDatabaseFromByteArray(data);
+  } catch (error) {
+    console.error("❌ Error importing database from file:", error);
+    // Optionally, re-initialize a default DB or notify user
+    // For now, we'll throw to indicate failure of the import process
+    throw new Error(`Failed to import database from file: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
  * Télécharge localement (si besoin) puis envoie la base de données
  * vers l’API /upload de ton serveur Fiber.
  *

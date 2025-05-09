@@ -7,6 +7,7 @@
     // updateUUID, // No longer needed for manual regeneration from options
     uploadDatabaseToServer,
     resetDatabase, // <-- Add import
+    importDatabase, // <-- Add import for the new function
   } from "../lib/dbUtils";
   import type { Settings } from "../lib/dbUtils";
   import {
@@ -150,18 +151,27 @@
     statusMessage = `Importing ${file.name}...`;
 
     try {
-      // const arrayBuffer = await file.arrayBuffer();
-      // const data = new Uint8Array(arrayBuffer);
-      // // Assuming importDatabase replaces the current DB, saves, and potentially re-initializes state.
-      // // You might need to implement this function in dbUtils.ts
-      // // await importDatabase(data); // Uncomment when importDatabase is ready
-      // statusMessage = `Database "${file.name}" imported successfully. Please reload the extension.`;
-      // console.log("Database import successful. Reload required.");
-      // // TODO: Implement importDatabase in dbUtils.ts
-      // // TODO: Potentially force a reload or notify the user more explicitly.
-      //  alert("Database imported. Please reload the extension for changes to take effect."); // Simple notification
-      console.warn("Import functionality is commented out.");
-      statusMessage = "Import function not yet implemented."; // Placeholder message
+      await importDatabase(file); // Call the actual import function
+      statusMessage = `Database "${file.name}" imported successfully. Settings reloaded.`;
+      console.log("Database import successful.");
+
+      // Reload settings from the newly imported database
+      const loadedSettings = getSettings();
+      if (loadedSettings) {
+        settings = loadedSettings;
+        shareCollection = loadedSettings.share_collection;
+        userUUID = loadedSettings.uuid;
+      } else {
+        statusMessage =
+          "Import successful, but could not reload settings from the new database.";
+        console.warn(
+          "Settings not found in the imported DB or failed to load."
+        );
+        // Reset to defaults or clear if settings are critical
+        settings = null;
+        shareCollection = false;
+        userUUID = "N/A";
+      }
     } catch (error) {
       console.error("Failed to import database:", error);
       statusMessage = `Error importing database: ${error instanceof Error ? error.message : String(error)}`;
