@@ -154,10 +154,10 @@
             {/if}
           </div>
           <div class="flex flex-col space-y-1">
-            <button onclick={saveChanges} class="edit-button text-sm"
+            <button onclick={saveChanges} class="save-button text-sm"
               >Save</button
             >
-            <button onclick={cancelEdit} class="edit-button-cancel text-sm"
+            <button onclick={cancelEdit} class="cancel-button text-sm"
               >Cancel</button
             >
           </div>
@@ -280,12 +280,12 @@
     color: var(--tw-color-silver-grey, #b0b0b0);
   }
 
-  .edit-button,
-  .edit-button-cancel {
+  .edit-button {
+    /* Styles for the pencil edit icon button */
     color: var(--tw-color-silver-grey, #b0b0b0);
     background-color: transparent;
     border: 1px solid var(--tw-color-silver-grey, #b0b0b0);
-    padding: 0.2rem 0.5rem;
+    padding: 0.2rem 0.5rem; /* Kept for consistency, though text-lg might alter final size */
     border-radius: 0.25rem;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
@@ -296,8 +296,42 @@
     border-color: var(--tw-color-night-violet, #7e5bef);
   }
 
-  .edit-button-cancel:hover {
-    color: var(--tw-color-pale-pink, #ffb6c1);
-    border-color: var (--tw-color-pale-pink, #ffb6c1);
+  /* Save Button - Primary Action */
+  .save-button {
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: transparent;
+    font-family: var(--tw-font-sans, "Fira Sans", sans-serif);
+    color: var(--tw-color-off-white, #e0e0e0);
+    border: 1px solid var(--tw-color-night-violet, #7e5bef);
+  }
+
+  .save-button:hover {
+    background-color: var(--tw-color-night-violet, #7e5bef);
+    color: var(--tw-color-off-white, #e0e0e0);
+    border-color: var(--tw-color-night-violet, #7e5bef);
+  }
+
+  /* Cancel Button - Secondary Action */
+  .cancel-button {
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: transparent;
+    font-family: var(--tw-font-sans, "Fira Sans", sans-serif);
+    color: var(--tw-color-silver-grey, #b0b0b0);
+    border: 1px solid var(--tw-color-silver-grey, #b0b0b0);
+  }
+
+  .cancel-button:hover {
+    background-color: var(--tw-color-dark-grey, #4b4b4b);
+    color: var(--tw-color-off-white, #e0e0e0); /* Brighter text for contrast */
+    border-color: var(
+      --tw-color-silver-grey,
+      #b0b0b0
+    ); /* Keep border or match bg */
   }
 </style>
