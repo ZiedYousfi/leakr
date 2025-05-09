@@ -2,6 +2,7 @@ import initSqlJs from "sql.js";
 import Fuse from "fuse.js";
 import type { SqlJsStatic, Database } from "sql.js";
 import semver from "semver";
+import { getAccessToken } from "./authUtils"; // Added import
 
 let SQL: SqlJsStatic;
 let db: Database;
@@ -543,6 +544,14 @@ export async function exportDatabaseData(): Promise<{
 export async function uploadDatabaseToServer(
   endpoint = "https://storage.leakr.net/upload"
 ): Promise<void> {
+  // 0️⃣ Récupérer le token d'accès
+  const token = await getAccessToken();
+  if (!token) {
+    throw new Error(
+      "❌ Upload échoué : Token d'authentification manquant. Veuillez vous connecter."
+    );
+  }
+
   // 1️⃣ On récupère le fichier et son nom « leakr_db_<uuid>_<date>_it<iter>.sqlite »
   const { data, filename } = await exportDatabaseData();
 
@@ -554,10 +563,15 @@ export async function uploadDatabaseToServer(
   form.append("file", blob, filename); // ← champ "file"
   form.append("filename", filename); // ← champ "filename" attendu côté serveur
 
-  // 4️⃣ Lancement de l’incantation réseau
-  const res = await fetch(endpoint, { method: "POST", body: form });
+  // 4️⃣ Préparation des headers avec le token
+  const headers = new Headers();
+  headers.append("Authorization", `Bearer ${token}`);
+  // Note: FormData sets Content-Type automatically, so we don't set it manually here.
 
-  // 5️⃣ Gestion douce‑amère des retours
+  // 5️⃣ Lancement de l’incantation réseau
+  const res = await fetch(endpoint, { method: "POST", body: form, headers });
+
+  // 6️⃣ Gestion douce‑amère des retours
   if (!res.ok) {
     const msg = await res.text().catch(() => res.statusText);
     throw new Error(`❌ Upload échoué (${res.status}) : ${msg}`);
