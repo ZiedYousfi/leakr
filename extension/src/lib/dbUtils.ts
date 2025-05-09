@@ -1164,6 +1164,38 @@ export function addProfilPlateforme(
   return lastId;
 }
 
+/** Met à jour le lien d'un profil plateforme existant */
+export function updateProfilPlateforme(id: number, nouveauLien: string): void {
+  const stmt = db.prepare(
+    "UPDATE profils_plateforme SET lien = ? WHERE id = ?"
+  );
+  try {
+    stmt.run([nouveauLien, id]);
+    saveDatabase();
+    console.log(`Profil plateforme ID ${id} mis à jour avec le lien : ${nouveauLien}`);
+  } catch (err) {
+    console.error("Erreur lors de la mise à jour du profil plateforme:", err);
+    throw err; // Re-throw to allow UI to handle it
+  } finally {
+    stmt.free();
+  }
+}
+
+/** Supprime un profil plateforme par son ID */
+export function deleteProfilPlateforme(id: number): void {
+  const stmt = db.prepare("DELETE FROM profils_plateforme WHERE id = ?");
+  try {
+    stmt.run([id]);
+    saveDatabase();
+    console.log(`Profil plateforme ID ${id} supprimé.`);
+  } catch (err) {
+    console.error("Erreur lors de la suppression du profil plateforme:", err);
+    throw err; // Re-throw to allow UI to handle it
+  } finally {
+    stmt.free();
+  }
+}
+
 /** Récupère les profils d'un créateur */
 export function getProfilsByCreator(id_createur: number): ProfilPlateforme[] {
   const stmt = db.prepare(`
