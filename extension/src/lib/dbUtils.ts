@@ -823,6 +823,7 @@ export function findCreatorByUsername(username: string): Createur | null {
     const terms = [nomNorm, ...aliasesNorm];
     return terms.some(a =>
       a.length >= MIN_SUBSTR &&
+      normalizedTerm.length >= MIN_SUBSTR && // Ensure search term is also long enough
       (normalizedTerm.includes(a) || a.includes(normalizedTerm))
     );
   });
