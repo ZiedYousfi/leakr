@@ -2,8 +2,9 @@ package config
 
 import (
 	"log"
-	"github.com/joho/godotenv"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 // LoadEnv charge les variables d'environnement depuis .env
