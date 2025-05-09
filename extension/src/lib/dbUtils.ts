@@ -70,7 +70,7 @@ function createSchema() {
       nom TEXT UNIQUE NOT NULL,
       aliases TEXT UNIQUE NOT NULL,
       date_ajout TEXT NOT NULL,
-      favori BOOLEAN DEFAULT FALSE
+      favori BOOLEAN DEFAULT FALSE,
       -- Variable pour savoir si les infos d'un créateur ont été vérifié par un humain
       verifie BOOLEAN DEFAULT FALSE
     );
