@@ -911,6 +911,24 @@ export function findCreatorByUsername(username: string): Createur | null {
   return null;
 }
 
+/** Met à jour le nom et les aliases d'un créateur */
+export function updateCreateurDetails(id: number, nom: string, aliases: string[]): void {
+  const aliasesStr = JSON.stringify(aliases);
+  const stmt = db.prepare(
+    "UPDATE createurs SET nom = ?, aliases = ? WHERE id = ?"
+  );
+  try {
+    stmt.run([nom, aliasesStr, id]);
+    saveDatabase();
+    console.log(`Creator details updated for ID ${id}: nom=${nom}, aliases=${aliasesStr}`);
+  } catch (err) {
+    console.error("Error updating creator details:", err);
+    throw err; // Re-throw to allow UI to handle it
+  } finally {
+    stmt.free();
+  }
+}
+
 /** Met à jour le statut favori d'un créateur */
 export function updateFavoriCreateur(id: number, favori: boolean): void {
   const stmt = db.prepare("UPDATE createurs SET favori = ? WHERE id = ?");
