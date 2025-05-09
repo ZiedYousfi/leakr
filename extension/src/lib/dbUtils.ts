@@ -777,14 +777,15 @@ export function findCreatorByUsername(username: string): Createur | null {
       .replace(/[^a-z0-9]/g, "")
       .replace(/[l1]/g, "i")
       .replace(/[o0]/g, "o");
+  const normalizedTerm = normalize(username);
 
   // — 1️⃣ Nom exact SQL (toujours prioritaire) —
-  const exactStmt = db.prepare(`
-    SELECT id, nom, aliases, date_ajout, favori, verifie
-    FROM createurs
-    WHERE LOWER(nom) = LOWER(?)
-    LIMIT 1
-  `);
+  const exactStmt = db.prepare(
+    `SELECT id, nom, aliases, date_ajout, favori, verifie
+     FROM createurs
+     WHERE LOWER(nom) = LOWER(?)
+     LIMIT 1`
+  );
   exactStmt.bind([username]);
   try {
     if (exactStmt.step()) {
@@ -805,32 +806,93 @@ export function findCreatorByUsername(username: string): Createur | null {
     exactStmt.free();
   }
 
-  // — 2️⃣ Fuse.js en tête —
-  // Seuil adaptatif pour Fuse score
+  // — 2️⃣ Alias exact en mémoire —
+  const aliasExact = allCreators.find(c =>
+    c.aliases.some(a => a.toLowerCase() === termLower)
+  );
+  if (aliasExact) {
+    console.log(`🌟 Alias exact "${username}" → "${aliasExact.nom}"`);
+    return aliasExact;
+  }
+
+  // — 3️⃣ Substring sur nom et aliases (seuil ≥ 5) —
+  const MIN_SUBSTR = 5;
+  const substrMatch = allCreators.find(c => {
+    const nomNorm = normalize(c.nom);
+    const aliasesNorm = c.aliases.map(normalize);
+    const terms = [nomNorm, ...aliasesNorm];
+    return terms.some(a =>
+      a.length >= MIN_SUBSTR &&
+      (normalizedTerm.includes(a) || a.includes(normalizedTerm))
+    );
+  });
+  if (substrMatch) {
+    console.log(`✨ Substring "${username}" → "${substrMatch.nom}"`);
+    return substrMatch;
+  }
+
+  // — 4️⃣ Préfixe (en ultime recours avant Fuse) —
+  const PREFIX_MIN = 4;
+  if (username.length >= PREFIX_MIN) {
+    const prefixMatch = allCreators.find(c => {
+      const nomNorm = normalize(c.nom);
+      const aliasesNorm = c.aliases.map(normalize);
+      return (
+        nomNorm.startsWith(normalizedTerm) ||
+        aliasesNorm.some(a => a.startsWith(normalizedTerm))
+      );
+    });
+    if (prefixMatch) {
+      console.log(`🚀 Prefix "${username}" → "${prefixMatch.nom}"`);
+      return prefixMatch;
+    }
+  }
+
+  // — 5️⃣ Fuse.js (recherche floue normalisée) —
+  // Préparation de la liste Fuse avec champs normalisés
+  const fuseList = allCreators.map(c => ({
+    ...c,
+    nomNorm: normalize(c.nom),
+    aliasesNorm: c.aliases.map(normalize),
+  }));
+
+  // Seuil adaptatif pour Fuse
   let MAX_SCORE = 0.5;
   if (username.length <= 3) MAX_SCORE = 0.3;
   else if (username.length >= 8) MAX_SCORE = 0.7;
 
-  const fuse = new Fuse(allCreators, {
-    keys: ["nom", "aliases"],
-    threshold: MAX_SCORE, // ← on utilise ici notre MAX_SCORE
-    ignoreLocation: true,
+  const fuse = new Fuse(fuseList, {
+    keys: ["nomNorm", "aliasesNorm"],
+    threshold: MAX_SCORE,
+    location: 0,
+    distance: 100,
     includeScore: true,
   });
 
-  const results = fuse.search(username);
+  const results = fuse.search(normalizedTerm);
   if (results.length > 0) {
-    const { item, score = 1 } = results[0];
+    const { item, score = 1, matches } = results[0];
     const ratio = username.length / item.nom.length;
 
     console.log(
       `🔮 Fuse top "${username}"→"${item.nom}": score=${score.toFixed(3)}, ratio=${ratio.toFixed(2)}, seuil=${MAX_SCORE}`
     );
 
-    if (score <= MAX_SCORE && username.length >= 2 && ratio >= 0.3) {
-      // on ajoute l’alias si nécessaire
+    // Vérifier que le match commence bien à l'indice 0
+    const isPrefixMatch = matches?.some(m =>
+      m.indices.some(([start]) => start === 0)
+    );
+
+    if (
+      score <= MAX_SCORE &&
+      username.length >= 2 &&
+      ratio >= 0.5 &&
+      isPrefixMatch
+    ) {
       if (!item.aliases.includes(username)) {
-        const upd = db.prepare("UPDATE createurs SET aliases = ? WHERE id = ?");
+        const upd = db.prepare(
+          "UPDATE createurs SET aliases = ? WHERE id = ?"
+        );
         const newAliases = JSON.stringify([...item.aliases, username]);
         upd.run([newAliases, item.id]);
         upd.free();
@@ -842,47 +904,6 @@ export function findCreatorByUsername(username: string): Createur | null {
       }
       return item;
     }
-  }
-
-  // — 3️⃣ Fallback : alias exact en mémoire —
-  const aliasExact = allCreators.find((c) =>
-    c.aliases.some((a) => a.toLowerCase() === termLower)
-  );
-  if (aliasExact) {
-    console.log(`🌟 Alias exact "${username}" → "${aliasExact.nom}"`);
-    return aliasExact;
-  }
-
-  // — 4️⃣ Alias-substring bi-directionnel (seuil ≥ 3) —
-  const MIN_SUBSTR = 3;
-  const aliasSub = allCreators.find((c) =>
-    c.aliases
-      .map(normalize)
-      .some(
-        (a) =>
-          a.length >= MIN_SUBSTR &&
-          (normalize(username).includes(a) || a.includes(normalize(username)))
-      )
-  );
-  if (aliasSub) {
-    console.log(`✨ Alias-substr "${username}" → "${aliasSub.nom}"`);
-    return aliasSub;
-  }
-
-  // — 5️⃣ Multi-part & prefix (en ultime recours) —
-  const prefixOK = username.length >= 4;
-  const pref = allCreators.find((c) => {
-    const n = normalize(c.nom);
-    const as = c.aliases.map(normalize);
-    return (
-      prefixOK &&
-      (n.startsWith(normalize(username)) ||
-        as.some((a) => a.startsWith(normalize(username))))
-    );
-  });
-  if (pref) {
-    console.log(`🚀 Prefix "${username}" → "${pref.nom}"`);
-    return pref;
   }
 
   console.warn(`❌ Aucun créateur trouvé pour "${username}".`);
