@@ -1,11 +1,9 @@
 import {
+  AUTH_SERVICE_BASE_URL,
   CLIENT_ID,
-  CLIENT_SECRET,
   AUTHORIZE_ENDPOINT,
-  TOKEN_ENDPOINT,
   USERINFO_ENDPOINT,
   LEAKR_UUID_ENDPOINT,
-  INTROSPECTION_ENDPOINT,
 } from "./authVars";
 import { updateUUID } from "./dbUtils";
 
@@ -23,96 +21,109 @@ export async function authenticateWithClerk(): Promise<void> {
   console.log("authenticateWithClerk: Starting authentication process.");
   const redirectUri = getRedirectUri();
   const state = crypto.randomUUID();
-  console.log(
-    `authenticateWithClerk: redirectUri=${redirectUri}, state=${state}`
+  // PKCE Challenge (S256)
+  const codeVerifier = crypto.randomUUID() + crypto.randomUUID(); // Generate a random string for the verifier
+  const codeChallengeBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(codeVerifier)
   );
-  await new Promise<void>((r) =>
-    chrome.storage.session.set({ oauth_state: state }, () => {
-      console.log(
-        `authenticateWithClerk: Stored oauth_state: ${state} in session storage.`
-      );
-      r();
+  const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(codeChallengeBuffer)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+
+  console.log(
+    `authenticateWithClerk: redirectUri=${redirectUri}, state=${state}, code_verifier (length)=${codeVerifier.length}, code_challenge=${codeChallenge}`
+  );
+
+  await new Promise<void>((resolve, reject) =>
+    chrome.storage.session.set({ oauth_state: state, oauth_code_verifier: codeVerifier }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("authenticateWithClerk: Error saving state/verifier to session storage:", chrome.runtime.lastError.message);
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        console.log("authenticateWithClerk: oauth_state and oauth_code_verifier saved to session storage.");
+        resolve();
+      }
     })
   );
 
-  const authUrl =
-    `${AUTHORIZE_ENDPOINT}` +
-    `?client_id=${CLIENT_ID}` +
-    `&response_type=code` +
-    `&scope=openid%20profile%20email` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&state=${encodeURIComponent(state)}`;
+  const authUrl = new URL(AUTHORIZE_ENDPOINT);
+  authUrl.searchParams.append("client_id", CLIENT_ID);
+  authUrl.searchParams.append("response_type", "code");
+  authUrl.searchParams.append("scope", "openid profile email offline_access"); // Added offline_access for refresh token
+  authUrl.searchParams.append("redirect_uri", redirectUri);
+  authUrl.searchParams.append("state", state);
+  authUrl.searchParams.append("code_challenge", codeChallenge);
+  authUrl.searchParams.append("code_challenge_method", "S256");
 
   console.log(
-    `authenticateWithClerk: Launching web auth flow with URL: ${authUrl}`
+    `authenticateWithClerk: Launching web auth flow with URL: ${authUrl.toString()}`
   );
+
   return new Promise((resolve, reject) => {
     chrome.identity.launchWebAuthFlow(
-      { url: authUrl, interactive: true },
-      async (redirectedTo) => {
-        console.log(
-          `authenticateWithClerk: Web auth flow callback. redirectedTo=${redirectedTo}`
-        );
+      { url: authUrl.toString(), interactive: true },
+      async (responseUrl?: string) => {
         if (chrome.runtime.lastError) {
           console.error(
-            `authenticateWithClerk: Authorization failed: ${chrome.runtime.lastError.message}`
+            "authenticateWithClerk: Web auth flow failed:",
+            chrome.runtime.lastError.message
           );
-          return reject(
-            new Error(
-              `Authorization failed: ${chrome.runtime.lastError.message}`
-            )
-          );
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
         }
-        if (!redirectedTo) {
-          console.error(
-            "authenticateWithClerk: Redirection manquante après auth."
-          );
-          return reject(new Error("Redirection manquante après auth."));
+        if (!responseUrl) {
+          console.error("authenticateWithClerk: No response URL from auth flow.");
+          reject(new Error("Authentication failed: No response URL"));
+          return;
         }
 
-        const stored = await new Promise<{ oauth_state?: string }>((res) =>
-          chrome.storage.session.get("oauth_state", (result) => {
-            chrome.storage.session.remove("oauth_state", () => {
-              console.log(
-                "authenticateWithClerk: Removed oauth_state from session storage."
-              );
-              res(result);
-            });
-          })
-        );
         console.log(
-          `authenticateWithClerk: Retrieved stored oauth_state: ${stored.oauth_state}`
+          `authenticateWithClerk: Web auth flow successful. Response URL: ${responseUrl}`
         );
-        if (
-          !stored.oauth_state ||
-          new URL(redirectedTo).searchParams.get("state") !== stored.oauth_state
-        ) {
-          console.error("authenticateWithClerk: State OAuth invalide.");
-          return reject(new Error("State OAuth invalide."));
+        const url = new URL(responseUrl);
+        const code = url.searchParams.get("code");
+        const returnedState = url.searchParams.get("state");
+
+        const stored = await new Promise<{
+          oauth_state?: string;
+          oauth_code_verifier?: string;
+        }>((r) =>
+          chrome.storage.session.get(["oauth_state", "oauth_code_verifier"], (items) =>
+            r(items)
+          )
+        );
+
+        if (stored.oauth_state !== returnedState) {
+          console.error(
+            `authenticateWithClerk: State mismatch. Expected ${stored.oauth_state}, got ${returnedState}`
+          );
+          reject(new Error("State mismatch during authentication."));
+          return;
         }
 
-        const code = new URL(redirectedTo).searchParams.get("code");
-        console.log(`authenticateWithClerk: Authorization code: ${code}`);
         if (!code) {
-          console.error(
-            "authenticateWithClerk: Pas de code d'autorisation retourné."
-          );
-          return reject(new Error("Pas de code d'autorisation retourné."));
+          console.error("authenticateWithClerk: No code in response URL.");
+          reject(new Error("Authentication failed: No code in response URL"));
+          return;
+        }
+        if (!stored.oauth_code_verifier) {
+          console.error("authenticateWithClerk: No code_verifier in session storage.");
+          reject(new Error("Authentication critical error: Missing code_verifier."));
+          return;
         }
 
+        console.log(
+          `authenticateWithClerk: Code received: ${code}. Exchanging for token.`
+        );
         try {
-          console.log("authenticateWithClerk: Exchanging code for token.");
-          await exchangeCodeForToken(code, redirectUri);
-          console.log("authenticateWithClerk: Getting user info.");
-          await getUserInfo();
-          console.log("authenticateWithClerk: Authentication successful.");
+          await exchangeCodeForToken(code, redirectUri, stored.oauth_code_verifier);
+          console.log("authenticateWithClerk: Authentication process completed successfully.");
           resolve();
-        } catch (e) {
-          console.error(
-            "authenticateWithClerk: Error during token exchange or getting user info:",
-            e
-          );
-          reject(e);
+        } catch (error) {
+          console.error("authenticateWithClerk: Token exchange failed:", error);
+          reject(error);
         }
       }
     );
@@ -120,53 +131,53 @@ export async function authenticateWithClerk(): Promise<void> {
 }
 
 /* ----------------------------------------------------------- */
-/* 3. Exchange code → tokens                                   */
+/* 3. Exchange code → tokens (via Auth Service)                */
 /* ----------------------------------------------------------- */
 async function exchangeCodeForToken(
   code: string,
-  redirectUri: string
+  redirectUri: string,
+  codeVerifier: string
 ): Promise<void> {
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    client_id: CLIENT_ID,
-    client_secret: CLIENT_SECRET,
-    code,
-    redirect_uri: redirectUri,
-  });
+  console.log(`exchangeCodeForToken: Exchanging code ${code} using redirectUri ${redirectUri} and verifier.`);
+  const exchangeUrl = `${AUTH_SERVICE_BASE_URL}/oauth/exchange-code`;
 
   try {
-    const resp = await fetch(TOKEN_ENDPOINT, {
+    const resp = await fetch(exchangeUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code,
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier // Send code_verifier to auth-service
+      }),
     });
+
     if (!resp.ok) {
-      // Log more details if possible from the response before throwing
-      let errorDetails = `Échec échange code: ${resp.status}`;
-      try {
-        const errorData = await resp.json();
-        errorDetails += ` - ${JSON.stringify(errorData)}`;
-      } catch (e) {
-        // Ignore if response is not JSON or empty
-      }
-      console.error(errorDetails);
-      throw new Error(errorDetails);
+      const errorBody = await resp.text();
+      console.error(
+        `exchangeCodeForToken: Failed to exchange code. Status: ${resp.status}. Body: ${errorBody}`
+      );
+      throw new Error(
+        `Token exchange failed with status ${resp.status}: ${errorBody}`
+      );
     }
 
-    const { access_token, refresh_token } = await resp.json();
-    console.log(
-      `exchangeCodeForToken: Received access_token: ${access_token ? "present" : "absent"}, refresh_token: ${refresh_token ? "present" : "absent"}`
-    );
-    await storeTokens(access_token, refresh_token);
-  } catch (error) {
-    // This will catch network errors (like CORS preflight failures) or errors from !resp.ok
-    console.error("exchangeCodeForToken: Fetch or processing failed:", error);
-    // Re-throw the error to be caught by the caller (authenticateWithClerk)
-    // Ensure it's an Error object
-    if (error instanceof Error) {
-      throw error;
+    const tokenData = await resp.json();
+    console.log("exchangeCodeForToken: Tokens received:", tokenData);
+
+    if (!tokenData.access_token) {
+        console.error("exchangeCodeForToken: access_token missing in response from auth-service.");
+        throw new Error("access_token missing in response from auth-service");
     }
-    throw new Error(String(error));
+
+    await storeTokens(tokenData.access_token, tokenData.refresh_token);
+    console.log("exchangeCodeForToken: Tokens stored successfully.");
+
+  } catch (error) {
+    console.error("exchangeCodeForToken: Error during token exchange:", error);
+    // Clear potentially partial/invalid tokens if exchange fails mid-way
+    await chrome.storage.local.remove(["access_token", "refresh_token"]);
+    throw error; // Re-throw to be caught by authenticateWithClerk
   }
 }
 
@@ -195,62 +206,94 @@ export async function getAccessToken(): Promise<string | null> {
 }
 
 /* ----------------------------------------------------------- */
-/* 5. Introspection RFC-7662                                   */
+/* 5. Introspection RFC-7662 (via Auth Service)                */
 /* ----------------------------------------------------------- */
 async function introspectToken(token: string): Promise<boolean> {
-  const creds = btoa(`${CLIENT_ID}:${CLIENT_SECRET}`);
-  const body = new URLSearchParams({ token, token_type_hint: "access_token" });
+  console.log(`introspectToken: Introspecting token.`);
+  const verifyUrl = `${AUTH_SERVICE_BASE_URL}/verify`;
 
   try {
-    const resp = await fetch(INTROSPECTION_ENDPOINT, {
+    const resp = await fetch(verifyUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Basic ${creds}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
-      body: body.toString(),
     });
 
     if (!resp.ok) {
+      // Log specific error from auth-service if available
+      const errorBody = await resp.text();
       console.warn(
-        `Token introspection request failed with status: ${resp.status}`
+        `introspectToken: Token introspection failed. Status: ${resp.status}. Body: ${errorBody}`
       );
-      return false; // Token is not active or an error occurred
+      return false;
     }
 
-    const { active } = await resp.json();
-    return active === true;
+    const introspectionResult = await resp.json();
+    console.log("introspectToken: Introspection result:", introspectionResult);
+    return introspectionResult.active === true; // Ensure it explicitly checks for true
+
   } catch (error) {
-    // This will catch network errors, including CORS preflight failures (TypeError: Failed to fetch)
-    console.error("Token introspection fetch failed:", error);
-    // Treat token as inactive/invalid if introspection cannot be completed
+    console.error("introspectToken: Error during token introspection:", error);
     return false;
   }
 }
 
 /* ----------------------------------------------------------- */
-/* 6. Refresh access_token                                     */
+/* 6. Refresh access_token (via Auth Service)                  */
 /* ----------------------------------------------------------- */
 export async function refreshAccessToken(): Promise<void> {
+  console.log("refreshAccessToken: Attempting to refresh access token.");
   const { refresh_token } = await new Promise<{ refresh_token?: string }>((r) =>
     chrome.storage.local.get("refresh_token", (o) => r(o))
   );
-  if (!refresh_token) throw new Error("Aucun refresh_token.");
 
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    client_id: CLIENT_ID,
-    client_secret: CLIENT_SECRET,
-    refresh_token,
-  });
-  const resp = await fetch(TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  });
-  if (!resp.ok) throw new Error(`Refresh failed: ${resp.status}`);
-  const { access_token, refresh_token: newRefresh } = await resp.json();
-  await storeTokens(access_token, newRefresh);
+  if (!refresh_token) {
+    console.warn("refreshAccessToken: No refresh token found. Cannot refresh.");
+    throw new Error("No refresh token available to refresh access token.");
+  }
+
+  console.log("refreshAccessToken: Refresh token found. Proceeding with refresh.");
+  const refreshUrl = `${AUTH_SERVICE_BASE_URL}/oauth/refresh-token`;
+
+  try {
+    const resp = await fetch(refreshUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token }),
+    });
+
+    if (!resp.ok) {
+      const errorBody = await resp.text();
+      console.error(
+        `refreshAccessToken: Failed to refresh token. Status: ${resp.status}. Body: ${errorBody}`
+      );
+      // If refresh fails (e.g. refresh token expired/revoked), clear tokens and force re-auth
+      if (resp.status === 400 || resp.status === 401) {
+        console.log("refreshAccessToken: Clearing tokens due to refresh failure.");
+        await clearAllStorage(); // Or at least clear access/refresh tokens
+      }
+      throw new Error(
+        `Token refresh failed with status ${resp.status}: ${errorBody}`
+      );
+    }
+
+    const tokenData = await resp.json();
+    console.log("refreshAccessToken: New tokens received:", tokenData);
+
+    if (!tokenData.access_token) {
+        console.error("refreshAccessToken: access_token missing in response from auth-service after refresh.");
+        throw new Error("access_token missing in response from auth-service after refresh");
+    }
+
+    await storeTokens(tokenData.access_token, tokenData.refresh_token);
+    console.log("refreshAccessToken: New tokens stored successfully.");
+
+  } catch (error) {
+    console.error("refreshAccessToken: Error during token refresh:", error);
+    throw error; // Re-throw to be handled by caller
+  }
 }
 
 /* ----------------------------------------------------------- */
