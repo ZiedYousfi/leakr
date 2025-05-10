@@ -134,18 +134,40 @@ async function exchangeCodeForToken(
     redirect_uri: redirectUri,
   });
 
-  const resp = await fetch(TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  });
-  if (!resp.ok) throw new Error(`Échec échange code: ${resp.status}`);
+  try {
+    const resp = await fetch(TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    if (!resp.ok) {
+      // Log more details if possible from the response before throwing
+      let errorDetails = `Échec échange code: ${resp.status}`;
+      try {
+        const errorData = await resp.json();
+        errorDetails += ` - ${JSON.stringify(errorData)}`;
+      } catch (e) {
+        // Ignore if response is not JSON or empty
+      }
+      console.error(errorDetails);
+      throw new Error(errorDetails);
+    }
 
-  const { access_token, refresh_token } = await resp.json();
-  console.log(
-    `exchangeCodeForToken: Received access_token: ${access_token ? "present" : "absent"}, refresh_token: ${refresh_token ? "present" : "absent"}`
-  );
-  await storeTokens(access_token, refresh_token);
+    const { access_token, refresh_token } = await resp.json();
+    console.log(
+      `exchangeCodeForToken: Received access_token: ${access_token ? "present" : "absent"}, refresh_token: ${refresh_token ? "present" : "absent"}`
+    );
+    await storeTokens(access_token, refresh_token);
+  } catch (error) {
+    // This will catch network errors (like CORS preflight failures) or errors from !resp.ok
+    console.error("exchangeCodeForToken: Fetch or processing failed:", error);
+    // Re-throw the error to be caught by the caller (authenticateWithClerk)
+    // Ensure it's an Error object
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(String(error));
+  }
 }
 
 /* ----------------------------------------------------------- */
@@ -179,17 +201,31 @@ async function introspectToken(token: string): Promise<boolean> {
   const creds = btoa(`${CLIENT_ID}:${CLIENT_SECRET}`);
   const body = new URLSearchParams({ token, token_type_hint: "access_token" });
 
-  const resp = await fetch(INTROSPECTION_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${creds}`,
-    },
-    body: body.toString(),
-  });
-  if (!resp.ok) return false;
-  const { active } = await resp.json();
-  return active === true;
+  try {
+    const resp = await fetch(INTROSPECTION_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${creds}`,
+      },
+      body: body.toString(),
+    });
+
+    if (!resp.ok) {
+      console.warn(
+        `Token introspection request failed with status: ${resp.status}`
+      );
+      return false; // Token is not active or an error occurred
+    }
+
+    const { active } = await resp.json();
+    return active === true;
+  } catch (error) {
+    // This will catch network errors, including CORS preflight failures (TypeError: Failed to fetch)
+    console.error("Token introspection fetch failed:", error);
+    // Treat token as inactive/invalid if introspection cannot be completed
+    return false;
+  }
 }
 
 /* ----------------------------------------------------------- */
