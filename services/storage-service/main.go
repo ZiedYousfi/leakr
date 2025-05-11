@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 func main() {
@@ -31,6 +32,13 @@ func main() {
 	}
 
 	app := fiber.New()
+
+	// Add CORS middleware
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "chrome-extension://iinddcpilfbkhdaijbdhncbhbeginpgn", // Allow specific Chrome extension origin
+		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
+		AllowHeaders: "Origin,Content-Type,Accept,Authorization",
+	}))
 
 	// Appliquer le middleware d'authentification à toutes les routes
 	app.Use(middleware.AuthMiddleware())

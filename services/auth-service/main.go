@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors" // Import CORS middleware
 )
 
 /* ------------------------------------------------------------------ */
@@ -95,6 +96,13 @@ func introspectAccessToken(rawToken string) (*introspectResp, error) {
 /* ------------------------------------------------------------------ */
 func main() {
 	app := fiber.New()
+
+	// Add CORS middleware
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "chrome-extension://iinddcpilfbkhdaijbdhncbhbeginpgn", // Allow specific Chrome extension origin
+		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
+		AllowHeaders: "Origin,Content-Type,Accept,Authorization",
+	}))
 
 	app.Post("/verify", verifyHandler)
 	app.Get("/me", authMiddleware, meHandler) // Assumes /me still uses the authMiddleware which uses introspectAccessToken
