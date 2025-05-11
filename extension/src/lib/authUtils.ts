@@ -51,7 +51,7 @@ export async function authenticateWithClerk(): Promise<void> {
   const authUrl = new URL(AUTHORIZE_ENDPOINT);
   authUrl.searchParams.append("client_id", CLIENT_ID);
   authUrl.searchParams.append("response_type", "code");
-  authUrl.searchParams.append("scope", "openid profile email offline_access"); // Added offline_access for refresh token
+  authUrl.searchParams.append("scope", "openid profile email"); // Removed offline_access
   authUrl.searchParams.append("redirect_uri", redirectUri);
   authUrl.searchParams.append("state", state);
   authUrl.searchParams.append("code_challenge", codeChallenge);
@@ -170,7 +170,7 @@ async function exchangeCodeForToken(
         throw new Error("access_token missing in response from auth-service");
     }
 
-    await storeTokens(tokenData.access_token, tokenData.refresh_token);
+    await storeTokens(tokenData.access_token, tokenData.refresh_token); // Pass refresh_token, might be undefined
     console.log("exchangeCodeForToken: Tokens stored successfully.");
 
   } catch (error) {
@@ -184,13 +184,17 @@ async function exchangeCodeForToken(
 /* ----------------------------------------------------------- */
 /* 4. Persistence                                              */
 /* ----------------------------------------------------------- */
-async function storeTokens(access: string, refresh: string): Promise<void> {
+async function storeTokens(access: string, refresh?: string): Promise<void> { // Made refresh optional
   console.log(
     `storeTokens: Storing access_token: ${access ? "present" : "absent"}, refresh_token: ${refresh ? "present" : "absent"}`
   );
+  const itemsToStore: { access_token: string; refresh_token?: string } = { access_token: access };
+  if (refresh) {
+    itemsToStore.refresh_token = refresh;
+  }
   await new Promise<void>((r) =>
     chrome.storage.local.set(
-      { access_token: access, refresh_token: refresh },
+      itemsToStore,
       () => {
         console.log("storeTokens: Tokens stored in local storage.");
         r();
@@ -250,7 +254,7 @@ export async function refreshAccessToken(): Promise<void> {
   );
 
   if (!refresh_token) {
-    console.warn("refreshAccessToken: No refresh token found. Cannot refresh.");
+    console.warn("refreshAccessToken: No refresh token found. Cannot refresh. This is expected if 'offline_access' scope was not granted.");
     throw new Error("No refresh token available to refresh access token.");
   }
 
@@ -287,7 +291,7 @@ export async function refreshAccessToken(): Promise<void> {
         throw new Error("access_token missing in response from auth-service after refresh");
     }
 
-    await storeTokens(tokenData.access_token, tokenData.refresh_token);
+    await storeTokens(tokenData.access_token, tokenData.refresh_token); // Pass refresh_token, might be undefined
     console.log("refreshAccessToken: New tokens stored successfully.");
 
   } catch (error) {
