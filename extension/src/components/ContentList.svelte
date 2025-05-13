@@ -4,14 +4,22 @@
     getContenuById,
     deleteContenu,
     updateFavoriContenu,
+    getCreateurById, // Added import
     type Contenu,
   } from "@/lib/dbUtils";
 
   // --- Props ---
-  let { contentIds = $bindable<number[] | null>(null) } = $props<{ contentIds?: number[] | null }>();
+  let { contentIds = $bindable<number[] | null>(null) } = $props<{
+    contentIds?: number[] | null;
+  }>();
+
+  // --- Types ---
+  interface ContentWithCreatorName extends Contenu {
+    creatorName?: string;
+  }
 
   // --- State ---
-  let contents = $state<Contenu[]>([]);
+  let contents = $state<ContentWithCreatorName[]>([]);
   let isLoading = $state(true);
   let errorMessage = $state<string | null>(null);
 
@@ -27,9 +35,9 @@
     try {
       let fetchedContents: Contenu[] = [];
       if (ids !== null && ids.length > 0) {
-        console.log(`Fetching content for IDs: ${ids.join(', ')}`);
+        console.log(`Fetching content for IDs: ${ids.join(", ")}`);
         fetchedContents = ids
-          .map(id => getContenuById(id))
+          .map((id) => getContenuById(id))
           .filter((content): content is Contenu => content !== null);
         if (fetchedContents.length !== ids.length) {
           console.warn("Some content IDs were not found.");
@@ -38,10 +46,23 @@
         console.log("Fetching all content");
         fetchedContents = getAllContenus();
       } else {
-        console.log("Received empty array of IDs, fetching no specific content.");
+        console.log(
+          "Received empty array of IDs, fetching no specific content."
+        );
         fetchedContents = [];
       }
-      contents = fetchedContents;
+
+      // Augment contents with creator names
+      const augmentedContents: ContentWithCreatorName[] = fetchedContents.map(
+        (content) => {
+          const creator = getCreateurById(content.id_createur);
+          return {
+            ...content,
+            creatorName: creator ? creator.nom : "Unknown Creator",
+          };
+        }
+      );
+      contents = augmentedContents;
     } catch (error) {
       console.error("Error loading contents:", error);
       errorMessage = "Failed to load content list.";
@@ -66,10 +87,10 @@
     // No finally block needed here as loadContents handles its own finally
   }
 
-  async function handleToggleFavorite(content: Contenu) {
+  async function handleToggleFavorite(content: ContentWithCreatorName) {
     // Optimistic UI update
     const originalFavori = content.favori;
-    const contentIndex = contents.findIndex(c => c.id === content.id);
+    const contentIndex = contents.findIndex((c) => c.id === content.id);
     if (contentIndex !== -1) {
       contents[contentIndex] = { ...content, favori: !originalFavori };
     }
@@ -115,7 +136,9 @@
   {/if}
   {#if !isLoading && contents.length === 0 && !errorMessage}
     <p class="no-content-text text-center">
-      No content found{contentIds && contentIds.length > 0 ? ` for the specified IDs` : ''}.
+      No content found{contentIds && contentIds.length > 0
+        ? ` for the specified IDs`
+        : ""}.
     </p>
   {:else}
     {#each contents as content (content.id)}
@@ -134,13 +157,20 @@
           </a>
           <p class="date-text text-xs mt-1">
             Added: {formatDate(content.date_ajout)}
+            {#if content.creatorName}
+              <span class="creator-name-text text-xs">
+                &bull; By: {content.creatorName}
+              </span>
+            {/if}
           </p>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
           <button
             onclick={() => handleToggleFavorite(content)}
-            title={content.favori ? "Remove from favorites" : "Add to favorites"}
-            class={`favorite-button text-xl ${content.favori ? 'is-favorited' : ''}`}
+            title={content.favori
+              ? "Remove from favorites"
+              : "Add to favorites"}
+            class={`favorite-button text-xl ${content.favori ? "is-favorited" : ""}`}
             disabled={isLoading}
           >
             {content.favori ? "★" : "☆"}
@@ -164,46 +194,54 @@
 
   .content-list-container {
     background-color: #1a1a1a; /* Specific color, no theme var */
-    font-family: var(--tw-font-sans, 'Fira Sans', Inter, sans-serif);
+    font-family: var(--tw-font-sans, "Fira Sans", Inter, sans-serif);
     /* max-height and overflow-y are handled by Tailwind classes */
   }
 
   .loading-text {
-    color: var(--tw-color-silver-grey, #B0B0B0);
+    color: var(--tw-color-silver-grey, #b0b0b0);
   }
 
   .error-text {
-    color: var(--tw-color-pale-pink, #FFB6C1);
+    color: var(--tw-color-pale-pink, #ffb6c1);
   }
 
   .no-content-text {
-    color: var(--tw-color-silver-grey, #B0B0B0);
+    color: var(--tw-color-silver-grey, #b0b0b0);
   }
 
   .content-item {
     background-color: #2a2a2a; /* Specific color, no theme var */
-    border-color: var(--tw-color-dark-grey, #4B4B4B);
+    border-color: var(--tw-color-dark-grey, #4b4b4b);
   }
 
   .content-link {
-    color: var(--tw-color-night-violet, #7E5BEF);
-    font-family: var(--tw-font-mono, 'Fira Mono', monospace);
+    color: var(--tw-color-night-violet, #7e5bef);
+    font-family: var(--tw-font-mono, "Fira Mono", monospace);
   }
   /* hover:underline is handled by Tailwind utility class */
 
   .date-text {
-    color: var(--tw-color-silver-grey, #B0B0B0);
+    color: var(--tw-color-silver-grey, #b0b0b0);
+  }
+
+  .creator-name-text {
+    color: var(
+      --tw-color-light-slate-grey,
+      #a0a0b0
+    ); /* Example color, adjust as needed */
+    margin-left: 0.5em;
   }
 
   .favorite-button {
-    color: var(--tw-color-silver-grey, #B0B0B0);
+    color: var(--tw-color-silver-grey, #b0b0b0);
     transition: color 0.2s ease-in-out;
   }
   .favorite-button:hover {
-    color: var(--tw-color-night-violet, #7E5BEF);
+    color: var(--tw-color-night-violet, #7e5bef);
   }
   .favorite-button.is-favorited {
-    color: var(--tw-color-night-violet, #7E5BEF);
+    color: var(--tw-color-night-violet, #7e5bef);
   }
   .favorite-button:disabled,
   .delete-button:disabled {
@@ -212,11 +250,11 @@
   }
 
   .delete-button {
-    color: var(--tw-color-pale-pink, #FFB6C1);
+    color: var(--tw-color-pale-pink, #ffb6c1);
     transition: color 0.2s ease-in-out;
   }
   .delete-button:hover {
-    color: var(--tw-color-night-violet, #7E5BEF);
+    color: var(--tw-color-night-violet, #7e5bef);
   }
 
   /* Style for scrollbar */
@@ -228,10 +266,10 @@
     border-radius: 3px;
   }
   .content-list-container::-webkit-scrollbar-thumb {
-    background: var(--tw-color-dark-grey, #4B4B4B);
+    background: var(--tw-color-dark-grey, #4b4b4b);
     border-radius: 3px;
   }
   .content-list-container::-webkit-scrollbar-thumb:hover {
-    background: var(--tw-color-night-violet, #7E5BEF);
+    background: var(--tw-color-night-violet, #7e5bef);
   }
 </style>

@@ -1088,6 +1088,29 @@ export function getContenuById(id: number): Contenu | null {
   return contenu;
 }
 
+/** Récupère un créateur spécifique par son ID */
+export function getCreateurById(id: number): Createur | null {
+  const stmt = db.prepare(
+    "SELECT id, nom, aliases, date_ajout, favori, verifie FROM createurs WHERE id = ?"
+  );
+  stmt.bind([id]);
+  let createur: Createur | null = null;
+  if (stmt.step()) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const row = stmt.getAsObject() as any;
+    createur = {
+      id: row.id as number,
+      nom: row.nom as string,
+      aliases: JSON.parse((row.aliases as string) || "[]"),
+      date_ajout: row.date_ajout as string,
+      favori: Boolean(row.favori),
+      verifie: Boolean(row.verifie),
+    };
+  }
+  stmt.free();
+  return createur;
+}
+
 /** Met à jour le statut favori d'un contenu */
 export function updateFavoriContenu(id: number, favori: boolean): void {
   const stmt = db.prepare("UPDATE contenus SET favori = ? WHERE id = ?");
