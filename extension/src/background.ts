@@ -4,25 +4,35 @@ import { uploadDatabaseToServer } from "./lib/dbUtils"; // Added import
 
 // Écoute les connexions de port (popup)
 chrome.runtime.onConnect.addListener((port) => {
-  if (port.name === 'popup-voile') {
-    console.log('✨ Une popup s’est incarnée.');
+  if (port.name === "popup-voile") {
+    console.log("✨ Une popup s’est incarnée.");
 
     // Quand la popup se ferme, le port se déconnecte
     port.onDisconnect.addListener(async () => {
-      console.log('🌙 La popup s’est éteinte.');
+      console.log("🌙 La popup s’est éteinte.");
       try {
-        console.log('🚀 Tentative d’upload de la base de données suite à la fermeture de la popup...');
+        console.log(
+          "🚀 Tentative d’upload de la base de données suite à la fermeture de la popup..."
+        );
         await uploadDatabaseToServer();
-        console.log('✅ Base de données uploadée avec succès après fermeture de la popup.');
+        console.log(
+          "✅ Base de données uploadée avec succès après fermeture de la popup."
+        );
       } catch (error) {
-        console.error('❌ Erreur lors de l’upload de la base de données après fermeture de la popup:', error);
+        console.error(
+          "❌ Erreur lors de l’upload de la base de données après fermeture de la popup:",
+          error
+        );
       }
     });
 
     // Optionnel : écouter les messages de la popup
     port.onMessage.addListener((msg) => {
-      if (msg.type === 'popup-ouvert') {
-        console.log('📣 Popup ouverte à', new Date(msg.timestamp).toLocaleTimeString());
+      if (msg.type === "popup-ouvert") {
+        console.log(
+          "📣 Popup ouverte à",
+          new Date(msg.timestamp).toLocaleTimeString()
+        );
       }
     });
   }

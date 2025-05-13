@@ -103,7 +103,7 @@
 
 <!-- Content List -->
 <div
-  class="content-list-container w-full flex-1 flex-col gap-2 max-h-[50vh] p-2 rounded-2xl overflow-y-auto"
+  class="content-list-container w-full flex-1 flex-col gap-2 p-2 rounded-2xl overflow-y-auto"
 >
   {#if isLoading && contents.length === 0}
     <p class="loading-text text-center">Loading content...</p>

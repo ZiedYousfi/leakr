@@ -12,9 +12,9 @@ if (!target) {
 }
 
 // Ouvre un port pour signaler l'ouverture et la fermeture de la popup
-const port = chrome.runtime.connect({ name: 'popup-voile' });
+const port = chrome.runtime.connect({ name: "popup-voile" });
 // Envoie un message d'ouverture si besoin
-port.postMessage({ type: 'popup-ouvert', timestamp: Date.now() });
+port.postMessage({ type: "popup-ouvert", timestamp: Date.now() });
 
 // Wrap the initialization and mounting logic in an async function
 const initializeApp = async () => {

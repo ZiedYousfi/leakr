@@ -40,18 +40,23 @@
   ]);
 
   // Define widths based on tab index (example)
-  const widths = ['500px', '600px']; // Width for 'All', Width for 'For Creator'
-  let currentMinWidth = $derived(widths[activeTabIndex] ?? '500px');
+  const widths = ["500px", "600px"]; // Width for 'All', Width for 'For Creator'
+  let currentMinWidth = $derived(widths[activeTabIndex] ?? "500px");
 
   // Define heights based on tab index (example)
-  const heights = ['600px', '700px']; // Height for 'All', Height for 'For Creator'
-  let currentMinHeight = $derived(heights[activeTabIndex] ?? '600px');
-
+  const heights = ["600px", "700px"]; // Height for 'All', Height for 'For Creator'
+  let currentMinHeight = $derived(heights[activeTabIndex] ?? "600px");
 </script>
 
 <!-- Apply the dynamic min-width and min-height -->
-<div class="page-container" style:min-width={currentMinWidth} style:min-height={currentMinHeight}>
-  <Header title="Leakr: Contents" {onNavigate} />
+<div
+  class="page-container"
+  style:min-width={currentMinWidth}
+  style:min-height={currentMinHeight}
+>
+  <div class="header-wrapper">
+    <Header title="Leakr: Contents" {onNavigate} />
+  </div>
   <!-- Bind the activeTabIndex -->
   <Tabs {tabs} bind:active={activeTabIndex} />
 </div>
@@ -60,14 +65,23 @@
   @import "tailwindcss";
 
   .page-container {
-    background-color: #000; /* Match SearchPage background */
-    display: flex; /* Match SearchPage layout */
-    flex-direction: column; /* Match SearchPage layout */
-    align-items: center; /* Match SearchPage layout */
-    gap: 1rem; /* Match SearchPage gap */
-    padding: 1rem; /* Match SearchPage padding */
-    color: #e5e7eb; /* Match SearchPage text color */
-    overflow: hidden; /* Ensure no overflow */
-    transition: min-width 0.3s ease, min-height 0.3s ease;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* gap: 1rem; Removed */
+    /* padding: 0.5rem; Removed */
+    color: #e5e7eb;
+    overflow: hidden;
+    transition:
+      min-width 0.3s,
+      min-height 0.3s;
+  }
+
+  .header-wrapper {
+    width: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
+    margin-bottom: 0.5rem; /* Added to control space below header */
   }
 </style>

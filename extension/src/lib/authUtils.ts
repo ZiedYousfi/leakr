@@ -27,7 +27,9 @@ export async function authenticateWithClerk(): Promise<void> {
     "SHA-256",
     new TextEncoder().encode(codeVerifier)
   );
-  const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(codeChallengeBuffer)))
+  const codeChallenge = btoa(
+    String.fromCharCode(...new Uint8Array(codeChallengeBuffer))
+  )
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=/g, "");
@@ -37,15 +39,23 @@ export async function authenticateWithClerk(): Promise<void> {
   );
 
   await new Promise<void>((resolve, reject) =>
-    chrome.storage.session.set({ oauth_state: state, oauth_code_verifier: codeVerifier }, () => {
-      if (chrome.runtime.lastError) {
-        console.error("authenticateWithClerk: Error saving state/verifier to session storage:", chrome.runtime.lastError.message);
-        reject(new Error(chrome.runtime.lastError.message));
-      } else {
-        console.log("authenticateWithClerk: oauth_state and oauth_code_verifier saved to session storage.");
-        resolve();
+    chrome.storage.session.set(
+      { oauth_state: state, oauth_code_verifier: codeVerifier },
+      () => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "authenticateWithClerk: Error saving state/verifier to session storage:",
+            chrome.runtime.lastError.message
+          );
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          console.log(
+            "authenticateWithClerk: oauth_state and oauth_code_verifier saved to session storage."
+          );
+          resolve();
+        }
       }
-    })
+    )
   );
 
   const authUrl = new URL(AUTHORIZE_ENDPOINT);
@@ -74,7 +84,9 @@ export async function authenticateWithClerk(): Promise<void> {
           return;
         }
         if (!responseUrl) {
-          console.error("authenticateWithClerk: No response URL from auth flow.");
+          console.error(
+            "authenticateWithClerk: No response URL from auth flow."
+          );
           reject(new Error("Authentication failed: No response URL"));
           return;
         }
@@ -90,8 +102,9 @@ export async function authenticateWithClerk(): Promise<void> {
           oauth_state?: string;
           oauth_code_verifier?: string;
         }>((r) =>
-          chrome.storage.session.get(["oauth_state", "oauth_code_verifier"], (items) =>
-            r(items)
+          chrome.storage.session.get(
+            ["oauth_state", "oauth_code_verifier"],
+            (items) => r(items)
           )
         );
 
@@ -109,8 +122,12 @@ export async function authenticateWithClerk(): Promise<void> {
           return;
         }
         if (!stored.oauth_code_verifier) {
-          console.error("authenticateWithClerk: No code_verifier in session storage.");
-          reject(new Error("Authentication critical error: Missing code_verifier."));
+          console.error(
+            "authenticateWithClerk: No code_verifier in session storage."
+          );
+          reject(
+            new Error("Authentication critical error: Missing code_verifier.")
+          );
           return;
         }
 
@@ -118,8 +135,14 @@ export async function authenticateWithClerk(): Promise<void> {
           `authenticateWithClerk: Code received: ${code}. Exchanging for token.`
         );
         try {
-          await exchangeCodeForToken(code, redirectUri, stored.oauth_code_verifier);
-          console.log("authenticateWithClerk: Authentication process completed successfully.");
+          await exchangeCodeForToken(
+            code,
+            redirectUri,
+            stored.oauth_code_verifier
+          );
+          console.log(
+            "authenticateWithClerk: Authentication process completed successfully."
+          );
           resolve();
         } catch (error) {
           console.error("authenticateWithClerk: Token exchange failed:", error);
@@ -138,7 +161,9 @@ async function exchangeCodeForToken(
   redirectUri: string,
   codeVerifier: string
 ): Promise<void> {
-  console.log(`exchangeCodeForToken: Exchanging code ${code} using redirectUri ${redirectUri} and verifier.`);
+  console.log(
+    `exchangeCodeForToken: Exchanging code ${code} using redirectUri ${redirectUri} and verifier.`
+  );
   const exchangeUrl = `${AUTH_SERVICE_BASE_URL}/oauth/exchange-code`;
 
   try {
@@ -148,7 +173,7 @@ async function exchangeCodeForToken(
       body: JSON.stringify({
         code,
         redirect_uri: redirectUri,
-        code_verifier: codeVerifier // Send code_verifier to auth-service
+        code_verifier: codeVerifier, // Send code_verifier to auth-service
       }),
     });
 
@@ -166,13 +191,14 @@ async function exchangeCodeForToken(
     console.log("exchangeCodeForToken: Tokens received:", tokenData);
 
     if (!tokenData.access_token) {
-        console.error("exchangeCodeForToken: access_token missing in response from auth-service.");
-        throw new Error("access_token missing in response from auth-service");
+      console.error(
+        "exchangeCodeForToken: access_token missing in response from auth-service."
+      );
+      throw new Error("access_token missing in response from auth-service");
     }
 
     await storeTokens(tokenData.access_token, tokenData.refresh_token); // Pass refresh_token, might be undefined
     console.log("exchangeCodeForToken: Tokens stored successfully.");
-
   } catch (error) {
     console.error("exchangeCodeForToken: Error during token exchange:", error);
     // Clear potentially partial/invalid tokens if exchange fails mid-way
@@ -184,22 +210,22 @@ async function exchangeCodeForToken(
 /* ----------------------------------------------------------- */
 /* 4. Persistence                                              */
 /* ----------------------------------------------------------- */
-async function storeTokens(access: string, refresh?: string): Promise<void> { // Made refresh optional
+async function storeTokens(access: string, refresh?: string): Promise<void> {
+  // Made refresh optional
   console.log(
     `storeTokens: Storing access_token: ${access ? "present" : "absent"}, refresh_token: ${refresh ? "present" : "absent"}`
   );
-  const itemsToStore: { access_token: string; refresh_token?: string } = { access_token: access };
+  const itemsToStore: { access_token: string; refresh_token?: string } = {
+    access_token: access,
+  };
   if (refresh) {
     itemsToStore.refresh_token = refresh;
   }
   await new Promise<void>((r) =>
-    chrome.storage.local.set(
-      itemsToStore,
-      () => {
-        console.log("storeTokens: Tokens stored in local storage.");
-        r();
-      }
-    )
+    chrome.storage.local.set(itemsToStore, () => {
+      console.log("storeTokens: Tokens stored in local storage.");
+      r();
+    })
   );
 }
 
@@ -237,7 +263,6 @@ async function introspectToken(token: string): Promise<boolean> {
     const introspectionResult = await resp.json();
     console.log("introspectToken: Introspection result:", introspectionResult);
     return introspectionResult.active === true; // Ensure it explicitly checks for true
-
   } catch (error) {
     console.error("introspectToken: Error during token introspection:", error);
     return false;
@@ -254,11 +279,15 @@ export async function refreshAccessToken(): Promise<void> {
   );
 
   if (!refresh_token) {
-    console.warn("refreshAccessToken: No refresh token found. Cannot refresh. This is expected if 'offline_access' scope was not granted.");
+    console.warn(
+      "refreshAccessToken: No refresh token found. Cannot refresh. This is expected if 'offline_access' scope was not granted."
+    );
     throw new Error("No refresh token available to refresh access token.");
   }
 
-  console.log("refreshAccessToken: Refresh token found. Proceeding with refresh.");
+  console.log(
+    "refreshAccessToken: Refresh token found. Proceeding with refresh."
+  );
   const refreshUrl = `${AUTH_SERVICE_BASE_URL}/oauth/refresh-token`;
 
   try {
@@ -275,7 +304,9 @@ export async function refreshAccessToken(): Promise<void> {
       );
       // If refresh fails (e.g. refresh token expired/revoked), clear tokens and force re-auth
       if (resp.status === 400 || resp.status === 401) {
-        console.log("refreshAccessToken: Clearing tokens due to refresh failure.");
+        console.log(
+          "refreshAccessToken: Clearing tokens due to refresh failure."
+        );
         await clearAllStorage(); // Or at least clear access/refresh tokens
       }
       throw new Error(
@@ -287,13 +318,16 @@ export async function refreshAccessToken(): Promise<void> {
     console.log("refreshAccessToken: New tokens received:", tokenData);
 
     if (!tokenData.access_token) {
-        console.error("refreshAccessToken: access_token missing in response from auth-service after refresh.");
-        throw new Error("access_token missing in response from auth-service after refresh");
+      console.error(
+        "refreshAccessToken: access_token missing in response from auth-service after refresh."
+      );
+      throw new Error(
+        "access_token missing in response from auth-service after refresh"
+      );
     }
 
     await storeTokens(tokenData.access_token, tokenData.refresh_token); // Pass refresh_token, might be undefined
     console.log("refreshAccessToken: New tokens stored successfully.");
-
   } catch (error) {
     console.error("refreshAccessToken: Error during token refresh:", error);
     throw error; // Re-throw to be handled by caller

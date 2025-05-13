@@ -544,9 +544,14 @@ async function loadDatabaseFromByteArray(data: Uint8Array): Promise<void> {
   if (db) {
     try {
       db.close();
-      console.log("🚪 Previous database instance closed before loading new data.");
+      console.log(
+        "🚪 Previous database instance closed before loading new data."
+      );
     } catch (error) {
-      console.error("Error closing existing database instance during data load:", error);
+      console.error(
+        "Error closing existing database instance during data load:",
+        error
+      );
       // Continue anyway, as the main goal is to load the new DB
     }
   }
@@ -561,13 +566,17 @@ async function loadDatabaseFromByteArray(data: Uint8Array): Promise<void> {
   try {
     await checkVersion();
   } catch (checkVersionError) {
-    console.error("❌ Error during checkVersion after loading from byte array:", checkVersionError);
+    console.error(
+      "❌ Error during checkVersion after loading from byte array:",
+      checkVersionError
+    );
     // If checkVersion fails (e.g. version table missing and createSchema fails, or migrations fail),
     // it might leave 'db' in an inconsistent state or pointing to a problematic DB.
     // Re-throwing to signal that the overall load process failed.
-    throw new Error(`Database integrity check/migration failed after loading: ${checkVersionError instanceof Error ? checkVersionError.message : String(checkVersionError)}`);
+    throw new Error(
+      `Database integrity check/migration failed after loading: ${checkVersionError instanceof Error ? checkVersionError.message : String(checkVersionError)}`
+    );
   }
-
 
   // Save the newly loaded database
   // saveDatabase itself has try-catch for its specific operations
@@ -590,7 +599,9 @@ export async function importDatabase(file: File): Promise<void> {
     console.error("❌ Error importing database from file:", error);
     // Optionally, re-initialize a default DB or notify user
     // For now, we'll throw to indicate failure of the import process
-    throw new Error(`Failed to import database from file: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to import database from file: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -807,8 +818,8 @@ export function findCreatorByUsername(username: string): Createur | null {
   }
 
   // — 2️⃣ Alias exact en mémoire —
-  const aliasExact = allCreators.find(c =>
-    c.aliases.some(a => a.toLowerCase() === termLower)
+  const aliasExact = allCreators.find((c) =>
+    c.aliases.some((a) => a.toLowerCase() === termLower)
   );
   if (aliasExact) {
     console.log(`🌟 Alias exact "${username}" → "${aliasExact.nom}"`);
@@ -817,14 +828,15 @@ export function findCreatorByUsername(username: string): Createur | null {
 
   // — 3️⃣ Substring sur nom et aliases (seuil ≥ 5) —
   const MIN_SUBSTR = 5;
-  const substrMatch = allCreators.find(c => {
+  const substrMatch = allCreators.find((c) => {
     const nomNorm = normalize(c.nom);
     const aliasesNorm = c.aliases.map(normalize);
     const terms = [nomNorm, ...aliasesNorm];
-    return terms.some(a =>
-      a.length >= MIN_SUBSTR &&
-      normalizedTerm.length >= MIN_SUBSTR && // Ensure search term is also long enough
-      (normalizedTerm.includes(a) || a.includes(normalizedTerm))
+    return terms.some(
+      (a) =>
+        a.length >= MIN_SUBSTR &&
+        normalizedTerm.length >= MIN_SUBSTR && // Ensure search term is also long enough
+        (normalizedTerm.includes(a) || a.includes(normalizedTerm))
     );
   });
   if (substrMatch) {
@@ -835,12 +847,12 @@ export function findCreatorByUsername(username: string): Createur | null {
   // — 4️⃣ Préfixe (en ultime recours avant Fuse) —
   const PREFIX_MIN = 4;
   if (username.length >= PREFIX_MIN) {
-    const prefixMatch = allCreators.find(c => {
+    const prefixMatch = allCreators.find((c) => {
       const nomNorm = normalize(c.nom);
       const aliasesNorm = c.aliases.map(normalize);
       return (
         nomNorm.startsWith(normalizedTerm) ||
-        aliasesNorm.some(a => a.startsWith(normalizedTerm))
+        aliasesNorm.some((a) => a.startsWith(normalizedTerm))
       );
     });
     if (prefixMatch) {
@@ -851,7 +863,7 @@ export function findCreatorByUsername(username: string): Createur | null {
 
   // — 5️⃣ Fuse.js (recherche floue normalisée) —
   // Préparation de la liste Fuse avec champs normalisés
-  const fuseList = allCreators.map(c => ({
+  const fuseList = allCreators.map((c) => ({
     ...c,
     nomNorm: normalize(c.nom),
     aliasesNorm: c.aliases.map(normalize),
@@ -880,7 +892,7 @@ export function findCreatorByUsername(username: string): Createur | null {
     );
 
     // Vérifier que le match commence bien à l'indice 0
-    const isPrefixMatch = matches?.some(m =>
+    const isPrefixMatch = matches?.some((m) =>
       m.indices.some(([start]) => start === 0)
     );
 
@@ -891,9 +903,7 @@ export function findCreatorByUsername(username: string): Createur | null {
       isPrefixMatch
     ) {
       if (!item.aliases.includes(username)) {
-        const upd = db.prepare(
-          "UPDATE createurs SET aliases = ? WHERE id = ?"
-        );
+        const upd = db.prepare("UPDATE createurs SET aliases = ? WHERE id = ?");
         const newAliases = JSON.stringify([...item.aliases, username]);
         upd.run([newAliases, item.id]);
         upd.free();
@@ -912,7 +922,11 @@ export function findCreatorByUsername(username: string): Createur | null {
 }
 
 /** Met à jour le nom et les aliases d'un créateur */
-export function updateCreateurDetails(id: number, nom: string, aliases: string[]): void {
+export function updateCreateurDetails(
+  id: number,
+  nom: string,
+  aliases: string[]
+): void {
   const aliasesStr = JSON.stringify(aliases);
   const stmt = db.prepare(
     "UPDATE createurs SET nom = ?, aliases = ? WHERE id = ?"
@@ -920,7 +934,9 @@ export function updateCreateurDetails(id: number, nom: string, aliases: string[]
   try {
     stmt.run([nom, aliasesStr, id]);
     saveDatabase();
-    console.log(`Creator details updated for ID ${id}: nom=${nom}, aliases=${aliasesStr}`);
+    console.log(
+      `Creator details updated for ID ${id}: nom=${nom}, aliases=${aliasesStr}`
+    );
   } catch (err) {
     console.error("Error updating creator details:", err);
     throw err; // Re-throw to allow UI to handle it
@@ -1172,7 +1188,9 @@ export function updateProfilPlateforme(id: number, nouveauLien: string): void {
   try {
     stmt.run([nouveauLien, id]);
     saveDatabase();
-    console.log(`Profil plateforme ID ${id} mis à jour avec le lien : ${nouveauLien}`);
+    console.log(
+      `Profil plateforme ID ${id} mis à jour avec le lien : ${nouveauLien}`
+    );
   } catch (err) {
     console.error("Erreur lors de la mise à jour du profil plateforme:", err);
     throw err; // Re-throw to allow UI to handle it
