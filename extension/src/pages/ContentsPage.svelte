@@ -44,16 +44,12 @@
   let currentMinWidth = $derived(widths[activeTabIndex] ?? "500px");
 
   // Define heights based on tab index (example)
-  const heights = ["600px", "700px"]; // Height for 'All', Height for 'For Creator'
-  let currentMinHeight = $derived(heights[activeTabIndex] ?? "600px");
+  // const heights = ["600px", "700px"]; // Height for 'All', Height for 'For Creator' // REMOVED
+  // let currentMinHeight = $derived(heights[activeTabIndex] ?? "600px"); // REMOVED
 </script>
 
-<!-- Apply the dynamic min-width and min-height -->
-<div
-  class="page-container"
-  style:min-width={currentMinWidth}
-  style:min-height={currentMinHeight}
->
+<!-- Apply the dynamic min-width -->
+<div class="page-container" style:min-width={currentMinWidth}>
   <div class="header-wrapper">
     <Header title="Leakr: Contents" {onNavigate} />
   </div>
@@ -72,10 +68,9 @@
     /* gap: 1rem; Removed */
     /* padding: 0.5rem; Removed */
     color: #e5e7eb;
-    overflow: hidden;
-    transition:
-      min-width 0.3s,
-      min-height 0.3s;
+    overflow: clip;
+    transition: min-width 0.3s;
+    /* min-height 0.3s; Removed */
   }
 
   .header-wrapper {

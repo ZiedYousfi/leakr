@@ -85,7 +85,7 @@
   .app-container > :global(*) {
     width: 100%;
     height: 100%;
-    flex-grow: 1; /* Allow children to grow */
+    /*flex-grow: 1; /* Allow children to grow */
     display: flex; /* Ensure children can also use flex if needed */
     flex-direction: column; /* Default direction for children */
   }

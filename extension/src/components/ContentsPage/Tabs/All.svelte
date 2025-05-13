@@ -1,10 +1,7 @@
 <script lang="ts">
-  import ContentList from '@/components/ContentList.svelte';
+  import ContentList from "@/components/ContentList.svelte";
 
-  import {
-    getAllContenus,
-    type Contenu,
-  } from "@/lib/dbUtils";
+  import { getAllContenus, type Contenu } from "@/lib/dbUtils";
 
   // --- State ---
   let contents = $state<Contenu[]>([]);
@@ -35,11 +32,13 @@
 </script>
 
 <div class="popup-body-custom flex flex-col items-center gap-2 p-4">
-  <h1 class="all-content-title text-lg font-semibold mb-3">All Content</h1>
+  <h1 class="all-content-title text-lg font-semibold mb-1">All Content</h1>
 
   <!-- Error Message -->
   {#if errorMessage}
-    <p class="error-message text-red-500 text-sm my-2 text-center">{errorMessage}</p>
+    <p class="error-message text-red-500 text-sm my-2 text-center">
+      {errorMessage}
+    </p>
   {/if}
 
   <!-- Loading Indicator -->
@@ -48,7 +47,7 @@
   {/if}
 
   <!-- Pass content IDs to ContentList -->
-  <ContentList contentIds={contents.map(c => c.id)} />
+  <ContentList contentIds={contents.map((c) => c.id)} />
 </div>
 
 <style lang="postcss">
@@ -56,23 +55,23 @@
 
   .popup-body-custom {
     background-color: var(--tw-color-deep-black, #000000);
-    color: var(--tw-color-silver-grey, #B0B0B0); /* Default text color */
+    color: var(--tw-color-silver-grey, #b0b0b0); /* Default text color */
     min-width: 350px;
-    max-width: 450px;
-    min-height: 300px;
-    max-height: 500px;
+    max-width: 550px;
+    /* min-height: 300px; removed */
+    max-height: 600px;
   }
 
   .all-content-title {
     /* H1 styles from guidelines */
-    color: var(--tw-color-night-violet, #7E5BEF);
-    font-family: var(--tw-font-mono, 'Fira Mono', monospace);
+    color: var(--tw-color-night-violet, #7e5bef);
+    font-family: var(--tw-font-mono, "Fira Mono", monospace);
     /* text-lg is roughly 1.125rem, H1 guideline is 2.5rem. Adjust if needed */
     /* font-size: 2.5rem; */ /* Uncomment and remove text-lg if exact size is needed */
   }
 
   .loading-text {
-    color: var(--tw-color-silver-grey, #B0B0B0);
+    color: var(--tw-color-silver-grey, #b0b0b0);
   }
 
   /* .error-message styling is handled by utility classes (text-red-500, etc.) */
