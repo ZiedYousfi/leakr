@@ -9,6 +9,16 @@ let db: Database;
 
 // --- Types ---
 
+// Added for getLocalDbDetails and importNewDb to ensure structure
+// Matches ParsedDbInfo from syncStore.ts
+interface LocalParsedDbInfo {
+  fullName: string;
+  uuid: string;
+  timestamp: string; // Format: "YYYY-MM-DD HH-MM-SS" with hyphens in time part
+  dateObject: Date;
+  iteration: number;
+}
+
 export interface Createur {
   id: number;
   nom: string;
@@ -388,6 +398,11 @@ async function checkVersion() {
 async function runMigrations(current: string) {
   validateMigrations();
   console.log("🔄 Démarrage des migrations…");
+  // Ensure db object is available
+  if (!db) {
+    console.error("DB object not initialized before running migrations.");
+    throw new Error("Database not initialized.");
+  }
   db.exec("BEGIN TRANSACTION;");
   try {
     const toApply = migrations
@@ -491,46 +506,52 @@ export async function exportDatabaseData(): Promise<{
   data: Uint8Array;
   filename: string;
 }> {
+  if (!db) {
+    console.error("DB object not initialized for exportDatabaseData.");
+    throw new Error("Database not initialized.");
+  }
   const data = db.export();
   const array = new Uint8Array(data);
 
-  // Récupère la date et l'iteration depuis la table version
-  let dateMaj = new Date().toISOString();
+  let uuid = "unknown-uuid";
   let iteration = 0;
+  let timestampForFilename = new Date()
+    .toISOString()
+    .substring(0, 19)
+    .replace("T", " ")
+    .replace(/:/g, "-"); // Fallback YYYY-MM-DD HH-MM-SS
+
   try {
-    const stmt = db.prepare(
-      "SELECT date_maj, iterations FROM version WHERE id = 1;"
-    );
-    if (stmt.step()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const row = stmt.getAsObject() as any;
-      dateMaj = (row.date_maj as string) || dateMaj;
-      iteration = (row.iterations as number) || 0;
+    const settingsStmt = db.prepare("SELECT uuid FROM settings WHERE id = 1");
+    if (settingsStmt.step()) {
+      const settingsResult = settingsStmt.getAsObject() as { uuid: string };
+      uuid = settingsResult.uuid;
     }
-    stmt.free();
+    settingsStmt.free();
+
+    const versionStmt = db.prepare(
+      "SELECT iterations, date_maj FROM version WHERE id = 1"
+    );
+    if (versionStmt.step()) {
+      const versionResult = versionStmt.getAsObject() as {
+        iterations: number;
+        date_maj: string; // SQLite: YYYY-MM-DD HH:MM:SS
+      };
+      iteration = versionResult.iterations;
+      // Format for filename: YYYY-MM-DD HH-MM-SS (hyphens in time)
+      timestampForFilename = versionResult.date_maj.replace(/:/g, "-");
+    }
+    versionStmt.free();
   } catch (err) {
-    console.warn(
-      "Impossible de récupérer la date/iteration depuis la table version :",
+    console.error(
+      "Erreur lors de la récupération des détails de la version/settings pour le nom de fichier:",
       err
     );
+    // Use fallbacks defined above
   }
 
-  let uuid = "unknown";
-  try {
-    const stmtUuid = db.prepare("SELECT uuid FROM settings LIMIT 1;");
-    if (stmtUuid.step()) {
-      uuid = (stmtUuid.getAsObject().uuid as string) || "unknown";
-    }
-    stmtUuid.free();
-  } catch (err) {
-    console.warn(
-      "Impossible de récupérer le uuid depuis la table settings :",
-      err
-    );
-  }
-
-  const filename = `leakr_db_${uuid}_${dateMaj.replace(/[:.]/g, "-")}_it${iteration}.sqlite`;
-  console.log("📦 Données de la base préparées pour l'export.");
+  const filename = `leakr_db_${uuid}_${timestampForFilename}_it${iteration}.sqlite`;
+  console.log("📦 Données de la base préparées pour l'export:", filename);
   return { data: array, filename: filename };
 }
 
@@ -544,19 +565,35 @@ async function loadDatabaseFromByteArray(data: Uint8Array): Promise<void> {
   if (db) {
     try {
       db.close();
-      console.log(
-        "🚪 Previous database instance closed before loading new data."
-      );
-    } catch (error) {
-      console.error(
-        "Error closing existing database instance during data load:",
-        error
-      );
-      // Continue anyway, as the main goal is to load the new DB
+      console.log("Previous DB instance closed.");
+    } catch (closeError) {
+      console.error("Error closing previous DB instance:", closeError);
+      // Continue anwyay, as we are replacing it.
     }
   }
 
   // Load the new database
+  // Ensure SQL object is available
+  if (!SQL) {
+    console.error(
+      "SQL.js not initialized before loading database from byte array."
+    );
+    // Attempt to re-initialize SQL.js. This is a fallback.
+    // Ideally, initDatabase should always be called first successfully.
+    try {
+      SQL = await initSqlJs({
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        locateFile: (_: string) => chrome.runtime.getURL("sql-wasm.wasm"),
+      });
+      console.warn("SQL.js re-initialized as a fallback.");
+    } catch (sqlInitError) {
+      console.error(
+        "Failed to re-initialize SQL.js as a fallback:",
+        sqlInitError
+      );
+      throw new Error("SQL.js not initialized and fallback failed.");
+    }
+  }
   db = new SQL.Database(data);
   console.log("✨ Database successfully loaded from byte array.");
 
@@ -592,9 +629,18 @@ async function loadDatabaseFromByteArray(data: Uint8Array): Promise<void> {
 export async function importDatabase(file: File): Promise<void> {
   console.log(`🔄 Attempting to import database from file: ${file.name}`);
   try {
-    const fileBuffer = await file.arrayBuffer();
-    const data = new Uint8Array(fileBuffer);
-    await loadDatabaseFromByteArray(data);
+    const arrayBuffer = await file.arrayBuffer();
+    // The second argument to importNewDb (ParsedDbInfo) is not directly used by this specific
+    // dbUtils.importNewDb implementation but is kept for signature compatibility with syncUtils expectation.
+    // We can construct a dummy/partial one if strictly needed by a future version of importNewDb.
+    await importNewDb(arrayBuffer, {
+      fullName: file.name,
+      uuid: "unknown",
+      timestamp: "unknown",
+      dateObject: new Date(),
+      iteration: 0,
+    } as LocalParsedDbInfo);
+    console.log(`✅ Database file "${file.name}" imported and processed.`);
   } catch (error) {
     console.error("❌ Error importing database from file:", error);
     // Optionally, re-initialize a default DB or notify user
@@ -745,14 +791,19 @@ export function addCreateur(nom: string, aliases: string[]): number | bigint {
   const stmt = db.prepare(
     "INSERT INTO createurs (nom, aliases, date_ajout) VALUES (?, ?, ?)"
   );
-  stmt.run([nom, aliasesStr, new Date().toISOString()]);
-  stmt.free();
-  const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
-  const lastId =
-    typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint"
-      ? lastIdRaw
-      : 0;
-  saveDatabase();
+  let lastId: number | bigint = -1;
+  try {
+    stmt.run([nom, aliasesStr, new Date().toISOString()]);
+    const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
+    if (typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint") {
+      lastId = lastIdRaw;
+    }
+  } catch (err) {
+    console.error("Erreur lors de l'ajout du créateur:", err);
+    throw err;
+  } finally {
+    stmt.free();
+  }
   return lastId;
 }
 
@@ -1317,7 +1368,125 @@ export function executeCommand(sql: string, params?: any[]): void {
 /** Ferme la connexion à la base de données (utile si l'extension est déchargée) */
 export function closeDatabase(): void {
   if (db) {
-    db.close();
-    console.log("🚪 Base de données fermée.");
+    try {
+      db.close();
+      console.log("Database connection closed.");
+    } catch (e) {
+      console.error("Error closing the database:", e);
+    }
   }
+}
+
+// --- Functions for Sync ---
+
+export async function getLocalDbDetails(): Promise<LocalParsedDbInfo | null> {
+  if (!db) {
+    console.warn("[dbUtils.getLocalDbDetails] Database not initialized.");
+    // Attempt to initialize if not already, this is a fallback.
+    // await initDatabase();
+    // if (!db) return null; // if init failed
+    return null; // Or throw error, depending on desired strictness
+  }
+
+  let uuid = "";
+  let iterations = 0;
+  let dateMajFromDb = ""; // Should be YYYY-MM-DD HH:MM:SS
+
+  try {
+    const settingsStmt = db.prepare("SELECT uuid FROM settings WHERE id = 1");
+    if (settingsStmt.step()) {
+      uuid = (settingsStmt.getAsObject() as { uuid: string }).uuid;
+    } else {
+      console.warn("[dbUtils.getLocalDbDetails] No settings found.");
+      settingsStmt.free();
+      return null;
+    }
+    settingsStmt.free();
+
+    const versionStmt = db.prepare(
+      "SELECT iterations, date_maj FROM version WHERE id = 1"
+    );
+    if (versionStmt.step()) {
+      const versionInfo = versionStmt.getAsObject() as {
+        iterations: number;
+        date_maj: string;
+      };
+      iterations = versionInfo.iterations;
+      dateMajFromDb = versionInfo.date_maj;
+    } else {
+      console.warn("[dbUtils.getLocalDbDetails] No version info found.");
+      versionStmt.free();
+      return null;
+    }
+    versionStmt.free();
+
+    // Format timestamp for ParsedDbInfo and filename consistency
+    // dateMajFromDb is "YYYY-MM-DD HH:MM:SS"
+    // We need "YYYY-MM-DD HH-MM-SS" (hyphens in time part)
+    const timestampForParsedInfo = dateMajFromDb.replace(/:/g, "-");
+
+    // Create Date object from this specific timestamp format
+    const parts = timestampForParsedInfo.replace(" ", "-").split("-"); // [YYYY, MM, DD, HH, MM, SS]
+    const dateObject = new Date(
+      Date.UTC(
+        parseInt(parts[0], 10),
+        parseInt(parts[1], 10) - 1, // Month is 0-indexed
+        parseInt(parts[2], 10),
+        parseInt(parts[3], 10),
+        parseInt(parts[4], 10),
+        parseInt(parts[5], 10)
+      )
+    );
+
+    if (isNaN(dateObject.getTime())) {
+      console.error(
+        "[dbUtils.getLocalDbDetails] Could not parse date from DB timestamp:",
+        dateMajFromDb
+      );
+      return null;
+    }
+
+    const fullName = `leakr_db_${uuid}_${timestampForParsedInfo}_it${iterations}.sqlite`;
+
+    return {
+      fullName,
+      uuid,
+      timestamp: timestampForParsedInfo,
+      dateObject,
+      iteration: iterations,
+    };
+  } catch (error) {
+    console.error("[dbUtils.getLocalDbDetails] Error fetching details:", error);
+    return null;
+  }
+}
+
+export async function importNewDb(
+  dbArrayBuffer: ArrayBuffer,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _newDbInfo: LocalParsedDbInfo
+): Promise<void> {
+  // _newDbInfo is not strictly used here as loadDatabaseFromByteArray will use the version info
+  // from the database file itself. It's kept for signature compatibility.
+  if (!SQL) {
+    // Attempt to initialize SQL.js if it hasn't been. This is a defensive measure.
+    console.warn(
+      "[dbUtils.importNewDb] SQL.js not initialized. Attempting to initialize."
+    );
+    try {
+      SQL = await initSqlJs({
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        locateFile: (_: string) => chrome.runtime.getURL("sql-wasm.wasm"),
+      });
+    } catch (e) {
+      console.error("[dbUtils.importNewDb] Failed to initialize SQL.js:", e);
+      throw new Error("SQL.js failed to initialize, cannot import DB.");
+    }
+  }
+  const uint8Array = new Uint8Array(dbArrayBuffer);
+  await loadDatabaseFromByteArray(uint8Array);
+  // loadDatabaseFromByteArray already calls saveDatabase() and checkVersion()
+  console.log(
+    "[dbUtils.importNewDb] Database imported via loadDatabaseFromByteArray."
+  );
 }

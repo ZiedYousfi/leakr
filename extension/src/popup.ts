@@ -4,6 +4,7 @@ import "./app.css"; // Import global CSS styles
 import App from "./App.svelte";
 
 import * as dbLib from "./lib/dbUtils";
+import { triggerSync } from "./lib/syncUtils"; // Added import
 
 const target = document.getElementById("app");
 
@@ -21,6 +22,9 @@ const initializeApp = async () => {
   try {
     // Initialise la base de données
     await dbLib.initDatabase();
+
+    // Attempt to synchronize the database
+    await triggerSync(); // Added sync trigger
 
     // Monte l'application Svelte
     mount(App, {
