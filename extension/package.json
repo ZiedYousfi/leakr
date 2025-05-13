@@ -1,7 +1,7 @@
 {
   "name": "leakr",
   "private": true,
-  "version": "1.7.0-alpha.13",
+  "version": "1.7.0-alpha.14",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,27 +20,27 @@
     "@tailwindcss/postcss": "4.1.6",
     "@tailwindcss/vite": "4.1.6",
     "@tsconfig/svelte": "5.0.4",
-    "@types/chrome": "0.0.321",
+    "@types/chrome": "0.0.322",
     "@types/semver": "7.7.0",
     "@types/sql.js": "1.4.9",
     "@types/tailwindcss": "3.0.11",
-    "@typescript-eslint/eslint-plugin": "8.32.0",
-    "@typescript-eslint/parser": "8.32.0",
+    "@typescript-eslint/eslint-plugin": "8.32.1",
+    "@typescript-eslint/parser": "8.32.1",
     "autoprefixer": "10.4.21",
     "eslint": "9.26.0",
     "globals": "16.1.0",
     "postcss": "8.5.3",
     "prettier": "3.5.3",
-    "svelte": "5.28.2",
+    "svelte": "5.28.6",
     "tailwindcss": "4.1.6",
     "typescript": "5.8.3",
-    "typescript-eslint": "8.32.0",
+    "typescript-eslint": "8.32.1",
     "vite": "6.3.5",
-    "vite-plugin-static-copy": "2.3.1"
+    "vite-plugin-static-copy": "3.0.0"
   },
   "dependencies": {
     "fuse.js": "7.1.0",
-    "semver": "7.7.1",
+    "semver": "7.7.2",
     "sql.js": "1.13.0"
   }
 }

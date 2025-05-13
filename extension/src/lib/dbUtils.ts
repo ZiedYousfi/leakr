@@ -748,7 +748,7 @@ export function addCreateur(nom: string, aliases: string[]): number | bigint {
 /** Récupère tous les créateurs */
 export function getCreateurs(): Createur[] {
   const stmt = db.prepare(
-    "SELECT id, nom, aliases, date_ajout, favori FROM createurs ORDER BY nom ASC"
+    "SELECT id, nom, aliases, date_ajout, favori, verifie FROM createurs ORDER BY nom ASC"
   );
   const createurs: Createur[] = [];
   while (stmt.step()) {

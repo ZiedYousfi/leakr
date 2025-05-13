@@ -14,6 +14,25 @@
   let creators: Createur[] = $state<Createur[]>([]);
   let isLoading = $state<boolean>(true);
   let error: string | null = $state<string | null>(null);
+  let searchTerm = $state<string>("");
+
+  let filteredCreators = $state<Createur[]>([]);
+
+  $effect(() => {
+    if (!searchTerm.trim()) {
+      filteredCreators = creators;
+    } else {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      filteredCreators = creators.filter(
+        (creator) =>
+          creator.nom.toLowerCase().includes(lowerSearchTerm) ||
+          (creator.aliases &&
+            creator.aliases.some((alias) =>
+              alias.toLowerCase().includes(lowerSearchTerm)
+            ))
+      );
+    }
+  });
 
   onMount(async () => {
     try {
@@ -72,15 +91,32 @@
 <div class="p-4 creator-list-container max-w-[550px] mx-auto">
   <h1 class="text-xl mb-4 creator-list-title text-center">Creators List</h1>
 
+  <div class="mb-4">
+    <input
+      type="text"
+      bind:value={searchTerm}
+      placeholder="Search creators..."
+      class="w-full p-2 rounded search-input"
+    />
+  </div>
+
   {#if isLoading}
     <p class="loading-message">Loading creators...</p>
   {:else if error}
     <p class="error-message">{error}</p>
   {:else if creators.length === 0}
+    <p class="no-creators-message">
+      No creators found. Add one to get started!
+    </p>
+  {:else if filteredCreators.length === 0 && searchTerm.trim() !== ""}
+    <p class="no-creators-message">
+      No creators match your search for "{searchTerm}".
+    </p>
+  {:else if filteredCreators.length === 0}
     <p class="no-creators-message">No creators found.</p>
   {:else}
     <ul class="space-y-2 creator-list w-full">
-      {#each creators as creator (creator.id)}
+      {#each filteredCreators as creator (creator.id)}
         <li class="creator-list-item p-2 rounded flex items-center w-full">
           <div
             role="button"
@@ -138,6 +174,21 @@
   .creator-list-container {
     /* Assuming parent provides dark background as per style guide */
     /* background-color: var(--tw-color-deep-black, #000000); */
+  }
+
+  .search-input {
+    background-color: var(--creator-item-bg, #2a2a2a);
+    color: var(--tw-color-off-white, #e0e0e0);
+    border: 1px solid var(--tw-color-dark-grey, #4b4b4b);
+    font-family: var(--tw-font-sans, "Fira Sans", Inter, sans-serif);
+  }
+  .search-input::placeholder {
+    color: var(--tw-color-silver-grey, #b0b0b0);
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--tw-color-night-violet, #7e5bef);
+    box-shadow: 0 0 0 2px var(--tw-color-night-violet, #7e5bef);
   }
 
   .creator-list-title {
