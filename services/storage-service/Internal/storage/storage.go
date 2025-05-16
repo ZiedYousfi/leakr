@@ -34,13 +34,16 @@ func (c *Client) UploadFile(ctx context.Context, key string, body io.Reader) err
 
 // DownloadByFilename récupère un objet spécifique
 func (c *Client) DownloadByFilename(ctx context.Context, key string) (io.ReadCloser, error) {
+	log.Printf("Attempting to download file from S3: bucket=%s, key=%s", c.BucketMain, key)
 	out, err := c.S3.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: &c.BucketMain,
 		Key:    &key,
 	})
 	if err != nil {
+		log.Printf("Failed to download file from S3: bucket=%s, key=%s, error=%v", c.BucketMain, key, err)
 		return nil, err
 	}
+	log.Printf("Successfully downloaded file from S3: bucket=%s, key=%s", c.BucketMain, key)
 	return out.Body, nil
 }
 

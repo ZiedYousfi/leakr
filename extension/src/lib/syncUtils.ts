@@ -77,6 +77,7 @@ async function fetchRemoteDbInfo(
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      credentials: 'include', // Add this line
     });
 
     if (!response.ok) {
@@ -140,6 +141,7 @@ export async function downloadAndApplyDb(
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      credentials: 'include', // Add this line
     });
 
     if (!response.ok) {

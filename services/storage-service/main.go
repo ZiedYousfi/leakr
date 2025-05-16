@@ -14,6 +14,9 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
+// Centralized CORS configuration
+const allowedOrigin = "chrome-extension://iinddcpilfbkhdaijbdhncbhbeginpgn"
+
 func main() {
 	// Charger configuration
 	config.LoadEnv()
@@ -32,13 +35,40 @@ func main() {
 		log.Fatalf("Erreur d'initialisation du client R2: %v", err)
 	}
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError // Default error code
+			message := "Internal Server Error"      // Default error message
+
+			// Check if it's a fiber.Error type
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+				message = e.Message
+			} else if err != nil {
+				// For other error types, use their message but keep 500 or set as needed
+				message = err.Error()
+			}
+
+			// Set CORS headers for error responses
+			// This ensures the client can read the error details
+			c.Set(fiber.HeaderAccessControlAllowOrigin, allowedOrigin)
+			c.Set(fiber.HeaderAccessControlAllowCredentials, "true")
+			// The main CORS middleware should handle Vary: Origin if the origin matching is dynamic.
+			// Since we use a specific origin, this is fine.
+
+			// Log the error server-side for debugging
+			log.Printf("Error handled by custom error handler: Status %d, Message: %s, OriginalError: %v", code, message, err)
+
+			return c.Status(code).JSON(fiber.Map{"error": message})
+		},
+	})
 
 	// Add CORS middleware
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "chrome-extension://iinddcpilfbkhdaijbdhncbhbeginpgn", // Allow specific Chrome extension origin
-		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
-		AllowHeaders: "Origin,Content-Type,Accept,Authorization",
+		AllowOrigins:     allowedOrigin, // Use the constant
+		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
+		AllowCredentials: true, // Add this line
 	}))
 
 	// Appliquer le middleware d'authentification à toutes les routes
@@ -93,13 +123,15 @@ func main() {
 
 	// Route: Download by filename (supports percent-encoded names)
 	app.Get("/download/file/*", func(c *fiber.Ctx) error {
-		// capture entire remainder of path (may contain %20 etc)
+		log.Printf("[DEBUG] Route /download/file/* appelée !")
 		raw := c.Params("*")
+		log.Printf("[DEBUG] Paramètre raw récupéré : %q", raw)
 		filename, err := url.PathUnescape(raw)
 		if err != nil {
-			return fiber.NewError(fiber.StatusBadRequest,
-				fmt.Sprintf("Invalid filename encoding %q: %v", raw, err))
+			log.Printf("[DEBUG] Erreur PathUnescape : %v", err)
+			return fiber.NewError(fiber.StatusBadRequest, "Nom de fichier invalide")
 		}
+		log.Printf("[DEBUG] Nom de fichier final : %q", filename)
 
 		reader, err := r2client.DownloadByFilename(c.Context(), filename)
 		if err != nil {
@@ -107,7 +139,6 @@ func main() {
 			return fiber.NewError(fiber.StatusNotFound,
 				fmt.Sprintf("Fichier %s non trouvé ou erreur interne.", filename))
 		}
-		defer reader.Close()
 
 		c.Set(fiber.HeaderContentDisposition,
 			fmt.Sprintf("attachment; filename=\"%s\"", filename))
