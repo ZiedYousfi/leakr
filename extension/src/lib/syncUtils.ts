@@ -64,11 +64,12 @@ export function parseDbFilename(filename: string): ParsedDbInfo | null {
   };
 }
 
+// 変更: rename parameter for clarity
 async function fetchRemoteDbInfo(
-  userUuid: string,
+  userId: string,
   token: string
 ): Promise<ParsedDbInfo[]> {
-  const url = `${STORAGE_SERVICE_BASE_URL}/info/user/${userUuid}`;
+  const url = `${STORAGE_SERVICE_BASE_URL}/info/user/${userId}`; // use leakr_uuid here
   console.log("[syncUtils] Fetching remote DB info from:", url);
   try {
     const response = await fetch(url, {
@@ -183,7 +184,16 @@ export async function synchronizeDatabase(): Promise<void> {
     setErrorState("User UUID not found. Cannot sync.");
     return;
   }
-  const userUuid = userInfo.sub;
+
+  // fetch the leakr_uuid from local storage
+  const stored = await new Promise<{ leakr_uuid?: string }>(r =>
+    chrome.storage.local.get("leakr_uuid", o => r(o))
+  );
+  if (!stored.leakr_uuid) {
+    setErrorState("Leakr UUID not found. Cannot sync.");
+    return;
+  }
+  const userId = stored.leakr_uuid;
 
   let localDbInfo: ParsedDbInfo | null = null;
   try {
@@ -230,7 +240,7 @@ export async function synchronizeDatabase(): Promise<void> {
     // Proceeding without local info, or could set error state
   }
 
-  const remoteDbCandidates = await fetchRemoteDbInfo(userUuid, token);
+  const remoteDbCandidates = await fetchRemoteDbInfo(userId, token);
 
   if (get(syncState).status === "error") {
     // fetchRemoteDbInfo might set error
