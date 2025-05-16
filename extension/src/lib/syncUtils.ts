@@ -19,10 +19,11 @@ const FILENAME_REGEX =
   /^leakr_db_([0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})_(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2})_it(\d+)\.sqlite$/;
 
 interface RemoteFileInfo {
-  name: string;
-  size?: number;
-  last_modified?: string; // ISO 8601 string
-  // Add other fields if the service provides them
+  filename: string; // Changed from 'name'
+  userID: string; // Added based on API response/README
+  timestamp: string; // Added based on API response/README (format "YYYY-MM-DD HH-MM-SS")
+  iteration: string; // Added based on API response/README (e.g., "292")
+  // Removed size and last_modified as they are not in the /info/user/{uuid} response
 }
 
 export function parseDbFilename(filename: string): ParsedDbInfo | null {
@@ -100,13 +101,13 @@ async function fetchRemoteDbInfo(
 
     return remoteFilesRaw
       .map((fileInfo) => {
-        const parsed = parseDbFilename(fileInfo.name);
+        const parsed = parseDbFilename(fileInfo.filename); // Changed from fileInfo.name
         if (parsed) {
-          return {
-            ...parsed,
-            size: fileInfo.size,
-            originalLastModified: fileInfo.last_modified,
-          };
+          // The 'parsed' object is already a complete ParsedDbInfo.
+          // size and originalLastModified are optional in ParsedDbInfo
+          // and will be undefined if not set, which is correct as this API endpoint
+          // doesn't provide them.
+          return parsed;
         }
         return null;
       })
@@ -186,8 +187,8 @@ export async function synchronizeDatabase(): Promise<void> {
   }
 
   // fetch the leakr_uuid from local storage
-  const stored = await new Promise<{ leakr_uuid?: string }>(r =>
-    chrome.storage.local.get("leakr_uuid", o => r(o))
+  const stored = await new Promise<{ leakr_uuid?: string }>((r) =>
+    chrome.storage.local.get("leakr_uuid", (o) => r(o))
   );
   if (!stored.leakr_uuid) {
     setErrorState("Leakr UUID not found. Cannot sync.");
