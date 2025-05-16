@@ -82,7 +82,8 @@ func (c *Client) GetLatestFileInfoByUser(ctx context.Context, userUUID string) (
 		return nil, fmt.Errorf("aucun backup trouvé pour l'utilisateur %s", userUUID)
 	}
 
-	const filenameTimestampLayout = "2006-01-02 15:04:05"
+	// change layout to match hyphen‐separated time (e.g. "2025-05-09 17-20-45")
+	const filenameTimestampLayout = "2006-01-02 15-04-05"
 
 	type parsedObjectInfo struct {
 		s3Object          types.Object

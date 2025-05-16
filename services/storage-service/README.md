@@ -39,6 +39,8 @@ The following routes are handled by this service:
 
 - `POST /upload`: Uploads a database file.
   - Requires authentication (e.g., JWT validated by `auth-service`).
+  - Filename pattern: `^leakr_db_<uuid>_<YYYY-MM-DD HH-MM-SS>_it<iteration>\.sqlite$`
+    (timestamp uses hyphens, e.g. `2025-05-09 10-36-53`)
   - Expects a multipart/form-data request with the file.
   - Filename should be
 
@@ -68,7 +70,7 @@ The following routes are handled by this service:
     - If a different file has the absolute latest filename timestamp (descending, then by iteration descending), its `FileInfo` will be the second object in the array.
     - If both criteria point to the same file, the array will contain only one object.
   - Example response (if two different files satisfy the criteria):
-  
+
     ```json
     [
       {
