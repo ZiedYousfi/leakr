@@ -407,11 +407,13 @@ export async function getUserInfo(): Promise<UserInfo | null> {
       // Update the UUID in the database settings only if different
       try {
         // Get current UUID from database
-        const currentSettings = await import("./dbUtils").then(m => m.getSettings());
+        const currentSettings = await import("./dbUtils").then((m) =>
+          m.getSettings()
+        );
         const currentUuid = currentSettings?.uuid;
 
         if (currentUuid !== uuid) {
-          await import("./dbUtils").then(m => m.updateUUID(uuid));
+          await import("./dbUtils").then((m) => m.updateUUID(uuid));
           console.log(
             `getUserInfo: Updated leakr_uuid in database settings from "${currentUuid}" to "${uuid}"`
           );

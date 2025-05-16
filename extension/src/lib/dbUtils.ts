@@ -769,7 +769,7 @@ export function updateShareCollection(share: boolean): void {
 /** Met à jour l'UUID de l'utilisateur (à utiliser avec précaution) */
 export function updateUUID(newUuid: string): void {
   // Validate input
-  if (!newUuid || typeof newUuid !== 'string') {
+  if (!newUuid || typeof newUuid !== "string") {
     console.error("updateUUID: Invalid UUID provided:", newUuid);
     throw new Error("Invalid UUID provided");
   }
@@ -778,7 +778,9 @@ export function updateUUID(newUuid: string): void {
   const current = getSettings()?.uuid;
 
   if (current === newUuid) {
-    console.log(`updateUUID: UUID already set to "${newUuid}", no update needed`);
+    console.log(
+      `updateUUID: UUID already set to "${newUuid}", no update needed`
+    );
     return; // Exit early, no update needed
   }
 
