@@ -4,7 +4,6 @@ import {
   AUTHORIZE_ENDPOINT,
   LEAKR_UUID_ENDPOINT,
 } from "./authVars";
-import { updateUUID } from "./dbUtils";
 
 /* ----------------------------------------------------------- */
 /* 1. Redirect URI                                             */
@@ -405,12 +404,22 @@ export async function getUserInfo(): Promise<UserInfo | null> {
         })
       );
 
-      // Update the UUID in the database settings
+      // Update the UUID in the database settings only if different
       try {
-        updateUUID(uuid); // This function is from dbUtils.ts
-        console.log(
-          `getUserInfo: Updated leakr_uuid in database settings to: ${uuid}`
-        );
+        // Get current UUID from database
+        const currentSettings = await import("./dbUtils").then(m => m.getSettings());
+        const currentUuid = currentSettings?.uuid;
+
+        if (currentUuid !== uuid) {
+          await import("./dbUtils").then(m => m.updateUUID(uuid));
+          console.log(
+            `getUserInfo: Updated leakr_uuid in database settings from "${currentUuid}" to "${uuid}"`
+          );
+        } else {
+          console.log(
+            `getUserInfo: leakr_uuid in database already matches "${uuid}", skipping update.`
+          );
+        }
       } catch (dbError) {
         console.error(
           "getUserInfo: Failed to update leakr_uuid in database settings:",
