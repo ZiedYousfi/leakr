@@ -2,7 +2,6 @@ import {
   AUTH_SERVICE_BASE_URL,
   CLIENT_ID,
   AUTHORIZE_ENDPOINT,
-  USERINFO_ENDPOINT,
   LEAKR_UUID_ENDPOINT,
 } from "./authVars";
 import { updateUUID } from "./dbUtils";
@@ -359,13 +358,17 @@ export async function getUserInfo(): Promise<UserInfo | null> {
     return null;
   }
 
-  console.log("getUserInfo: Fetching user info from USERINFO_ENDPOINT.");
-  const resp = await fetch(USERINFO_ENDPOINT, {
+  console.log("getUserInfo: Fetching user info via auth-service proxy.");
+  // Call the new proxy endpoint on your auth-service
+  const userInfoProxyUrl = `${AUTH_SERVICE_BASE_URL}/oauth/userinfo-proxy`;
+  const resp = await fetch(userInfoProxyUrl, {
     headers: { Authorization: `Bearer ${access}` },
   });
+
   if (!resp.ok) {
+    const errorBody = await resp.text();
     console.error(
-      `getUserInfo: Failed to fetch user info, status: ${resp.status}`
+      `getUserInfo: Failed to fetch user info from auth-service proxy, status: ${resp.status}, body: ${errorBody}`
     );
     return null;
   }

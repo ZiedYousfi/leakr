@@ -208,6 +208,40 @@ The Auth Service is a Go-based microservice responsible for handling user authen
 
   - **Error (4xx/5xx):** If processing fails.
 
+### 6. Get User Information (Proxy to Clerk)
+
+- **Endpoint:** `GET /oauth/userinfo-proxy`
+- **Description:** Proxies the request to Clerk's `/oauth/userinfo` endpoint. Retrieves information about the authenticated user based on the provided access token. This endpoint is protected and requires a valid token.
+- **Request:**
+  - **Headers:**
+    - `Authorization: Bearer <your_access_token>` (This token is validated by the auth-service, then the header is forwarded to Clerk)
+- **Response:**
+  - **Success (200 OK):** Proxies the JSON response from Clerk's UserInfo endpoint.
+
+    ```json
+    {
+        "sub": "user_xxxxxxxxxxxxxxxxx",
+        "email": "user@example.com",
+        "name": "User Name",
+        // ... other claims from Clerk's UserInfo endpoint
+    }
+    ```
+
+  - **Error (4xx/5xx):** If the token is invalid, expired, or if Clerk returns an error. The response body will typically be a JSON error from Clerk or the auth-service.
+    For example, if token is invalid/expired (checked by `authMiddleware`):
+
+    ```json
+    {
+        "error": "invalid_token"
+    }
+    ```
+
+    Or if Clerk UserInfo call fails:
+
+    ```json
+    // Status and body directly from Clerk
+    ```
+
 ## Dependencies
 
 - [Fiber](https://github.com/gofiber/fiber): Express inspired web framework written in Go.

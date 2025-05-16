@@ -108,6 +108,7 @@ func main() {
 	app.Get("/me", authMiddleware, meHandler) // Assumes /me still uses the authMiddleware which uses introspectAccessToken
 	app.Post("/oauth/exchange-code", exchangeCodeHandler)
 	app.Post("/oauth/refresh-token", refreshTokenHandler)
+	app.Get("/oauth/userinfo-proxy", authMiddleware, userInfoProxyHandler) // New route for UserInfo proxy
 
 	/* ---- Webhook route conservée (inchangée) -------------------- */
 	app.Post("/webhooks/clerk", clerkWebhookHandler)
@@ -384,4 +385,49 @@ func refreshTokenHandler(c *fiber.Ctx) error {
 
 	c.Set("Content-Type", "application/json")
 	return c.Status(http.StatusOK).Send(bodyBytes)
+}
+
+/* ------------------------------------------------------------------ */
+/* New Handler for UserInfo Proxy                                     */
+/* ------------------------------------------------------------------ */
+
+func userInfoProxyHandler(c *fiber.Ctx) error {
+	authHeader := c.Get("Authorization") // Get the original Authorization header from the extension
+	if authHeader == "" {
+		// This should ideally be caught by authMiddleware, but as a safeguard:
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing_authorization_header_for_proxy"})
+	}
+
+	clerkBaseURL := os.Getenv("CLERK_BASE_URL")
+	if clerkBaseURL == "" {
+		log.Println("Error: CLERK_BASE_URL environment variable missing for UserInfo proxy")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "clerk_base_url_config_missing"})
+	}
+
+	clerkUserInfoEndpoint := clerkBaseURL + "/oauth/userinfo"
+
+	req, err := http.NewRequest("GET", clerkUserInfoEndpoint, nil)
+	if err != nil {
+		log.Printf("Error creating UserInfo proxy request to Clerk: %v\n", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal_server_error_creating_request"})
+	}
+	req.Header.Set("Authorization", authHeader) // Forward the original Authorization header
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error performing UserInfo proxy request to Clerk: %v\n", err)
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": "clerk_userinfo_communication_error"})
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Error reading UserInfo proxy response body from Clerk: %v\n", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal_server_error_reading_clerk_response"})
+	}
+
+	// Forward Clerk's status code and response body
+	c.Set("Content-Type", resp.Header.Get("Content-Type")) // Forward content type
+	return c.Status(resp.StatusCode).Send(bodyBytes)
 }
