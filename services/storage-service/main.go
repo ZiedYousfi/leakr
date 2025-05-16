@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"storage-service/internal/config"
 	"storage-service/internal/storage"
 	"storage-service/middleware" // Import the middleware package
@@ -90,16 +91,26 @@ func main() {
 		return c.SendStream(reader)
 	})
 
-	// Route: Download by filename
-	app.Get("/download/file/:filename", func(c *fiber.Ctx) error {
-		filename := c.Params("filename")
-		reader, err := r2client.DownloadByFilename(c.Context(), filename) // Use c.Context()
+	// Route: Download by filename (supports percent-encoded names)
+	app.Get("/download/file/*", func(c *fiber.Ctx) error {
+		// capture entire remainder of path (may contain %20 etc)
+		raw := c.Params("*")
+		filename, err := url.PathUnescape(raw)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest,
+				fmt.Sprintf("Invalid filename encoding %q: %v", raw, err))
+		}
+
+		reader, err := r2client.DownloadByFilename(c.Context(), filename)
 		if err != nil {
 			log.Printf("Erreur DownloadByFilename pour %s: %v", filename, err)
-			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Fichier %s non trouvé ou erreur interne.", filename))
+			return fiber.NewError(fiber.StatusNotFound,
+				fmt.Sprintf("Fichier %s non trouvé ou erreur interne.", filename))
 		}
 		defer reader.Close()
-		c.Set(fiber.HeaderContentDisposition, fmt.Sprintf("attachment; filename=\"%s\"", filename))
+
+		c.Set(fiber.HeaderContentDisposition,
+			fmt.Sprintf("attachment; filename=\"%s\"", filename))
 		return c.SendStream(reader)
 	})
 

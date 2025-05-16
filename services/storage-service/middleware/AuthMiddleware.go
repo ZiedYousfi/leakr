@@ -12,6 +12,12 @@ import (
 
 func AuthMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
+
+		// allow CORS preflight through before auth
+		if c.Method() == fiber.MethodOptions {
+			return c.Next()
+		}
+
 		// The previous bypass for POST /users has been removed.
 		// All routes using this middleware will now require authentication.
 		// If specific public routes are needed in the future for this service,

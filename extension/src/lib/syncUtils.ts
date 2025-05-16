@@ -131,7 +131,8 @@ export async function downloadAndApplyDb(
   token: string
 ): Promise<void> {
   setSyncStatus("importing");
-  const url = `${STORAGE_SERVICE_BASE_URL}/download/file/${dbInfoToImport.fullName}`;
+  const encodedName = encodeURIComponent(dbInfoToImport.fullName);
+  const url = `${STORAGE_SERVICE_BASE_URL}/download/file/${encodedName}`;
   console.log("[syncUtils] Downloading DB from:", url);
 
   try {
