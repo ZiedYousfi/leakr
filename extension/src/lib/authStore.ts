@@ -1,9 +1,9 @@
-import { writable } from 'svelte/store';
+import { writable } from "svelte/store";
 import {
-    checkAuthStatus as checkAuthStatusInternal,
-    authenticateWithClerk as authenticateWithClerkInternal,
-    logout as logoutInternal
-} from './authUtils';
+  checkAuthStatus as checkAuthStatusInternal,
+  authenticateWithClerk as authenticateWithClerkInternal,
+  logout as logoutInternal,
+} from "./authUtils";
 
 export const isAuthenticated = writable<boolean>(false);
 export const isLoadingAuth = writable<boolean>(true);
@@ -59,9 +59,11 @@ export async function logout() {
 
 // Helper to get store value non-reactively if needed, e.g. in non-Svelte modules
 // For Svelte components, use $isAuthenticated, $isLoadingAuth, $authActionInProgress
-function get<T>(store: { subscribe: (cb: (value: T) => void) => () => void }): T {
+function get<T>(store: {
+  subscribe: (cb: (value: T) => void) => () => void;
+}): T {
   let value: T | undefined = undefined;
-  const unsubscribe = store.subscribe(v => value = v);
+  const unsubscribe = store.subscribe((v) => (value = v));
   unsubscribe();
   if (value === undefined) {
     throw new Error("Store did not emit a value synchronously.");
@@ -70,6 +72,10 @@ function get<T>(store: { subscribe: (cb: (value: T) => void) => () => void }): T
 }
 
 // Initialize auth status check when the store is first imported/used in a client environment
-if (typeof window !== 'undefined' && typeof chrome !== 'undefined' && chrome.runtime) {
+if (
+  typeof window !== "undefined" &&
+  typeof chrome !== "undefined" &&
+  chrome.runtime
+) {
   checkCurrentAuthStatus();
 }

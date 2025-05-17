@@ -77,7 +77,7 @@ async function fetchRemoteDbInfo(
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      credentials: 'include', // Add this line
+      credentials: "include", // Add this line
     });
 
     if (!response.ok) {
@@ -141,7 +141,7 @@ export async function downloadAndApplyDb(
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      credentials: 'include', // Add this line
+      credentials: "include", // Add this line
     });
 
     if (!response.ok) {
@@ -305,6 +305,11 @@ export async function synchronizeDatabase(): Promise<void> {
       "[syncUtils] Remote DB is considered newer or same with potentially higher/equal iteration. Importing remote DB."
     );
     await downloadAndApplyDb(bestRemote, token);
+  } else if (!isRemoteNewer && !isRemoteSameDateWithEqualOrBetterIteration) {
+    console.log(
+      "[syncUtils] Local DB is newer or same with potentially higher/equal iteration. No action needed."
+    );
+    setSyncStatus("resolved");
   } else {
     // Remote is older, or same date with fewer iterations.
     // This is a conflict: local is preferred by date/iteration, or they are divergent.

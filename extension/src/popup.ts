@@ -27,21 +27,33 @@ const initializeApp = async () => {
     await dbLib.initDatabase();
     console.log("[popup] Database initialized");
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let currentComponentInstance: Record<string, any> | null = null;
-    let currentComponentType: 'App' | 'SyncConflictResolver' | null = null;
+    let currentComponentType: "App" | "SyncConflictResolver" | null = null;
 
-    const mountLogic = (ComponentToMount: any, type: 'App' | 'SyncConflictResolver', props = {}) => {
+
+    const mountLogic = (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ComponentToMount: any,
+      type: "App" | "SyncConflictResolver",
+      props = {}
+    ) => {
       // Avoid re-mounting if the correct component type is already displayed
       if (currentComponentType === type) {
         // console.log(`[popup] Component ${type} is already mounted.`);
         return;
       }
 
-      if (currentComponentInstance && typeof currentComponentInstance.$destroy === 'function') {
-        console.log(`[popup] Destroying current component: ${currentComponentType}`);
+      if (
+        currentComponentInstance &&
+        typeof currentComponentInstance.$destroy === "function"
+      ) {
+        console.log(
+          `[popup] Destroying current component: ${currentComponentType}`
+        );
         currentComponentInstance.$destroy();
       }
-      target.innerHTML = ''; // Clear previous component before mounting new one
+      target.innerHTML = ""; // Clear previous component before mounting new one
       currentComponentInstance = mount(ComponentToMount, { target, props });
       currentComponentType = type;
       console.log(`[popup] Mounted ${type}`);
@@ -50,13 +62,15 @@ const initializeApp = async () => {
     // Subscribe to sync state changes to manage UI
     // The subscription fires immediately with the current state, then on any change.
     const unsubscribeFromSyncState = syncState.subscribe((state) => {
-      console.log(`[popup] Sync state changed to: ${state.status}. Current UI: ${currentComponentType || 'none'}`);
+      console.log(
+        `[popup] Sync state changed to: ${state.status}. Current UI: ${currentComponentType || "none"}`
+      );
       if (state.status === "conflict" && state.conflictData) {
-        mountLogic(SyncConflictResolver, 'SyncConflictResolver');
+        mountLogic(SyncConflictResolver, "SyncConflictResolver");
       } else {
         // For "idle", "checking", "resolved", "error", "authenticating", "importing", etc., show the main App.
         // The App component can internally decide to show loading/error messages based on syncState if needed.
-        mountLogic(App, 'App');
+        mountLogic(App, "App");
       }
     });
 
@@ -70,7 +84,6 @@ const initializeApp = async () => {
     // State changes from triggerSync will be caught by the syncState subscription.
     console.log("[popup] Triggering sync");
     triggerSync();
-
   } catch (error) {
     console.error("❌ Erreur lors de l'initialisation de la base :", error);
     target.innerHTML = `<p style="color: red;">Erreur : impossible d'initialiser l'application.</p>`;
