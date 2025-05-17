@@ -1,7 +1,7 @@
 {
   "name": "leakr",
   "private": true,
-  "version": "1.7.0-alpha.25",
+  "version": "1.7.0-alpha.27",
   "type": "module",
   "scripts": {
     "dev": "vite",

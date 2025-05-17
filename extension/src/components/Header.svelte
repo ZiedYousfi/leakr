@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import SettingsIcon from "../../public/settings-cog-svgrepo-com.svg";
 
   let showNav = $state(false);
   let headerElement: HTMLElement | undefined; // Reference to the header element
@@ -53,18 +54,13 @@
       aria-label="Settings"
       onclick={() => navigate("settings")}
     >
-      <!-- You can use an SVG directly or import a component -->
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        width="20"
-        height="20"
-      >
-        <path
-          d="M19.479 10.092C19.272 9.16 18.788 8.346 18.1 7.715L17.7 7.358C17.094 6.81 16.357 6.408 15.554 6.182L15.1 6.045C14.139 5.78 13.097 5.658 12 5.658C10.903 5.658 9.861 5.78 8.9 6.045L8.446 6.182C7.643 6.408 6.906 6.81 6.3 7.358L5.9 7.715C5.212 8.346 4.728 9.16 4.521 10.092L4.4 10.577C4.24 11.419 4.24 12.581 4.4 13.423L4.521 13.908C4.728 14.84 5.212 15.654 5.9 16.285L6.3 16.642C6.906 17.19 7.643 17.592 8.446 17.818L8.9 17.955C9.861 18.22 10.903 18.342 12 18.342C13.097 18.342 14.139 18.22 15.1 17.955L15.554 17.818C16.357 17.592 17.094 17.19 17.7 16.642L18.1 16.285C18.788 15.654 19.272 14.84 19.479 13.908L19.6 13.423C19.76 12.581 19.76 11.419 19.6 10.577L19.479 10.092ZM12 15.75C10.481 15.75 9.25 14.519 9.25 13C9.25 11.481 10.481 10.25 12 10.25C13.519 10.25 14.75 11.481 14.75 13C14.75 14.519 13.519 15.75 12 15.75Z"
-        />
-      </svg>
+      <img
+        src={SettingsIcon}
+        alt="Settings"
+        width="16"
+        height="16"
+        class="settings-icon"
+      />
     </button>
     <button
       id="burger-menu"
@@ -145,9 +141,15 @@
     color: var(--tw-color-night-violet, #7e5bef);
   }
 
-  .settings-button svg {
-    width: 20px; /* Kept custom size */
-    height: 20px;
+  .settings-icon {
+    filter: brightness(0) invert(0.7); /* Makes the SVG light gray to match burger menu */
+    width: 16px;
+    height: 16px;
+  }
+
+  .settings-icon:hover {
+    filter: brightness(0) saturate(100%) invert(36%) sepia(67%) saturate(749%) hue-rotate(222deg) brightness(98%) contrast(101%);
+    transition: filter 0.2s;
   }
 
   .burger-menu {
