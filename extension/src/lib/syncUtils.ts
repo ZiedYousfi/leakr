@@ -7,13 +7,8 @@ import {
   type ParsedDbInfo,
 } from "./syncStore";
 import { get } from "svelte/store";
-
-// Assumptions for dbUtils.ts:
-// export async function getLocalDbDetails(): Promise<ParsedDbInfo | null>;
-// export async function importNewDb(dbArrayBuffer: ArrayBuffer, newDbInfo: ParsedDbInfo): Promise<void>;
-// export async function clearLocalDb(): Promise<void>; // Optional, if needed
-import * as dbUtils from "./dbUtils"; // Assuming dbUtils.ts exists and exports these
-import { STORAGE_SERVICE_BASE_URL } from "./config"; // Import from new config file
+import { getLocalDbDetails, importNewDb } from "./dbUtils";
+import { STORAGE_SERVICE_BASE_URL } from "./config";
 
 const FILENAME_REGEX =
   /^leakr_db_([0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})_(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2})_it(\d+)\.sqlite$/;
@@ -158,7 +153,7 @@ export async function downloadAndApplyDb(
     const dbArrayBuffer = await response.arrayBuffer();
     console.log("[syncUtils] DB downloaded, size:", dbArrayBuffer.byteLength);
 
-    await dbUtils.importNewDb(dbArrayBuffer, dbInfoToImport);
+    await importNewDb(dbArrayBuffer, dbInfoToImport);
     console.log(
       "[syncUtils] DB imported successfully:",
       dbInfoToImport.fullName
@@ -201,7 +196,7 @@ export async function synchronizeDatabase(): Promise<void> {
 
   let localDbInfo: ParsedDbInfo | null = null;
   try {
-    localDbInfo = await dbUtils.getLocalDbDetails();
+    localDbInfo = await getLocalDbDetails();
 
     if (localDbInfo && localDbInfo.timestamp) {
       // Ensure localDbInfo.dateObject is parsed consistently with remote filenames.
