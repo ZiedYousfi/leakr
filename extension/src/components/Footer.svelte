@@ -20,7 +20,7 @@
 {#if $isLoadingAuth || !$isAuthenticated}
   <footer>
     {#if $isLoadingAuth}
-      <p>Checking status...</p>
+      <p>Checking authentication status...</p>
     {:else if !$isAuthenticated}
       <span>Connect for more features.</span>
       <button
@@ -52,13 +52,14 @@
     color: #e0e0e0; /* Off-White */
     padding: 12px 20px;
     display: flex;
-    justify-content: space-between;
+    justify-content: center; /* Changed from space-between to center */
     align-items: center;
     border-top: 1px solid #4b4b4b; /* Dark Grey */
     font-family: "Fira Sans", sans-serif;
     font-size: 0.9rem;
     z-index: 1000;
     box-sizing: border-box;
+    gap: 10px; /* Added gap for spacing between items when centered */
   }
 
   span {

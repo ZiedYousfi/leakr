@@ -81,7 +81,7 @@
     flex-direction: column; /* Stack children vertically */
     background-color: #000; /* Example background */
     color: #e5e7eb; /* Example text color */
-    overflow: auto; /* Changed from hidden to auto to allow scrolling if content exceeds space above footer */
+    overflow: hidden;
     /* Apply the transition effect */
     transition:
       min-width 0.3s ease,
