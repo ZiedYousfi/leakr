@@ -3,6 +3,8 @@
   import ContentsPage from "./pages/ContentsPage.svelte";
   import CreatorsPage from "./pages/CreatorsPage.svelte";
   import OpenSettings from "./components/OpenSettings.svelte";
+  import Footer from "./components/Footer.svelte";
+  import { isAuthenticated, isLoadingAuth } from "./lib/authStore"; // Import from authStore
 
   // Define dimensions for each page
   const pageDimensions = $state({
@@ -42,6 +44,11 @@
   let currentMinHeight = $derived(
     pageDimensions[currentPage]?.height ?? pageDimensions.default.height
   );
+
+  const FOOTER_HEIGHT = "50px"; // Define footer height, adjust as needed
+
+  // Determine if footer is visible to adjust padding
+  let isFooterVisible = $derived($isLoadingAuth || !$isAuthenticated);
 </script>
 
 <!-- Apply dynamic sizing and transition to this container -->
@@ -49,6 +56,7 @@
   class="app-container"
   style:min-width={currentMinWidth}
   style:min-height={currentMinHeight}
+  style:padding-bottom={isFooterVisible ? FOOTER_HEIGHT : "0px"}
 >
   {#if currentPage === "search"}
     <SearchPage onNavigate={navigate} params={pageParams} />
@@ -63,6 +71,9 @@
     <div>Page not found</div>
   {/if}
 </div>
+<Footer />
+
+<!-- Render the Footer component -->
 
 <style>
   .app-container {
@@ -70,15 +81,24 @@
     flex-direction: column; /* Stack children vertically */
     background-color: #000; /* Example background */
     color: #e5e7eb; /* Example text color */
-    overflow: hidden; /* Prevent content spill during transition */
+    overflow: auto; /* Changed from hidden to auto to allow scrolling if content exceeds space above footer */
     /* Apply the transition effect */
     transition:
       min-width 0.3s ease,
-      min-height 0.3s ease;
+      min-height 0.3s ease,
+      padding-bottom 0.3s ease; /* Added transition for padding-bottom */
     /* Ensure the container itself doesn't add extra padding if pages handle their own */
-    padding: 0;
+    padding: 0; /* Padding-top, left, right remain 0 */
     margin: 0;
     box-sizing: border-box; /* Include padding and border in the element's total width and height */
+    /* The actual height of the content area will be min-height minus FOOTER_HEIGHT */
+    /* Ensure app-container can grow if content is larger than min-height */
+    height: 100vh; /* Make app-container take full viewport height initially */
+    /* This might need adjustment based on how extension popups are sized.
+       If the popup size is fixed by manifest or currentMinHeight is the total,
+       then height: 100% (of its parent, the body) might be more appropriate.
+       For now, assuming the min-height is the primary driver.
+    */
   }
 
   /* Ensure direct children fill the container if needed */
