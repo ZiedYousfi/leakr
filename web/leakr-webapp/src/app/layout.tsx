@@ -42,10 +42,10 @@ export default function RootLayout({
         <meta name="google-adsense-account" content="ca-pub-8988091393037410"></meta>
       </head>
       <body className={`${firaMono.variable} ${firaSans.variable} antialiased`}>
+        <Header />
         <SpeedInsights />
         <Analytics /> {/* Vercel Analytics */}
         {children}
-        <Header />
         <Footer />
       </body>
       </ClerkProvider>
