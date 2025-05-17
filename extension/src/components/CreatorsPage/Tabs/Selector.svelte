@@ -172,8 +172,7 @@
   @reference "tailwindcss";
 
   .creator-list-container {
-    /* Assuming parent provides dark background as per style guide */
-    /* background-color: var(--tw-color-deep-black, #000000); */
+    /* overflow: auto; */
   }
 
   .search-input {

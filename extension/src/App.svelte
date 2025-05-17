@@ -81,7 +81,6 @@
     flex-direction: column; /* Stack children vertically */
     background-color: #000; /* Example background */
     color: #e5e7eb; /* Example text color */
-    overflow: hidden;
     /* Apply the transition effect */
     transition:
       min-width 0.3s ease,
@@ -93,19 +92,13 @@
     box-sizing: border-box; /* Include padding and border in the element's total width and height */
     /* The actual height of the content area will be min-height minus FOOTER_HEIGHT */
     /* Ensure app-container can grow if content is larger than min-height */
-    height: 100vh; /* Make app-container take full viewport height initially */
-    /* This might need adjustment based on how extension popups are sized.
-       If the popup size is fixed by manifest or currentMinHeight is the total,
-       then height: 100% (of its parent, the body) might be more appropriate.
-       For now, assuming the min-height is the primary driver.
-    */
   }
 
   /* Ensure direct children fill the container if needed */
   .app-container > :global(*) {
     width: 100%;
     height: 100%;
-    /*flex-grow: 1; /* Allow children to grow */
+    /* flex-grow: 1; Allow children to grow to fill space */
     display: flex; /* Ensure children can also use flex if needed */
     flex-direction: column; /* Default direction for children */
   }
