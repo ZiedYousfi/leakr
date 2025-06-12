@@ -18,7 +18,6 @@ interface RemoteFileInfo {
   userID: string; // Added based on API response/README
   timestamp: string; // Added based on API response/README (format "YYYY-MM-DD HH-MM-SS")
   iteration: string; // Added based on API response/README (e.g., "292")
-  // Removed size and last_modified as they are not in the /info/user/{uuid} response
 }
 
 export function parseDbFilename(filename: string): ParsedDbInfo | null {
