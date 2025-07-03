@@ -20,9 +20,10 @@ diesel = { version = "2.2.11", features = ["postgres", "r2d2"] }
 r2d2 = "0.8.10"
 chrono = "0.4.41"
 tower-http = { version = "0.6.6", features = ["cors", "trace"] }
-jsonwebtoken = { version = "9.3.1", features = ["serde"] }
-clerk-rs = { version = "0.4.1", features = ["client"] }
-cloudflare = { version = "0.14.0", features = ["r2"] }
+jsonwebtoken = { version = "9.3.1" }
+clerk-rs = { version = "0.4.1" }
+aws-config = { version= "1.8.1", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1.96.0"
 
 [profile.release]
 opt-level = 3
