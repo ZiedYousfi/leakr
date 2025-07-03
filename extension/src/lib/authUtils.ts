@@ -3,7 +3,7 @@ import {
   CLIENT_ID,
   AUTHORIZE_ENDPOINT,
   LEAKR_UUID_ENDPOINT,
-} from "./authVars";
+} from "./config"; // Updated import path
 import { getSettings, updateUUID } from "./dbUtils";
 
 /* ----------------------------------------------------------- */

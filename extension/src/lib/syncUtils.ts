@@ -7,7 +7,7 @@ import {
   type ParsedDbInfo,
 } from "./syncStore";
 import { get } from "svelte/store";
-import { getLocalDbDetails, importNewDb } from "./dbUtils";
+import { getLocalDbDetails, importNewDb, uploadDatabaseToServer } from "./dbUtils";
 import { STORAGE_SERVICE_BASE_URL } from "./config";
 
 const FILENAME_REGEX =
@@ -18,7 +18,6 @@ interface RemoteFileInfo {
   userID: string; // Added based on API response/README
   timestamp: string; // Added based on API response/README (format "YYYY-MM-DD HH-MM-SS")
   iteration: string; // Added based on API response/README (e.g., "292")
-  // Removed size and last_modified as they are not in the /info/user/{uuid} response
 }
 
 export function parseDbFilename(filename: string): ParsedDbInfo | null {
@@ -302,8 +301,20 @@ export async function synchronizeDatabase(): Promise<void> {
     await downloadAndApplyDb(bestRemote, token);
   } else if (!isRemoteNewer && !isRemoteSameDateWithEqualOrBetterIteration) {
     console.log(
-      "[syncUtils] Local DB is newer or same with potentially higher/equal iteration. No action needed."
+      "[syncUtils] Local DB is newer or same with potentially higher/equal iteration. Uploading local DB just in case."
     );
+
+    try {
+      await uploadDatabaseToServer();
+      console.log("[syncUtils] Local DB uploaded successfully.");
+    } catch (error) {
+      console.error("[syncUtils] Error uploading local DB:", error);
+      setErrorState(
+        error instanceof Error
+          ? error.message
+          : "Unknown error uploading local DB"
+      );
+    }
     setSyncStatus("resolved");
   } else {
     // Remote is older, or same date with fewer iterations.
