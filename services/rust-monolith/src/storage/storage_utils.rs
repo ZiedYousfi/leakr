@@ -8,22 +8,30 @@
 //! - `R2_ACCESS_KEY_ID`: Your R2 access key ID
 //! - `R2_ACCESS_KEY_SECRET`: Your R2 access key secret
 
+use anyhow::{Error, Result};
 use aws_sdk_s3 as s3;
+use aws_sdk_s3::presigning::PresigningConfig;
 use aws_sdk_s3::primitives::ByteStream;
-use std::path::Path;
+use dotenvy::dotenv;
 use std::fs;
 use std::io::Write;
-use aws_sdk_s3::presigning::PresigningConfig;
+use std::path::Path;
 use std::time::Duration;
-use anyhow::{Result, Error};
-use dotenvy::dotenv;
 
-async fn create_client() -> Result<s3::Client, Error> {
+pub async fn create_client() -> Result<s3::Client, Error> {
     dotenv().ok();
 
-    let account_id = std::env::var("R2_ACCOUNT_ID")?;
-    let access_key_id = std::env::var("R2_ACCESS_KEY_ID")?;
-    let access_key_secret = std::env::var("R2_ACCESS_KEY_SECRET")?;
+    let account_id = std::env::var("R2_ACCOUNT_ID")
+        .map_err(|_| anyhow::anyhow!("R2_ACCOUNT_ID environment variable not set"))?;
+    let access_key_id = std::env::var("R2_ACCESS_KEY_ID")
+        .map_err(|_| anyhow::anyhow!("R2_ACCESS_KEY_ID environment variable not set"))?;
+    let access_key_secret = std::env::var("R2_ACCESS_KEY_SECRET")
+        .map_err(|_| anyhow::anyhow!("R2_ACCESS_KEY_SECRET environment variable not set"))?;
+
+    // Validate account_id contains only alphanumeric characters and hyphens
+    if !account_id.chars().all(|c| c.is_alphanumeric() || c == '-') {
+        return Err(anyhow::anyhow!("Invalid R2_ACCOUNT_ID format"));
+    }
 
     // Configure the client
     let config = aws_config::from_env()
@@ -44,8 +52,7 @@ async fn create_client() -> Result<s3::Client, Error> {
     Ok(client)
 }
 
-
-async fn upload_object(
+pub async fn upload_object(
     client: &s3::Client,
     bucket: &str,
     key: &str,
@@ -65,7 +72,7 @@ async fn upload_object(
     Ok(())
 }
 
-async fn download_object(
+pub async fn download_object(
     client: &s3::Client,
     bucket: &str,
     key: &str,
@@ -83,7 +90,7 @@ async fn download_object(
     Ok(())
 }
 
-async fn generate_get_presigned_url(
+pub async fn generate_get_presigned_url(
     client: &s3::Client,
     bucket: &str,
     key: &str,
@@ -102,7 +109,7 @@ async fn generate_get_presigned_url(
     Ok(presigned_get_request.uri().to_string())
 }
 
-async fn generate_upload_presigned_url(
+pub async fn generate_upload_presigned_url(
     client: &s3::Client,
     bucket: &str,
     key: &str,
