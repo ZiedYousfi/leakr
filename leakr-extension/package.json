@@ -29,8 +29,10 @@
     "host_permissions": [
       "https://*/*"
     ],
+    "key": "$CRX_PUBLIC_KEY",
     "permissions": [
-      "tabs"
+      "cookies",
+      "storage"
     ]
   }
 }
