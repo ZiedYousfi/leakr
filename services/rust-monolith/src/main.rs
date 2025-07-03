@@ -6,11 +6,11 @@ async fn main() {
     let app = Router::new();
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    println!("Listening on http://{addr}");
+    log::info!("Listening on http://{addr}");
 
     let listener: tokio::net::TcpListener = tokio::net::TcpListener::bind(addr).await.unwrap();
     if let Err(e) = axum::serve(listener, app).await {
-        eprintln!("Server error: {e}");
+        log::error!("Server error: {e}");
         std::process::exit(1);
     }
 }
