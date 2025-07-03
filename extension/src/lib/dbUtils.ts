@@ -2,11 +2,22 @@ import initSqlJs from "sql.js";
 import Fuse from "fuse.js";
 import type { SqlJsStatic, Database } from "sql.js";
 import semver from "semver";
+import { getAccessToken } from "./authUtils"; // Added import
 
 let SQL: SqlJsStatic;
 let db: Database;
 
 // --- Types ---
+
+// Added for getLocalDbDetails and importNewDb to ensure structure
+// Matches ParsedDbInfo from syncStore.ts
+interface LocalParsedDbInfo {
+  fullName: string;
+  uuid: string;
+  timestamp: string; // Format: "YYYY-MM-DD HH-MM-SS" with hyphens in time part
+  dateObject: Date;
+  iteration: number;
+}
 
 export interface Createur {
   id: number;
@@ -69,7 +80,7 @@ function createSchema() {
       nom TEXT UNIQUE NOT NULL,
       aliases TEXT UNIQUE NOT NULL,
       date_ajout TEXT NOT NULL,
-      favori BOOLEAN DEFAULT FALSE
+      favori BOOLEAN DEFAULT FALSE,
       -- Variable pour savoir si les infos d'un créateur ont été vérifié par un humain
       verifie BOOLEAN DEFAULT FALSE
     );
@@ -387,6 +398,11 @@ async function checkVersion() {
 async function runMigrations(current: string) {
   validateMigrations();
   console.log("🔄 Démarrage des migrations…");
+  // Ensure db object is available
+  if (!db) {
+    console.error("DB object not initialized before running migrations.");
+    throw new Error("Database not initialized.");
+  }
   db.exec("BEGIN TRANSACTION;");
   try {
     const toApply = migrations
@@ -429,7 +445,33 @@ export async function saveDatabase(): Promise<void> {
   const data = db.export();
   const array = Array.from(data);
   await chrome.storage.local.set({ leakr_db: array });
+  try {
+    await uploadDatabaseToServer();
+  } catch (err) {
+    console.error("❌ Erreur lors de l'upload de la base de données :", err);
+  }
   console.log("💫 Base sauvegardée localement");
+}
+
+/**
+ * Resets the database by deleting it from storage and re-initializing.
+ */
+export async function resetDatabase(): Promise<void> {
+  console.warn("🗑️ Attempting to reset the database...");
+  if (db) {
+    try {
+      db.close();
+      console.log("🚪 Previous database instance closed.");
+    } catch (error) {
+      console.error("Error closing existing database instance:", error);
+      // Continue anayway, as the main goal is to remove from storage
+    }
+  }
+  await chrome.storage.local.remove("leakr_db");
+  console.log("🧹 Database removed from chrome.storage.local.");
+  // Re-initialize to create a fresh database
+  await initDatabase();
+  console.log("✨ New database initialized successfully after reset.");
 }
 
 /**
@@ -464,47 +506,195 @@ export async function exportDatabaseData(): Promise<{
   data: Uint8Array;
   filename: string;
 }> {
+  if (!db) {
+    console.error("DB object not initialized for exportDatabaseData.");
+    throw new Error("Database not initialized.");
+  }
   const data = db.export();
   const array = new Uint8Array(data);
 
-  // Récupère la date et l'iteration depuis la table version
-  let dateMaj = new Date().toISOString();
+  let uuid = "unknown-uuid";
   let iteration = 0;
+  let timestampForFilename = new Date()
+    .toISOString()
+    .substring(0, 19)
+    .replace("T", " ")
+    .replace(/:/g, "-"); // Fallback YYYY-MM-DD HH-MM-SS
+
   try {
-    const stmt = db.prepare(
-      "SELECT date_maj, iterations FROM version WHERE id = 1;"
-    );
-    if (stmt.step()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const row = stmt.getAsObject() as any;
-      dateMaj = (row.date_maj as string) || dateMaj;
-      iteration = (row.iterations as number) || 0;
+    const settingsStmt = db.prepare("SELECT uuid FROM settings WHERE id = 1");
+    if (settingsStmt.step()) {
+      const settingsResult = settingsStmt.getAsObject() as { uuid: string };
+      uuid = settingsResult.uuid;
     }
-    stmt.free();
+    settingsStmt.free();
+
+    const versionStmt = db.prepare(
+      "SELECT iterations, date_maj FROM version WHERE id = 1"
+    );
+    if (versionStmt.step()) {
+      const versionResult = versionStmt.getAsObject() as {
+        iterations: number;
+        date_maj: string; // SQLite: YYYY-MM-DD HH:MM:SS
+      };
+      iteration = versionResult.iterations;
+      // Format for filename: YYYY-MM-DD HH-MM-SS (hyphens in time)
+      timestampForFilename = versionResult.date_maj.replace(/:/g, "-");
+    }
+    versionStmt.free();
   } catch (err) {
-    console.warn(
-      "Impossible de récupérer la date/iteration depuis la table version :",
+    console.error(
+      "Erreur lors de la récupération des détails de la version/settings pour le nom de fichier:",
       err
     );
+    // Use fallbacks defined above
   }
 
-  let uuid = "unknown";
-  try {
-    const stmtUuid = db.prepare("SELECT uuid FROM settings LIMIT 1;");
-    if (stmtUuid.step()) {
-      uuid = (stmtUuid.getAsObject().uuid as string) || "unknown";
-    }
-    stmtUuid.free();
-  } catch (err) {
-    console.warn(
-      "Impossible de récupérer le uuid depuis la table settings :",
-      err
-    );
-  }
-
-  const filename = `leakr_db_${uuid}_${dateMaj.replace(/[:.]/g, "-")}_it${iteration}.sqlite`;
-  console.log("📦 Données de la base préparées pour l'export.");
+  const filename = `leakr_db_${uuid}_${timestampForFilename}_it${iteration}.sqlite`;
+  console.log("📦 Données de la base préparées pour l'export:", filename);
   return { data: array, filename: filename };
+}
+
+/**
+ * Loads the database from a Uint8Array.
+ * Replaces the current database with the one from the byte array.
+ * @param data The Uint8Array containing the database file.
+ */
+async function loadDatabaseFromByteArray(data: Uint8Array): Promise<void> {
+  // Close the existing database if it's open
+  if (db) {
+    try {
+      db.close();
+      console.log("Previous DB instance closed.");
+    } catch (closeError) {
+      console.error("Error closing previous DB instance:", closeError);
+      // Continue anwyay, as we are replacing it.
+    }
+  }
+
+  // Load the new database
+  // Ensure SQL object is available
+  if (!SQL) {
+    console.error(
+      "SQL.js not initialized before loading database from byte array."
+    );
+    // Attempt to re-initialize SQL.js. This is a fallback.
+    // Ideally, initDatabase should always be called first successfully.
+    try {
+      SQL = await initSqlJs({
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        locateFile: (_: string) => chrome.runtime.getURL("sql-wasm.wasm"),
+      });
+      console.warn("SQL.js re-initialized as a fallback.");
+    } catch (sqlInitError) {
+      console.error(
+        "Failed to re-initialize SQL.js as a fallback:",
+        sqlInitError
+      );
+      throw new Error("SQL.js not initialized and fallback failed.");
+    }
+  }
+  db = new SQL.Database(data);
+  console.log("✨ Database successfully loaded from byte array.");
+
+  // Check version and run migrations if necessary
+  // This also implicitly handles schema creation if 'version' table is missing
+  // or if the imported DB is very old/malformed regarding the version table.
+  try {
+    await checkVersion();
+  } catch (checkVersionError) {
+    console.error(
+      "❌ Error during checkVersion after loading from byte array:",
+      checkVersionError
+    );
+    // If checkVersion fails (e.g. version table missing and createSchema fails, or migrations fail),
+    // it might leave 'db' in an inconsistent state or pointing to a problematic DB.
+    // Re-throwing to signal that the overall load process failed.
+    throw new Error(
+      `Database integrity check/migration failed after loading: ${checkVersionError instanceof Error ? checkVersionError.message : String(checkVersionError)}`
+    );
+  }
+
+  // Save the newly loaded database
+  // saveDatabase itself has try-catch for its specific operations
+  await saveDatabase();
+  console.log("✅ Loaded database processed and saved successfully.");
+}
+
+/**
+ * Imports a database from a .sqlite file.
+ * Reads the file and then uses loadDatabaseFromByteArray to process it.
+ * @param file The .sqlite file to import.
+ */
+export async function importDatabase(file: File): Promise<void> {
+  console.log(`🔄 Attempting to import database from file: ${file.name}`);
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    // The second argument to importNewDb (ParsedDbInfo) is not directly used by this specific
+    // dbUtils.importNewDb implementation but is kept for signature compatibility with syncUtils expectation.
+    // We can construct a dummy/partial one if strictly needed by a future version of importNewDb.
+    await importNewDb(arrayBuffer, {
+      fullName: file.name,
+      uuid: "unknown",
+      timestamp: "unknown",
+      dateObject: new Date(),
+      iteration: 0,
+    } as LocalParsedDbInfo);
+    console.log(`✅ Database file "${file.name}" imported and processed.`);
+  } catch (error) {
+    console.error("❌ Error importing database from file:", error);
+    // Optionally, re-initialize a default DB or notify user
+    // For now, we'll throw to indicate failure of the import process
+    throw new Error(
+      `Failed to import database from file: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
+ * Télécharge localement (si besoin) puis envoie la base de données
+ * vers l’API /upload de ton serveur Fiber.
+ *
+ * @param endpoint L’URL complète de l’endpoint. Par défaut : https://storage.leakr.net/upload
+ * @throws Error si l’upload échoue
+ */
+export async function uploadDatabaseToServer(
+  endpoint = "https://storage.leakr.net/upload"
+): Promise<void> {
+  // 0️⃣ Récupérer le token d'accès
+  const token = await getAccessToken();
+  if (!token) {
+    throw new Error(
+      "❌ Upload échoué : Token d'authentification manquant. Veuillez vous connecter."
+    );
+  }
+
+  // 1️⃣ On récupère le fichier et son nom « leakr_db_<uuid>_<date>_it<iter>.sqlite »
+  const { data, filename } = await exportDatabaseData();
+
+  // 2️⃣ On emballe le Uint8Array dans un Blob pour FormData
+  const blob = new Blob([data], { type: "application/octet-stream" });
+
+  // 3️⃣ Construction du payload multipart/form‑data
+  const form = new FormData();
+  form.append("file", blob, filename); // ← champ "file"
+  form.append("filename", filename); // ← champ "filename" attendu côté serveur
+
+  // 4️⃣ Préparation des headers avec le token
+  const headers = new Headers();
+  headers.append("Authorization", `Bearer ${token}`);
+  // Note: FormData sets Content-Type automatically, so we don't set it manually here.
+
+  // 5️⃣ Lancement de l’incantation réseau
+  const res = await fetch(endpoint, { method: "POST", body: form, headers });
+
+  // 6️⃣ Gestion douce‑amère des retours
+  if (!res.ok) {
+    const msg = await res.text().catch(() => res.statusText);
+    throw new Error(`❌ Upload échoué (${res.status}) : ${msg}`);
+  }
+
+  console.log(`🦊✨ Upload réussi : ${filename}`);
 }
 
 /**
@@ -578,14 +768,31 @@ export function updateShareCollection(share: boolean): void {
 
 /** Met à jour l'UUID de l'utilisateur (à utiliser avec précaution) */
 export function updateUUID(newUuid: string): void {
-  // Ajouter une validation pour le format UUID si nécessaire
+  // Validate input
+  if (!newUuid || typeof newUuid !== "string") {
+    console.error("updateUUID: Invalid UUID provided:", newUuid);
+    throw new Error("Invalid UUID provided");
+  }
+
+  // Check current UUID first
+  const current = getSettings()?.uuid;
+
+  if (current === newUuid) {
+    console.log(
+      `updateUUID: UUID already set to "${newUuid}", no update needed`
+    );
+    return; // Exit early, no update needed
+  }
+
+  // Proceed with update only if different
   const stmt = db.prepare("UPDATE settings SET uuid = ? WHERE id = 1");
   try {
     stmt.run([newUuid]);
     saveDatabase();
-    console.log(`UUID mis à jour à : ${newUuid}`);
+    console.log(`UUID updated from "${current}" to "${newUuid}"`);
   } catch (err) {
     console.error("Erreur lors de la mise à jour de l'UUID:", err);
+    throw err;
   } finally {
     stmt.free();
   }
@@ -601,21 +808,26 @@ export function addCreateur(nom: string, aliases: string[]): number | bigint {
   const stmt = db.prepare(
     "INSERT INTO createurs (nom, aliases, date_ajout) VALUES (?, ?, ?)"
   );
-  stmt.run([nom, aliasesStr, new Date().toISOString()]);
-  stmt.free();
-  const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
-  const lastId =
-    typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint"
-      ? lastIdRaw
-      : 0;
-  saveDatabase();
+  let lastId: number | bigint = -1;
+  try {
+    stmt.run([nom, aliasesStr, new Date().toISOString()]);
+    const lastIdRaw = db.exec("SELECT last_insert_rowid();")[0].values[0][0];
+    if (typeof lastIdRaw === "number" || typeof lastIdRaw === "bigint") {
+      lastId = lastIdRaw;
+    }
+  } catch (err) {
+    console.error("Erreur lors de l'ajout du créateur:", err);
+    throw err;
+  } finally {
+    stmt.free();
+  }
   return lastId;
 }
 
 /** Récupère tous les créateurs */
 export function getCreateurs(): Createur[] {
   const stmt = db.prepare(
-    "SELECT id, nom, aliases, date_ajout, favori FROM createurs ORDER BY nom ASC"
+    "SELECT id, nom, aliases, date_ajout, favori, verifie FROM createurs ORDER BY nom ASC"
   );
   const createurs: Createur[] = [];
   while (stmt.step()) {
@@ -636,34 +848,35 @@ export function getCreateurs(): Createur[] {
 
 export function findCreatorByUsername(username: string): Createur | null {
   // — 0️⃣ Préparations générales —
-  const allCreators  = getCreateurs();
-  const termLower    = username.toLowerCase();
-  const normalize    = (s: string) =>
+  const allCreators = getCreateurs();
+  const termLower = username.toLowerCase();
+  const normalize = (s: string) =>
     s
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "")
       .replace(/[l1]/g, "i")
       .replace(/[o0]/g, "o");
+  const normalizedTerm = normalize(username);
 
   // — 1️⃣ Nom exact SQL (toujours prioritaire) —
-  const exactStmt = db.prepare(`
-    SELECT id, nom, aliases, date_ajout, favori, verifie
-    FROM createurs
-    WHERE LOWER(nom) = LOWER(?)
-    LIMIT 1
-  `);
+  const exactStmt = db.prepare(
+    `SELECT id, nom, aliases, date_ajout, favori, verifie
+     FROM createurs
+     WHERE LOWER(nom) = LOWER(?)
+     LIMIT 1`
+  );
   exactStmt.bind([username]);
   try {
     if (exactStmt.step()) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const row = exactStmt.getAsObject() as any;
       return {
-        id:         row.id,
-        nom:        row.nom,
-        aliases:    JSON.parse(row.aliases || "[]"),
+        id: row.id,
+        nom: row.nom,
+        aliases: JSON.parse(row.aliases || "[]"),
         date_ajout: row.date_ajout,
-        favori:     Boolean(row.favori),
-        verifie:    Boolean(row.verifie),
+        favori: Boolean(row.favori),
+        verifie: Boolean(row.verifie),
       };
     }
   } catch (e) {
@@ -672,82 +885,132 @@ export function findCreatorByUsername(username: string): Createur | null {
     exactStmt.free();
   }
 
-  // — 2️⃣ Fuse.js en tête —
-  // Seuil adaptatif pour Fuse score
-  let MAX_SCORE = 0.5;
-  if (username.length <= 3)      MAX_SCORE = 0.3;
-  else if (username.length >= 8) MAX_SCORE = 0.7;
-
-  const fuse = new Fuse(allCreators, {
-    keys:           ["nom", "aliases"],
-    threshold:      MAX_SCORE,       // ← on utilise ici notre MAX_SCORE
-    ignoreLocation: true,
-    includeScore:   true,
-  });
-
-  const results = fuse.search(username);
-  if (results.length > 0) {
-    const { item, score = 1 } = results[0];
-    const ratio = username.length / item.nom.length;
-
-    console.log(`🔮 Fuse top "${username}"→"${item.nom}": score=${score.toFixed(3)}, ratio=${ratio.toFixed(2)}, seuil=${MAX_SCORE}`);
-
-    if (score <= MAX_SCORE && username.length >= 2 && ratio >= 0.3) {
-      // on ajoute l’alias si nécessaire
-      if (!item.aliases.includes(username)) {
-        const upd = db.prepare("UPDATE createurs SET aliases = ? WHERE id = ?");
-        const newAliases = JSON.stringify([ ...item.aliases, username ]);
-        upd.run([newAliases, item.id]);
-        upd.free();
-        saveDatabase();
-        console.log(`🌺 Alias "${username}" ajouté à "${item.nom}" (ID:${item.id}).`);
-        item.aliases.push(username);
-      }
-      return item;
-    }
-  }
-
-  // — 3️⃣ Fallback : alias exact en mémoire —
-  const aliasExact = allCreators.find(c =>
-    c.aliases.some(a => a.toLowerCase() === termLower)
+  // — 2️⃣ Alias exact en mémoire —
+  const aliasExact = allCreators.find((c) =>
+    c.aliases.some((a) => a.toLowerCase() === termLower)
   );
   if (aliasExact) {
     console.log(`🌟 Alias exact "${username}" → "${aliasExact.nom}"`);
     return aliasExact;
   }
 
-  // — 4️⃣ Alias-substring bi-directionnel (seuil ≥ 3) —
-  const MIN_SUBSTR = 3;
-  const aliasSub = allCreators.find(c =>
-    c.aliases
-      .map(normalize)
-      .some(a =>
+  // — 3️⃣ Substring sur nom et aliases (seuil ≥ 5) —
+  const MIN_SUBSTR = 5;
+  const substrMatch = allCreators.find((c) => {
+    const nomNorm = normalize(c.nom);
+    const aliasesNorm = c.aliases.map(normalize);
+    const terms = [nomNorm, ...aliasesNorm];
+    return terms.some(
+      (a) =>
         a.length >= MIN_SUBSTR &&
-        (normalize(username).includes(a) || a.includes(normalize(username)))
-      )
-  );
-  if (aliasSub) {
-    console.log(`✨ Alias-substr "${username}" → "${aliasSub.nom}"`);
-    return aliasSub;
-  }
-
-  // — 5️⃣ Multi-part & prefix (en ultime recours) —
-  const prefixOK = username.length >= 4;
-  const pref = allCreators.find(c => {
-    const n  = normalize(c.nom);
-    const as = c.aliases.map(normalize);
-    return prefixOK && (
-      n.startsWith(normalize(username)) ||
-      as.some(a => a.startsWith(normalize(username)))
+        normalizedTerm.length >= MIN_SUBSTR && // Ensure search term is also long enough
+        (normalizedTerm.includes(a) || a.includes(normalizedTerm))
     );
   });
-  if (pref) {
-    console.log(`🚀 Prefix "${username}" → "${pref.nom}"`);
-    return pref;
+  if (substrMatch) {
+    console.log(`✨ Substring "${username}" → "${substrMatch.nom}"`);
+    return substrMatch;
+  }
+
+  // — 4️⃣ Préfixe (en ultime recours avant Fuse) —
+  const PREFIX_MIN = 4;
+  if (username.length >= PREFIX_MIN) {
+    const prefixMatch = allCreators.find((c) => {
+      const nomNorm = normalize(c.nom);
+      const aliasesNorm = c.aliases.map(normalize);
+      return (
+        nomNorm.startsWith(normalizedTerm) ||
+        aliasesNorm.some((a) => a.startsWith(normalizedTerm))
+      );
+    });
+    if (prefixMatch) {
+      console.log(`🚀 Prefix "${username}" → "${prefixMatch.nom}"`);
+      return prefixMatch;
+    }
+  }
+
+  // — 5️⃣ Fuse.js (recherche floue normalisée) —
+  // Préparation de la liste Fuse avec champs normalisés
+  const fuseList = allCreators.map((c) => ({
+    ...c,
+    nomNorm: normalize(c.nom),
+    aliasesNorm: c.aliases.map(normalize),
+  }));
+
+  // Seuil adaptatif pour Fuse
+  let MAX_SCORE = 0.5;
+  if (username.length <= 3) MAX_SCORE = 0.3;
+  else if (username.length >= 8) MAX_SCORE = 0.7;
+
+  const fuse = new Fuse(fuseList, {
+    keys: ["nomNorm", "aliasesNorm"],
+    threshold: MAX_SCORE,
+    location: 0,
+    distance: 100,
+    includeScore: true,
+  });
+
+  const results = fuse.search(normalizedTerm);
+  if (results.length > 0) {
+    const { item, score = 1, matches } = results[0];
+    const ratio = username.length / item.nom.length;
+
+    console.log(
+      `🔮 Fuse top "${username}"→"${item.nom}": score=${score.toFixed(3)}, ratio=${ratio.toFixed(2)}, seuil=${MAX_SCORE}`
+    );
+
+    // Vérifier que le match commence bien à l'indice 0
+    const isPrefixMatch = matches?.some((m) =>
+      m.indices.some(([start]) => start === 0)
+    );
+
+    if (
+      score <= MAX_SCORE &&
+      username.length >= 2 &&
+      ratio >= 0.5 &&
+      isPrefixMatch
+    ) {
+      if (!item.aliases.includes(username)) {
+        const upd = db.prepare("UPDATE createurs SET aliases = ? WHERE id = ?");
+        const newAliases = JSON.stringify([...item.aliases, username]);
+        upd.run([newAliases, item.id]);
+        upd.free();
+        saveDatabase();
+        console.log(
+          `🌺 Alias "${username}" ajouté à "${item.nom}" (ID:${item.id}).`
+        );
+        item.aliases.push(username);
+      }
+      return item;
+    }
   }
 
   console.warn(`❌ Aucun créateur trouvé pour "${username}".`);
   return null;
+}
+
+/** Met à jour le nom et les aliases d'un créateur */
+export function updateCreateurDetails(
+  id: number,
+  nom: string,
+  aliases: string[]
+): void {
+  const aliasesStr = JSON.stringify(aliases);
+  const stmt = db.prepare(
+    "UPDATE createurs SET nom = ?, aliases = ? WHERE id = ?"
+  );
+  try {
+    stmt.run([nom, aliasesStr, id]);
+    saveDatabase();
+    console.log(
+      `Creator details updated for ID ${id}: nom=${nom}, aliases=${aliasesStr}`
+    );
+  } catch (err) {
+    console.error("Error updating creator details:", err);
+    throw err; // Re-throw to allow UI to handle it
+  } finally {
+    stmt.free();
+  }
 }
 
 /** Met à jour le statut favori d'un créateur */
@@ -893,6 +1156,29 @@ export function getContenuById(id: number): Contenu | null {
   return contenu;
 }
 
+/** Récupère un créateur spécifique par son ID */
+export function getCreateurById(id: number): Createur | null {
+  const stmt = db.prepare(
+    "SELECT id, nom, aliases, date_ajout, favori, verifie FROM createurs WHERE id = ?"
+  );
+  stmt.bind([id]);
+  let createur: Createur | null = null;
+  if (stmt.step()) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const row = stmt.getAsObject() as any;
+    createur = {
+      id: row.id as number,
+      nom: row.nom as string,
+      aliases: JSON.parse((row.aliases as string) || "[]"),
+      date_ajout: row.date_ajout as string,
+      favori: Boolean(row.favori),
+      verifie: Boolean(row.verifie),
+    };
+  }
+  stmt.free();
+  return createur;
+}
+
 /** Met à jour le statut favori d'un contenu */
 export function updateFavoriContenu(id: number, favori: boolean): void {
   const stmt = db.prepare("UPDATE contenus SET favori = ? WHERE id = ?");
@@ -985,6 +1271,40 @@ export function addProfilPlateforme(
   return lastId;
 }
 
+/** Met à jour le lien d'un profil plateforme existant */
+export function updateProfilPlateforme(id: number, nouveauLien: string): void {
+  const stmt = db.prepare(
+    "UPDATE profils_plateforme SET lien = ? WHERE id = ?"
+  );
+  try {
+    stmt.run([nouveauLien, id]);
+    saveDatabase();
+    console.log(
+      `Profil plateforme ID ${id} mis à jour avec le lien : ${nouveauLien}`
+    );
+  } catch (err) {
+    console.error("Erreur lors de la mise à jour du profil plateforme:", err);
+    throw err; // Re-throw to allow UI to handle it
+  } finally {
+    stmt.free();
+  }
+}
+
+/** Supprime un profil plateforme par son ID */
+export function deleteProfilPlateforme(id: number): void {
+  const stmt = db.prepare("DELETE FROM profils_plateforme WHERE id = ?");
+  try {
+    stmt.run([id]);
+    saveDatabase();
+    console.log(`Profil plateforme ID ${id} supprimé.`);
+  } catch (err) {
+    console.error("Erreur lors de la suppression du profil plateforme:", err);
+    throw err; // Re-throw to allow UI to handle it
+  } finally {
+    stmt.free();
+  }
+}
+
 /** Récupère les profils d'un créateur */
 export function getProfilsByCreator(id_createur: number): ProfilPlateforme[] {
   const stmt = db.prepare(`
@@ -1065,7 +1385,125 @@ export function executeCommand(sql: string, params?: any[]): void {
 /** Ferme la connexion à la base de données (utile si l'extension est déchargée) */
 export function closeDatabase(): void {
   if (db) {
-    db.close();
-    console.log("🚪 Base de données fermée.");
+    try {
+      db.close();
+      console.log("Database connection closed.");
+    } catch (e) {
+      console.error("Error closing the database:", e);
+    }
   }
+}
+
+// --- Functions for Sync ---
+
+export async function getLocalDbDetails(): Promise<LocalParsedDbInfo | null> {
+  if (!db) {
+    console.warn("[dbUtils.getLocalDbDetails] Database not initialized.");
+    // Attempt to initialize if not already, this is a fallback.
+    // await initDatabase();
+    // if (!db) return null; // if init failed
+    return null; // Or throw error, depending on desired strictness
+  }
+
+  let uuid = "";
+  let iterations = 0;
+  let dateMajFromDb = ""; // Should be YYYY-MM-DD HH:MM:SS
+
+  try {
+    const settingsStmt = db.prepare("SELECT uuid FROM settings WHERE id = 1");
+    if (settingsStmt.step()) {
+      uuid = (settingsStmt.getAsObject() as { uuid: string }).uuid;
+    } else {
+      console.warn("[dbUtils.getLocalDbDetails] No settings found.");
+      settingsStmt.free();
+      return null;
+    }
+    settingsStmt.free();
+
+    const versionStmt = db.prepare(
+      "SELECT iterations, date_maj FROM version WHERE id = 1"
+    );
+    if (versionStmt.step()) {
+      const versionInfo = versionStmt.getAsObject() as {
+        iterations: number;
+        date_maj: string;
+      };
+      iterations = versionInfo.iterations;
+      dateMajFromDb = versionInfo.date_maj;
+    } else {
+      console.warn("[dbUtils.getLocalDbDetails] No version info found.");
+      versionStmt.free();
+      return null;
+    }
+    versionStmt.free();
+
+    // Format timestamp for ParsedDbInfo and filename consistency
+    // dateMajFromDb is "YYYY-MM-DD HH:MM:SS"
+    // We need "YYYY-MM-DD HH-MM-SS" (hyphens in time part)
+    const timestampForParsedInfo = dateMajFromDb.replace(/:/g, "-");
+
+    // Create Date object from this specific timestamp format
+    const parts = timestampForParsedInfo.replace(" ", "-").split("-"); // [YYYY, MM, DD, HH, MM, SS]
+    const dateObject = new Date(
+      Date.UTC(
+        parseInt(parts[0], 10),
+        parseInt(parts[1], 10) - 1, // Month is 0-indexed
+        parseInt(parts[2], 10),
+        parseInt(parts[3], 10),
+        parseInt(parts[4], 10),
+        parseInt(parts[5], 10)
+      )
+    );
+
+    if (isNaN(dateObject.getTime())) {
+      console.error(
+        "[dbUtils.getLocalDbDetails] Could not parse date from DB timestamp:",
+        dateMajFromDb
+      );
+      return null;
+    }
+
+    const fullName = `leakr_db_${uuid}_${timestampForParsedInfo}_it${iterations}.sqlite`;
+
+    return {
+      fullName,
+      uuid,
+      timestamp: timestampForParsedInfo,
+      dateObject,
+      iteration: iterations,
+    };
+  } catch (error) {
+    console.error("[dbUtils.getLocalDbDetails] Error fetching details:", error);
+    return null;
+  }
+}
+
+export async function importNewDb(
+  dbArrayBuffer: ArrayBuffer,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _newDbInfo: LocalParsedDbInfo
+): Promise<void> {
+  // _newDbInfo is not strictly used here as loadDatabaseFromByteArray will use the version info
+  // from the database file itself. It's kept for signature compatibility.
+  if (!SQL) {
+    // Attempt to initialize SQL.js if it hasn't been. This is a defensive measure.
+    console.warn(
+      "[dbUtils.importNewDb] SQL.js not initialized. Attempting to initialize."
+    );
+    try {
+      SQL = await initSqlJs({
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        locateFile: (_: string) => chrome.runtime.getURL("sql-wasm.wasm"),
+      });
+    } catch (e) {
+      console.error("[dbUtils.importNewDb] Failed to initialize SQL.js:", e);
+      throw new Error("SQL.js failed to initialize, cannot import DB.");
+    }
+  }
+  const uint8Array = new Uint8Array(dbArrayBuffer);
+  await loadDatabaseFromByteArray(uint8Array);
+  // loadDatabaseFromByteArray already calls saveDatabase() and checkVersion()
+  console.log(
+    "[dbUtils.importNewDb] Database imported via loadDatabaseFromByteArray."
+  );
 }

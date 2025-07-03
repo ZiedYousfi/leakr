@@ -11,6 +11,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
 )
 
 // Subscription is the model entity for the Subscription schema.
@@ -29,7 +30,7 @@ type Subscription struct {
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the SubscriptionQuery when eager-loading is set.
 	Edges             SubscriptionEdges `json:"edges"`
-	user_subscription *int
+	user_subscription *uuid.UUID
 	selectValues      sql.SelectValues
 }
 
@@ -65,7 +66,7 @@ func (*Subscription) scanValues(columns []string) ([]any, error) {
 		case subscription.FieldCurrentPeriodEnd:
 			values[i] = new(sql.NullTime)
 		case subscription.ForeignKeys[0]: // user_subscription
-			values[i] = new(sql.NullInt64)
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -112,11 +113,11 @@ func (s *Subscription) assignValues(columns []string, values []any) error {
 				s.CurrentPeriodEnd = value.Time
 			}
 		case subscription.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field user_subscription", value)
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field user_subscription", values[i])
 			} else if value.Valid {
-				s.user_subscription = new(int)
-				*s.user_subscription = int(value.Int64)
+				s.user_subscription = new(uuid.UUID)
+				*s.user_subscription = *value.S.(*uuid.UUID)
 			}
 		default:
 			s.selectValues.Set(columns[i], values[i])

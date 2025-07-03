@@ -1,40 +1,159 @@
 <script lang="ts">
   import {
     downloadDatabaseExport,
-    /*importDatabase*/ initDatabase,
+    initDatabase,
     getSettings,
     updateShareCollection,
-    updateUUID,
+    // updateUUID, // No longer needed for manual regeneration from options
+    uploadDatabaseToServer,
+    resetDatabase, // <-- Add import
+    importDatabase, // <-- Add import for the new function
   } from "../lib/dbUtils";
   import type { Settings } from "../lib/dbUtils";
+  import {
+    authenticateWithClerk,
+    checkAuthStatus,
+    logout,
+    getAccessToken,
+    clearAllStorage, // <-- Add import
+  } from "../lib/authUtils";
   import { onMount } from "svelte";
 
   let statusMessage = $state<string | null>(null);
   let isLoading = $state(false);
-  let fileInput: HTMLInputElement | undefined = $state(); // Use $state for element refs if needed, or keep let if only used locally
+  let fileInput: HTMLInputElement | undefined = $state();
   let settings = $state<Settings | null>(null);
   let shareCollection = $state(false);
   let userUUID = $state("Loading...");
+  let isAuthenticated = $state(false);
 
-  // onMount remains suitable for initial data fetching
   onMount(async () => {
+    // Initialize loading state and clear previous messages
+    isLoading = true;
+    statusMessage = "Initializing options page...";
+
+    // 1. Attempt to check authentication status
     try {
-      await initDatabase(); // Ensure DB is initialized
-      const loadedSettings = getSettings(); // Use a temporary variable
+      isAuthenticated = await checkAuthStatus();
+      if (isAuthenticated) {
+        // Temporarily set a success message for auth, may be overwritten by DB status
+        statusMessage = "Authenticated.";
+        setTimeout(() => {
+          // Clear only if it's still the auth message and not an error
+          if (statusMessage === "Authenticated.") statusMessage = null;
+        }, 3000);
+      } else {
+        // If not authenticated, but no error, don't set a specific status message here,
+        // unless we want to explicitly say "Not authenticated".
+        // For now, lack of auth is a normal state.
+      }
+    } catch (authError) {
+      console.error("Failed to check authentication status:", authError);
+      statusMessage = `Authentication check failed: ${authError instanceof Error ? authError.message : String(authError)}`;
+      isAuthenticated = false; // Ensure this is false on error
+    }
+
+    // 2. Initialize database and load settings
+    try {
+      await initDatabase(); // This can throw if e.g., SQL.js WASM fetch fails
+      const loadedSettings = getSettings();
       if (loadedSettings) {
-        settings = loadedSettings; // Assign to $state variable
+        settings = loadedSettings;
         shareCollection = loadedSettings.share_collection;
         userUUID = loadedSettings.uuid;
+        // If auth check didn't set a message, or if it was cleared,
+        // and DB init was successful, we can clear the "Initializing..." message.
+        if (
+          statusMessage === "Initializing options page..." ||
+          statusMessage === "Authenticated."
+        ) {
+          statusMessage = "Settings loaded successfully.";
+          setTimeout(() => {
+            if (statusMessage === "Settings loaded successfully.")
+              statusMessage = null;
+          }, 3000);
+        }
       } else {
-        statusMessage = "Could not load settings.";
-        // Handle case where settings might be missing - maybe create defaults?
-        console.warn("Settings not found in DB.");
+        const dbLoadErrorMessage = "Could not load settings from database.";
+        // Append if there was an auth error, otherwise set.
+        statusMessage =
+          statusMessage &&
+          !statusMessage.startsWith("Authenticated.") &&
+          statusMessage !== "Initializing options page..."
+            ? `${statusMessage}\n${dbLoadErrorMessage}`
+            : dbLoadErrorMessage;
+        console.warn("Settings not found in DB after init.");
+        // Reset to defaults or error state if settings are critical
+        settings = null;
+        shareCollection = false;
+        userUUID = "Error: Not found";
       }
-    } catch (error) {
-      console.error("Failed to initialize database or load settings:", error);
-      statusMessage = `Error loading settings: ${error instanceof Error ? error.message : String(error)}`;
+    } catch (dbError) {
+      console.error("Failed to initialize database or load settings:", dbError);
+      const dbInitErrorMessage = `Error initializing database/settings: ${dbError instanceof Error ? dbError.message : String(dbError)}`;
+      // Append if there was an auth error, otherwise set.
+      statusMessage =
+        statusMessage &&
+        !statusMessage.startsWith("Authenticated.") &&
+        statusMessage !== "Initializing options page..."
+          ? `${statusMessage}\n${dbInitErrorMessage}`
+          : dbInitErrorMessage;
+      settings = null;
+      shareCollection = false;
+      userUUID = "Error: DB init failed";
+    } finally {
+      isLoading = false;
+      // Let specific error messages persist, don't clear them with a generic timeout here
+      // unless statusMessage is still "Initializing options page..."
+      if (statusMessage === "Initializing options page...") {
+        statusMessage = null; // Clear if no specific error or success message was set.
+      }
     }
   });
+
+  async function handleLogin() {
+    isLoading = true;
+    statusMessage = "Attempting login with Clerk...";
+    try {
+      await authenticateWithClerk();
+      const token = await getAccessToken();
+      if (token) {
+        isAuthenticated = true;
+        statusMessage = "Login successful!";
+        // Optionally, reload settings or user-specific data here
+      } else {
+        isAuthenticated = false;
+        statusMessage =
+          "Login completed, but token not found. Please try again.";
+      }
+    } catch (error) {
+      console.error("Login failed:", error);
+      isAuthenticated = false;
+      statusMessage = `Login failed: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      isLoading = false;
+      setTimeout(() => (statusMessage = null), 5000);
+    }
+  }
+
+  async function handleLogout() {
+    isLoading = true;
+    statusMessage = "Logging out...";
+    try {
+      await logout();
+      isAuthenticated = false;
+      statusMessage = "Logged out successfully.";
+      // Clear user-specific settings if necessary
+      // settings = null; // Example
+      // userUUID = "N/A"; // Example
+    } catch (error) {
+      console.error("Logout failed:", error);
+      statusMessage = `Logout failed: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      isLoading = false;
+      setTimeout(() => (statusMessage = null), 5000);
+    }
+  }
 
   async function handleExport() {
     isLoading = true;
@@ -46,6 +165,22 @@
     } catch (error) {
       console.error("Failed to export database:", error);
       statusMessage = `Error exporting database: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      isLoading = false;
+      setTimeout(() => (statusMessage = null), 5000);
+    }
+  }
+
+  async function handleUpload() {
+    isLoading = true;
+    statusMessage = "Uploading database...";
+    try {
+      await uploadDatabaseToServer();
+      statusMessage = "Database upload initiated successfully.";
+      console.log("Database upload initiated.");
+    } catch (error) {
+      console.error("Failed to upload database:", error); // Update error message to reflect upload
+      statusMessage = `Error uploading database: ${error instanceof Error ? error.message : String(error)}`;
     } finally {
       isLoading = false;
       setTimeout(() => (statusMessage = null), 5000);
@@ -77,18 +212,27 @@
     statusMessage = `Importing ${file.name}...`;
 
     try {
-      // const arrayBuffer = await file.arrayBuffer();
-      // const data = new Uint8Array(arrayBuffer);
-      // // Assuming importDatabase replaces the current DB, saves, and potentially re-initializes state.
-      // // You might need to implement this function in dbUtils.ts
-      // // await importDatabase(data); // Uncomment when importDatabase is ready
-      // statusMessage = `Database "${file.name}" imported successfully. Please reload the extension.`;
-      // console.log("Database import successful. Reload required.");
-      // // TODO: Implement importDatabase in dbUtils.ts
-      // // TODO: Potentially force a reload or notify the user more explicitly.
-      //  alert("Database imported. Please reload the extension for changes to take effect."); // Simple notification
-      console.warn("Import functionality is commented out.");
-      statusMessage = "Import function not yet implemented."; // Placeholder message
+      await importDatabase(file); // Call the actual import function
+      statusMessage = `Database "${file.name}" imported successfully. Settings reloaded.`;
+      console.log("Database import successful.");
+
+      // Reload settings from the newly imported database
+      const loadedSettings = getSettings();
+      if (loadedSettings) {
+        settings = loadedSettings;
+        shareCollection = loadedSettings.share_collection;
+        userUUID = loadedSettings.uuid;
+      } else {
+        statusMessage =
+          "Import successful, but could not reload settings from the new database.";
+        console.warn(
+          "Settings not found in the imported DB or failed to load."
+        );
+        // Reset to defaults or clear if settings are critical
+        settings = null;
+        shareCollection = false;
+        userUUID = "N/A";
+      }
     } catch (error) {
       console.error("Failed to import database:", error);
       statusMessage = `Error importing database: ${error instanceof Error ? error.message : String(error)}`;
@@ -125,26 +269,66 @@
     }
   }
 
-  async function regenerateUUID() {
+  async function handleClearAll() {
     if (
       confirm(
-        "Are you sure you want to generate a new unique ID? This cannot be undone."
+        "This will erase ALL extension data EXCEPT your local database (leakr_db). Authentication, settings, and user info will be removed. This cannot be undone. Continue?"
       )
     ) {
       isLoading = true;
-      statusMessage = "Generating new UUID...";
+      statusMessage = "Clearing all extension data (except database)...";
       try {
-        const newUuid = crypto.randomUUID();
-        await updateUUID(newUuid);
-        userUUID = newUuid; // Update $state variable
-        if (settings) settings.uuid = newUuid; // Update local state object
-        statusMessage = "New UUID generated successfully.";
+        await clearAllStorage();
+        // Optionally, reset local state
+        isAuthenticated = false;
+        settings = null;
+        userUUID = "N/A";
+        shareCollection = false;
+        statusMessage =
+          "All extension data cleared (database not erased). Please reload the extension.";
       } catch (error) {
-        console.error("Failed to generate new UUID:", error);
-        statusMessage = `Error generating UUID: ${error instanceof Error ? error.message : String(error)}`;
+        console.error("Failed to clear all data:", error);
+        statusMessage = `Error clearing data: ${error instanceof Error ? error.message : String(error)}`;
       } finally {
         isLoading = false;
-        setTimeout(() => (statusMessage = null), 5000);
+        setTimeout(() => (statusMessage = null), 7000);
+      }
+    }
+  }
+
+  async function handleResetDatabase() {
+    if (
+      confirm(
+        "DANGER ZONE! This will completely WIPE your local Leakr database (leakr_db) and create a new, empty one. All your creators, content, and settings within the database will be PERMANENTLY LOST. This action cannot be undone. Are you absolutely sure you want to proceed?"
+      )
+    ) {
+      isLoading = true;
+      statusMessage = "Resetting database to factory defaults...";
+      try {
+        await resetDatabase();
+        // After reset, settings will be default, so re-fetch or set to known defaults
+        const loadedSettings = getSettings(); // Re-fetch new default settings
+        if (loadedSettings) {
+          settings = loadedSettings;
+          shareCollection = loadedSettings.share_collection;
+          userUUID = loadedSettings.uuid;
+        } else {
+          // Fallback if getSettings fails after reset (should not happen with new DB)
+          settings = null;
+          shareCollection = false;
+          userUUID = "N/A";
+        }
+        // Authentication state is not directly tied to the DB content itself,
+        // but a DB reset might imply a desire to start fresh.
+        // For now, we don't touch isAuthenticated here, as clearAllStorage handles auth data.
+        statusMessage =
+          "Database has been reset to factory defaults. Please reload the extension if you encounter any issues.";
+      } catch (error) {
+        console.error("Failed to reset database:", error);
+        statusMessage = `Error resetting database: ${error instanceof Error ? error.message : String(error)}`;
+      } finally {
+        isLoading = false;
+        setTimeout(() => (statusMessage = null), 7000);
       }
     }
   }
@@ -152,6 +336,29 @@
 
 <main>
   <h1>Leakr Options</h1>
+
+  <section>
+    <h2>Authentication</h2>
+    {#if isAuthenticated}
+      <p>You are currently logged in.</p>
+      <div class="button-group">
+        <button onclick={handleLogout} disabled={isLoading}>
+          {isLoading && statusMessage?.includes("Logging out")
+            ? "Logging out..."
+            : "Logout"}
+        </button>
+      </div>
+    {:else}
+      <p>Log in to sync your settings and data (feature coming soon).</p>
+      <div class="button-group">
+        <button onclick={handleLogin} disabled={isLoading}>
+          {isLoading && statusMessage?.includes("login")
+            ? "Logging in..."
+            : "Login with Clerk"}
+        </button>
+      </div>
+    {/if}
+  </section>
 
   <section>
     <h2>User Settings</h2>
@@ -162,13 +369,13 @@
         id="share-toggle"
         bind:checked={shareCollection}
         onchange={handleShareToggle}
-        disabled={isLoading || !settings}
+        disabled={isLoading || !settings || !isAuthenticated}
       />
       <span class="tooltip"
         >?
         <span class="tooltiptext"
           >Allow sharing anonymized collection data for analysis (feature not
-          yet implemented).</span
+          yet implemented). Requires login.</span
         >
       </span>
     </div>
@@ -180,17 +387,12 @@
         id="uuid-display"
         aria-labelledby="uuid-display">{userUUID}</span
       >
-      <button
-        onclick={regenerateUUID}
-        disabled={isLoading || !settings}
-        title="Generate a new unique identifier">Regenerate</button
-      >
       <span class="tooltip"
         >?
         <span class="tooltiptext"
           >A unique identifier for your installation. Used for potential future
-          features like data synchronization or sharing. Regenerating assigns a
-          new ID.</span
+          features like data synchronization or sharing. This ID is set upon
+          first login.</span
         >
       </span>
     </div>
@@ -200,7 +402,7 @@
     <h2>Database Management</h2>
     <p>
       Manage your local Leakr database. Exports create a backup file, Imports
-      replace the current database.
+      replace the current database. Some features may require login.
     </p>
     <div class="button-group">
       <!-- Access $state variables directly -->
@@ -213,6 +415,31 @@
         {isLoading && statusMessage?.startsWith("Importing")
           ? "Importing..."
           : "Import Database"}
+      </button>
+      <button onclick={handleUpload} disabled={isLoading || !isAuthenticated}>
+        {isLoading && statusMessage?.startsWith("Uploading")
+          ? "Uploading..."
+          : "Upload Database (Login Required)"}
+      </button>
+      <button
+        onclick={handleClearAll}
+        disabled={isLoading}
+        style="background-color: #a94442; color: #fff; border-color: #a94442;"
+        title="Erase ALL extension data except the database (irreversible!)"
+      >
+        {isLoading && statusMessage?.startsWith("Clearing")
+          ? "Clearing..."
+          : "Clear All Data (except database)"}
+      </button>
+      <button
+        onclick={handleResetDatabase}
+        disabled={isLoading}
+        style="background-color: #d9534f; color: #fff; border-color: #d43f3a;"
+        title="DANGER: Resets the entire database to its initial empty state (irreversible!)"
+      >
+        {isLoading && statusMessage?.startsWith("Resetting database")
+          ? "Resetting DB..."
+          : "Reset Database (DANGER)"}
       </button>
     </div>
     <!-- Hidden file input: bind:this still works -->
@@ -241,66 +468,95 @@
     --primary-color: #7e5bef; /* Violet nuit */
     --secondary-color: #b0b0b0; /* Gris argenté */
     --background-color: #000000; /* Noir profond */
-    --text-color: #e0e0e0; /* Light grey for contrast */
-    --border-color: #444444; /* Darker grey */
-    --input-bg: #1a1a1a; /* Slightly lighter black/dark grey */
-    --button-bg: #2c2c2c; /* Dark grey */
-    --button-hover-bg: #3a3a3a; /* Lighter grey */
-    --disabled-opacity: 0.5; /* Adjusted for dark theme */
-    --status-bg: #1a1a1a; /* Dark grey */
-    --status-border: #444444; /* Darker grey */
-    --tooltip-bg: #2c2c2c; /* Dark grey */
-    --tooltip-text: #e0e0e0; /* Light grey */
+    --text-color: #e0e0e0; /* Light grey for contrast / Off-White */
+
+    /* Updated based on visualstyle.md */
+    --border-color: var(--secondary-color); /* Silver Grey for borders */
+    --input-bg: #4b4b4b; /* Dark Grey for inactive blocks (sections) */
+
+    /* Kept specific dark theme values, not directly from visualstyle.md but fit theme */
+    --button-bg: #2c2c2c; /* Dark grey for button backgrounds */
+    --button-hover-bg: #3a3a3a; /* Lighter grey for button hover */
+    --status-bg: #1a1a1a; /* Dark grey for status messages */
+    --tooltip-bg: #2c2c2c; /* Dark grey for tooltips */
+
+    --disabled-opacity: 0.5;
+    --status-border: var(--border-color); /* Use updated border color */
+    --tooltip-text: var(--text-color);
+
+    /* Fonts from visualstyle.md */
+    --font-primary: "Fira Mono", monospace;
+    --font-secondary:
+      "Fira Sans", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Helvetica, Arial, sans-serif;
+  }
+
+  :global(html, body) {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-secondary);
+    background-color: var(--background-color);
+  }
+
+  :global(body) {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2em; /* Space around the main content area */
+    box-sizing: border-box;
   }
 
   main {
     padding: 1.5em;
-    /* Consider adding a monospace font */
-    font-family:
-      "JetBrains Mono",
-      monospace,
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      Roboto,
-      Helvetica,
-      Arial,
-      sans-serif;
-    background-color: var(--background-color);
+    /* font-family removed, will inherit --font-secondary from body */
+    background-color: var(--background-color); /* Main background is black */
     color: var(--text-color);
-    max-width: 600px;
-    margin: 2em auto;
+    /* margin: 2em auto; Removed for flexbox centering */
     border-radius: 8px;
-    border: 1px solid var(--border-color); /* Add subtle border */
+    border: 1px solid var(--border-color); /* Updated border color */
     box-shadow: 0 2px 10px rgba(126, 91, 239, 0.1); /* Subtle glow with primary color */
+
+    /* Fullscreen and centering adjustments */
+    width: 100%;
+    max-width: 960px; /* Max width for content readability */
+    max-height: 100%; /* Fill available space within body padding */
+    overflow-y: auto; /* Allow main content to scroll if it overflows */
+    box-sizing: border-box;
   }
 
   h1 {
     text-align: center;
     margin-bottom: 1.5em;
     color: var(--primary-color);
+    font-family: var(--font-primary); /* Font from visualstyle.md */
+    font-size: 2.5rem; /* Size from visualstyle.md */
   }
 
   section {
     margin-bottom: 2em;
     padding: 1.5em;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color); /* Updated border color */
     border-radius: 6px;
-    background-color: var(--input-bg); /* Use input background for sections */
+    background-color: var(--input-bg); /* Updated background color */
   }
 
   h2 {
     margin-top: 0;
     margin-bottom: 1em;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color); /* Updated border color */
     padding-bottom: 0.5em;
-    color: var(--secondary-color); /* Use secondary color for headings */
+    color: var(--secondary-color);
+    font-family: var(--font-primary); /* Font from visualstyle.md */
+    font-size: 2rem; /* Size from visualstyle.md */
   }
 
   p {
     margin-bottom: 1em;
     line-height: 1.6;
-    color: var(--secondary-color); /* Use secondary color for paragraphs */
+    color: var(
+      --text-color
+    ); /* Updated to Off-White as per visualstyle.md body text */
   }
 
   .setting-item {
@@ -314,6 +570,7 @@
     font-weight: 500;
     flex-shrink: 0;
     color: var(--text-color); /* Ensure label text is readable */
+    /* font-family will be var(--font-secondary) inherited from body/main */
   }
 
   .setting-item input[type="checkbox"] {
@@ -324,14 +581,14 @@
   }
 
   .uuid-display {
-    font-family: monospace;
-    background-color: var(--background-color); /* Match main background */
+    font-family: var(--font-primary); /* Monospace font for IDs */
+    background-color: var(--background-color);
     padding: 0.3em 0.6em;
     border-radius: 4px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color); /* Updated border color */
     font-size: 0.9em;
     word-break: break-all;
-    color: var(--text-color); /* Ensure text is readable */
+    color: var(--text-color);
   }
 
   .button-group {
@@ -343,17 +600,24 @@
   button {
     padding: 0.6em 1.2em;
     cursor: pointer;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color); /* Updated border color */
     background-color: var(--button-bg);
-    color: var(--text-color); /* Ensure button text is readable */
+    color: var(--text-color);
     border-radius: 4px;
     font-size: 0.95em;
-    transition: background-color 0.2s ease;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease;
+    font-family: var(
+      --font-primary
+    ); /* Font from visualstyle.md for interactive elements */
   }
 
   button:hover:not(:disabled) {
     background-color: var(--button-hover-bg);
-    border-color: var(--secondary-color); /* Highlight border on hover */
+    border-color: var(
+      --primary-color
+    ); /* Highlight with primary color on hover */
   }
 
   button:disabled {
@@ -373,17 +637,17 @@
     padding: 0.8em 1em;
     border-radius: 4px;
     background-color: var(--status-bg);
-    border: 1px solid var(--status-border);
+    border: 1px solid var(--status-border); /* Uses updated --border-color via --status-border */
     text-align: center;
     font-size: 0.9em;
-    color: var(--text-color); /* Ensure status text is readable */
+    color: var(--text-color);
   }
 
   /* Tooltip Styles */
   .tooltip {
     position: relative;
     display: inline-block;
-    border: 1px solid var(--secondary-color);
+    border: 1px solid var(--secondary-color); /* Silver Grey border */
     border-radius: 50%;
     width: 16px;
     height: 16px;
@@ -392,8 +656,9 @@
     font-size: 10px;
     color: var(--secondary-color);
     cursor: help;
-    margin-left: 5px; /* Adjust spacing */
-    background-color: var(--input-bg); /* Match background */
+    margin-left: 5px;
+    background-color: var(--input-bg); /* Match section background */
+    font-family: var(--font-secondary); /* Ensure consistent font */
   }
 
   .tooltip .tooltiptext {
@@ -406,14 +671,15 @@
     padding: 8px;
     position: absolute;
     z-index: 1;
-    bottom: 125%; /* Position above the tooltip */
+    bottom: 125%;
     left: 50%;
-    margin-left: -110px; /* Use half of the width to center */
+    margin-left: -110px;
     opacity: 0;
     transition: opacity 0.3s;
-    font-size: 0.85em; /* Smaller font size for tooltip */
+    font-size: 0.85em;
     line-height: 1.4;
-    border: 1px solid var(--border-color); /* Add border to tooltip */
+    border: 1px solid var(--border-color); /* Updated border color */
+    font-family: var(--font-secondary); /* Ensure consistent font */
   }
 
   .tooltip:hover .tooltiptext {

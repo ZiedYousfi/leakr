@@ -12,6 +12,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // SubscriptionCreate is the builder for creating a Subscription entity.
@@ -62,7 +63,7 @@ func (sc *SubscriptionCreate) SetNillableCurrentPeriodEnd(t *time.Time) *Subscri
 }
 
 // SetUserID sets the "user" edge to the User entity by ID.
-func (sc *SubscriptionCreate) SetUserID(id int) *SubscriptionCreate {
+func (sc *SubscriptionCreate) SetUserID(id uuid.UUID) *SubscriptionCreate {
 	sc.mutation.SetUserID(id)
 	return sc
 }
@@ -187,7 +188,7 @@ func (sc *SubscriptionCreate) createSpec() (*Subscription, *sqlgraph.CreateSpec)
 			Columns: []string{subscription.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

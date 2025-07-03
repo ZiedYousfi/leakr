@@ -7,6 +7,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/google/uuid"
 )
 
 const (
@@ -16,6 +17,8 @@ const (
 	FieldID = "id"
 	// FieldClerkUserID holds the string denoting the clerk_user_id field in the database.
 	FieldClerkUserID = "clerk_user_id"
+	// FieldUsername holds the string denoting the username field in the database.
+	FieldUsername = "username"
 	// FieldRole holds the string denoting the role field in the database.
 	FieldRole = "role"
 	// FieldIsSubscribed holds the string denoting the is_subscribed field in the database.
@@ -43,6 +46,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldClerkUserID,
+	FieldUsername,
 	FieldRole,
 	FieldIsSubscribed,
 	FieldSubscriptionTier,
@@ -75,6 +79,8 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultID holds the default value on creation for the "id" field.
+	DefaultID func() uuid.UUID
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -88,6 +94,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByClerkUserID orders the results by the clerk_user_id field.
 func ByClerkUserID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldClerkUserID, opts...).ToFunc()
+}
+
+// ByUsername orders the results by the username field.
+func ByUsername(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUsername, opts...).ToFunc()
 }
 
 // ByRole orders the results by the role field.

@@ -30,7 +30,7 @@
 </script>
 
 <div class="popup-body-custom flex flex-col items-center gap-2 p-4">
-  <h2 class="favorites-title text-lg font-semibold mb-3">Favorites</h2>
+  <h2 class="favorites-title text-lg font-semibold">Favorites</h2>
 
   <!-- Error Message -->
   {#if errorMessage}
@@ -58,12 +58,11 @@
 
   .popup-body-custom {
     background-color: var(--tw-color-deep-black, #000000);
-    /* Default text color changed to off-white per guidelines */
-    color: var(--tw-color-off-white, #E0E0E0);
+    color: var(--tw-color-silver-grey, #b0b0b0); /* Default text color */
     min-width: 350px;
-    max-width: 450px;
-    min-height: 300px;
-    max-height: 500px;
+    max-width: 550px;
+    /* min-height: 300px; removed */
+    max-height: 600px;
   }
 
   .favorites-title {

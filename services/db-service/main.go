@@ -11,8 +11,8 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 
-	//dbservice "db-service/handlers"
 	users "db-service/handlers/users"
 	"db-service/middleware"
 )
@@ -35,6 +35,13 @@ func main() {
 	}
 
 	app := fiber.New()
+
+	// Add CORS middleware
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "chrome-extension://iinddcpilfbkhdaijbdhncbhbeginpgn, https://auth.leakr.net", // Allow specific Chrome extension origin
+		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
+		AllowHeaders: "Origin,Content-Type,Accept,Authorization",
+	}))
 
 	app.Use(middleware.AuthMiddleware())
 

@@ -3,6 +3,8 @@
   import ContentsPage from "./pages/ContentsPage.svelte";
   import CreatorsPage from "./pages/CreatorsPage.svelte";
   import OpenSettings from "./components/OpenSettings.svelte";
+  import Footer from "./components/Footer.svelte";
+  import { isAuthenticated, isLoadingAuth } from "./lib/authStore"; // Import from authStore
 
   // Define dimensions for each page
   const pageDimensions = $state({
@@ -42,6 +44,11 @@
   let currentMinHeight = $derived(
     pageDimensions[currentPage]?.height ?? pageDimensions.default.height
   );
+
+  const FOOTER_HEIGHT = "50px"; // Define footer height, adjust as needed
+
+  // Determine if footer is visible to adjust padding
+  let isFooterVisible = $derived($isLoadingAuth || !$isAuthenticated);
 </script>
 
 <!-- Apply dynamic sizing and transition to this container -->
@@ -49,6 +56,7 @@
   class="app-container"
   style:min-width={currentMinWidth}
   style:min-height={currentMinHeight}
+  style:padding-bottom={isFooterVisible ? FOOTER_HEIGHT : "0px"}
 >
   {#if currentPage === "search"}
     <SearchPage onNavigate={navigate} params={pageParams} />
@@ -63,6 +71,9 @@
     <div>Page not found</div>
   {/if}
 </div>
+<Footer />
+
+<!-- Render the Footer component -->
 
 <style>
   .app-container {
@@ -70,22 +81,24 @@
     flex-direction: column; /* Stack children vertically */
     background-color: #000; /* Example background */
     color: #e5e7eb; /* Example text color */
-    overflow: hidden; /* Prevent content spill during transition */
     /* Apply the transition effect */
     transition:
       min-width 0.3s ease,
-      min-height 0.3s ease;
+      min-height 0.3s ease,
+      padding-bottom 0.3s ease; /* Added transition for padding-bottom */
     /* Ensure the container itself doesn't add extra padding if pages handle their own */
-    padding: 0;
+    padding: 0; /* Padding-top, left, right remain 0 */
     margin: 0;
     box-sizing: border-box; /* Include padding and border in the element's total width and height */
+    /* The actual height of the content area will be min-height minus FOOTER_HEIGHT */
+    /* Ensure app-container can grow if content is larger than min-height */
   }
 
   /* Ensure direct children fill the container if needed */
   .app-container > :global(*) {
     width: 100%;
     height: 100%;
-    flex-grow: 1; /* Allow children to grow */
+    /* flex-grow: 1; Allow children to grow to fill space */
     display: flex; /* Ensure children can also use flex if needed */
     flex-direction: column; /* Default direction for children */
   }

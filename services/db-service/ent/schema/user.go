@@ -4,48 +4,56 @@ import (
 	"time"
 
 	"entgo.io/ent"
-	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/edge"
+	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // User maps your internal users linked to Clerk.
 type User struct {
-    ent.Schema
+	ent.Schema
 }
 
 // Fields defines the fields for the User entity.
 func (User) Fields() []ent.Field {
 	return []ent.Field{
-			field.String("clerk_user_id").
-					NotEmpty().
-					Unique().
-					Comment("ID utilisateur fourni par Clerk"),
+		field.UUID("id", uuid.UUID{}).
+			Default(uuid.New).
+			Immutable(),
 
-			field.String("role").
-					Default("user").
-					Comment("Rôle interne de l'utilisateur"),
+		field.String("clerk_user_id").
+			NotEmpty().
+			Unique().
+			Comment("ID utilisateur fourni par Clerk"),
 
-			field.Bool("is_subscribed").
-					Default(false).
-					Comment("Indique si l'utilisateur a un abonnement actif Stripe"),
+		field.String("username").
+			Optional().
+			Comment("Nom d'utilisateur, peut provenir de Clerk"),
 
-			field.String("subscription_tier").
-					Default("free").
-					Comment("Niveau d'abonnement : free, basic, premium, etc."),
+		field.String("role").
+			Default("user").
+			Comment("Rôle interne de l'utilisateur"),
 
-			field.Time("created_at").
-					Default(func() time.Time { return time.Now() }).
-					Immutable(),
+		field.Bool("is_subscribed").
+			Default(false).
+			Comment("Indique si l'utilisateur a un abonnement actif Stripe"),
 
-			field.Time("updated_at").
-					Default(func() time.Time { return time.Now() }).
-					UpdateDefault(func() time.Time { return time.Now() }),
+		field.String("subscription_tier").
+			Default("free").
+			Comment("Niveau d'abonnement : free, basic, premium, etc."),
+
+		field.Time("created_at").
+			Default(func() time.Time { return time.Now() }).
+			Immutable(),
+
+		field.Time("updated_at").
+			Default(func() time.Time { return time.Now() }).
+			UpdateDefault(func() time.Time { return time.Now() }),
 	}
 }
 
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
-			edge.To("subscription", Subscription.Type),
+		edge.To("subscription", Subscription.Type),
 	}
 }
-
