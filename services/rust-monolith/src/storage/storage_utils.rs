@@ -68,7 +68,7 @@ pub async fn upload_object(
         .send()
         .await?;
 
-    println!("Uploaded {file_path} to {bucket}/{key}");
+    log::info!("Uploaded {file_path} to {bucket}/{key}");
     Ok(())
 }
 
@@ -86,7 +86,7 @@ pub async fn download_object(
     let mut file = fs::File::create(output_path)?;
     file.write_all(&bytes)?;
 
-    println!("Downloaded {bucket}/{key} to {output_path}");
+    log::info!("Downloaded {bucket}/{key} to {output_path}");
     Ok(())
 }
 
