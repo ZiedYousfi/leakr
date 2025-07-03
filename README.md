@@ -8,83 +8,69 @@
 
 This project is licensed under a [BSL-based License](LICENCE).
 
-## 🏛️ Project Architecture — Monorepo
+````markdown
+# 🏛️ Project Architecture — Monorepo
 
-This repository contains all the necessary components around the main extension.
-The extension works autonomously, but this monorepo allows adding associated services:
+This monorepo gathers every essential piece of our ecosystem into a single, crystalline repository—
+with a **Rust service** at its core, orchestrating all flows, guarding every secret, and exposing exactly one golden path for our clients.
 
-- Community website
-- Cloud storage for backups
-- Subscriptions
-- Sharing system for content selected by the community
-- Authentication gateway for secure access to services
-
-> 📌 The extension is located in the `extension/` folder (not documented here)
+> 📌 The extension lives in `leakr-extension/`.
 
 ---
 
-### 📆 Repository Structure
+## 🌸 Repository Structure
 
-```b
+```no-rust
 .
-├── extension/               # Standalone client-side extension
-├── services/                # All Go microservices
-│   ├── auth-service/        # Authentication and token validation
-│   ├── storage-service/     # Upload, save, retrieve .sqlite files (Cloudflare R2)
-│   ├── community-service/   # Community system: shares, votes, rankings
-│   ├── payment-service/     # Subscription management and Stripe integration
-│   ├── mailing-list-service/# Mailing list management (Optional, Using MaiLiter)
-│   └── db-service/          # Database service (Neon DB) with gRPC and REST APIs
-│
-├── web/                     # Website in Next.js
-│   └── leakr-webapp/        # Frontend application code (dashboard, community, subscriptions)
-│
-├── infra/                   # Configuration and deployment
-│   ├── cloudflare/          # Config files for Cloudflare R2 (storage)
-│   └── github-actions/      # CI/CD for services and site
-│
-├── README.md                # This file
-└── .gitignore               # Files to exclude from the repository
-```
+├── leakr-extension/         # Standalone client-side extension
+├── service/                 # Rust backend: API gateway & core business logic
+├── web/                     # Next.js website (dashboard, community, subscriptions)
+│   └── leakr-webapp/
+├── infra/                   # Deployment & configuration
+│   ├── cloudflare/          # Cloudflare R2 config for user .db files
+│   └── github-actions/      # CI/CD pipelines
+├── README.md                # You are here
+└── .gitignore               # Excluded files
+````
 
 ---
 
-### 🧠 Architectural Philosophy
+## 🧠 Architectural Philosophy
 
-- All services are **independent** and **written in Go**
-- Each service handles a specific concern (auth, storage, community, payment)
-- **`auth-service`** is the central validation point for all others
-- Services communicate via secure HTTP APIs
-- The Neon database is only used by services for:
-  - Community data
-  - Subscription tracking
-- Cloudflare R2 storage is **managed only** by `storage-service`
-- The extension communicates directly with the services and does not rely on the website
-- The website (in Next.js) is a GUI shell that interfaces with services for:
-  - Community access
-  - Backup/restore management
-  - Account management and payments
-- The infrastructure is entirely **serverless** and **container/VPS-free**
-- Services will be deployed on platforms like Railway, Fly.io or Cloud Run
-- R2 is used for storing SQLite files per user, which are frequently updated but not processed server-side
-- File uploads are performed from the client to `storage-service`, which writes to R2
-- File names include metadata (user ID, date, etc.) and are organized into two buckets: `main/` and `backup/`
-- Backups are manually archived ("Glacier-like") using folder separation or periodic scripts
+1. **Single Source of Truth**
+   The **Rust service** is our one and only gateway for all business logic, data validation, and orchestration.
+   No domain logic is scattered—everything flows through this luminous core.
+
+2. **Clear Client Boundaries**
+
+   * **Next.js Webapp** and **Extension** speak *only* to the Rust service via **Arri RPC** (fast, type-safe, delightful).
+   * **Authentication UI** is rendered by the client using **Clerk’s** widget/SDK; only login/signup flows bypass Rust, all tokens and user info then return to it for verification.
+
+3. **Mediated External Integrations**
+
+   * **Clerk**: Rust service calls Clerk’s API to verify sessions, manage users, fetch profiles.
+   * **Cloudflare R2**: Rust service generates and consumes presigned URLs to upload/download user `.db` files—clients never touch R2 directly.
+   * **Neon Postgres**: All structured data lives here; only the Rust service may read or write, keyed by `clerk_user_id`.
+
+4. **Serverless & Scalable**
+
+   * Deploy the Rust service on Railway, Fly.io or Cloud Run.
+   * Host the Next.js site on Vercel.
+   * Use Cloudflare R2 for durable storage.
+   * Infrastructure stays light, elastic, and container-free.
+
+5. **Monorepo Magic**
+
+   * Everything you need—extension, backend, webapp, infra—is in one forest.
+   * Easy local development, consistent CI/CD, and unified versioning.
+   * A clear, poetic path from code to cloud.
+   * TODO: Add turborepo
 
 ---
 
-### ✨ This repository is designed for
+## 🌙 Visual Schema
 
-- Being a **monorepo** for all services
-- Being readable and modular
-- Facilitating deployment and maintenance
-- Remaining clear, even if you develop each brick at your own pace
-- Allowing independent scaling and development of each microservice
-- Supporting a clean separation of logic: frontend, extension, backend services, storage
-- Providing a clear gateway via `auth-service` for all secure interactions
-
-```b
-
+```no-rust
                         [ User (Client) ]
                           ▲            ▲
                           │            │
@@ -93,25 +79,18 @@ The extension works autonomously, but this monorepo allows adding associated ser
               │ Next.js Site       │  │       Extension         │
               │   (Vercel)         │  └─────────────────────────┘
               └─────────┬──────────┘              │
-                        │                         ▼
-                        │            ┌─────────────────────────┐
-                        └──────────▶ │   API Gateway / Auth    │◀──[ auth-service w/ Clerk]
-                                     └─────────────────────────┘
-                                      ▲     │     ▲           ▲
-                                      │     │     │           │
-                                      ▼     │     ▼           ▼
-                              [ storage ]   │   [ community ] [ payment ] ...
-                                service     │     service       service
-                                   │        │       ▲             ▲
-                                   │        │       │             │
-        [ Cloudflare R2 ] ◀────────┘        │       └────┬────────┘
-                                            │            │
-                                            ▼            ▼
-                                  ┌────────────────────────┐
-                                  │      db-service        │
-                                  │  (ent / REST / gRPC)   │
-                                  └────────────────────────┘
-                                            │
-                                            ▼
-                                        [ Neon DB ]
+                        │                         │
+                        ▼                         ▼
+             ┌─────────────────────────────────────────────┐
+             │              Rust service                   │
+             │      (API Gateway & Core Logic)             │
+             │      [All endpoints: Arri RPC]              │
+             └─────────────────────────────────────────────┘
+                │               │               │
+                ▼               ▼               ▼
+    [ DB (Neon) Postgres ]   [ Clerk ]   [ Cloudflare R2 for users .db ]
+```
 
+---
+
+*Feel free to dive deeper—example Arri RPC schemas, presigned-URL security notes, even a FAQ in Haiku form. I’m here to bring clarity and a touch of mystic poetry to our code.*
