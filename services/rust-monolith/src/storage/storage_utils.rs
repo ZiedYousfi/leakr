@@ -1,3 +1,13 @@
+//! # Storage Utilities
+//!
+//! This module provides utilities for interacting with Cloudflare R2 (S3-compatible) storage.
+//!
+//! ## Environment Variables
+//!
+//! - `R2_ACCOUNT_ID`: Your Cloudflare R2 account ID
+//! - `R2_ACCESS_KEY_ID`: Your R2 access key ID
+//! - `R2_ACCESS_KEY_SECRET`: Your R2 access key secret
+
 use aws_sdk_s3 as s3;
 use aws_sdk_s3::primitives::ByteStream;
 use std::path::Path;
