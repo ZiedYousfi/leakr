@@ -8,6 +8,4 @@
 /// diesel migration run
 /// ```
 /// Then i recommend properly making your models here
-pub mod accounts;
-pub mod posts;
 pub mod users;
