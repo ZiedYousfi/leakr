@@ -2553,6 +2553,7 @@ dependencies = [
  "jsonwebtoken",
  "log",
  "r2d2",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
