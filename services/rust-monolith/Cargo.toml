@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 axum = { version = "0.8.4", features = ["multipart"] }
-tokio = { version = "1.46.0", features = ["full"] }
+tokio = { version = "1.46.1", features = ["full"] }
 tower = "0.5.2"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
@@ -22,13 +22,14 @@ chrono = "0.4.41"
 tower-http = { version = "0.6.6", features = ["cors", "trace"] }
 jsonwebtoken = { version = "9.3.1" }
 clerk-rs = { version = "0.4.1" }
-aws-config = { version= "1.8.1", features = ["behavior-version-latest"] }
+aws-config = { version = "1.8.1", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1.96.0"
-anyhow = "1.0.2"
-regex = "1.8.5"
+anyhow = "1.0.98"
+regex = "1.11.1"
 bytes = "1.10.1"
 base64 = "0.22.1"
 once_cell = "1.21.3"
+tempfile = "3.20.0"
 
 [profile.release]
 opt-level = 3
