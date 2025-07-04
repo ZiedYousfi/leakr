@@ -50,3 +50,69 @@ impl fmt::Display for Filename {
         )
     }
 }
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_from_string_valid_filename() {
+    let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
+    let parsed = Filename::from_string(
+      filename.trim_end_matches(".sqlite")
+    ).unwrap();
+    assert_eq!(parsed.db_name, "leakr_db");
+    assert_eq!(parsed.uuid, "1f959aee-206e-4ef0-9ef9-7d50320da348");
+    assert_eq!(parsed.date, "2025-05-09");
+    assert_eq!(parsed.time, "10-36-53");
+    assert_eq!(parsed.iteration, 292);
+  }
+
+  #[test]
+  fn test_display_trait() {
+    let filename = Filename::new(
+      "leakr_db".to_string(),
+      "1f959aee-206e-4ef0-9ef9-7d50320da348".to_string(),
+      "2025-05-09".to_string(),
+      "10-36-53".to_string(),
+      292,
+    );
+    let expected = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09_10-36-53_it292.sqlite";
+    assert_eq!(filename.to_string(), expected);
+  }
+
+  #[test]
+  fn test_validate_filename_valid() {
+    let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
+    assert!(Filename::validate_filename(filename));
+  }
+
+  #[test]
+  fn test_validate_filename_invalid_uuid() {
+    let filename = "leakr_db_invaliduuid_2025-05-09 10-36-53_it292.sqlite";
+    assert!(!Filename::validate_filename(filename));
+  }
+
+  #[test]
+  fn test_validate_filename_invalid_prefix() {
+    let filename = "otherdb_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
+    assert!(!Filename::validate_filename(filename));
+  }
+
+  #[test]
+  fn test_validate_filename_missing_iteration() {
+    let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53.sqlite";
+    assert!(!Filename::validate_filename(filename));
+  }
+
+  #[test]
+  fn test_from_string_invalid_format() {
+    let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53.sqlite";
+    assert!(Filename::from_string(filename).is_none());
+  }
+
+  #[test]
+  fn test_from_string_invalid_iteration() {
+    let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_itXYZ.sqlite";
+    assert!(Filename::from_string(filename.trim_end_matches(".sqlite")).is_none());
+  }
+}
