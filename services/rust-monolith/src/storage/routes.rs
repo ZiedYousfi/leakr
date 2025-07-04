@@ -39,13 +39,12 @@ pub async fn upload_object_handler(
 
     let bucket = std::env::var("R2_BUCKET_NAME").unwrap_or_else(|_| "default-bucket".to_string());
 
-    while let Some(field) = multipart.next_field().await.unwrap() {
-        let name = field.name().unwrap_or("file");
-        let filename = field.file_name().unwrap_or("unnamed");
+    if let Some(field) = multipart.next_field().await.unwrap() {
+        let filename = field.file_name().map(|s| s.to_string()).unwrap_or_else(|| "unnamed".to_string());
         let data = field.bytes().await.unwrap();
 
         // Save temporarily to upload
-        let temp_path = format!("/tmp/{}", filename);
+        let temp_path = format!("/tmp/{filename}");
         let mut file = match std::fs::File::create(&temp_path) {
             Ok(file) => file,
             Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
@@ -56,7 +55,7 @@ pub async fn upload_object_handler(
         }
 
         // Upload to R2
-        if upload_object(&client, &bucket, filename, &temp_path)
+        if upload_object(&client, &bucket, &filename, &temp_path)
             .await
             .is_err()
         {
@@ -85,7 +84,7 @@ pub async fn download_object_handler(
 
     let bucket = std::env::var("R2_BUCKET_NAME").unwrap_or_else(|_| "default-bucket".to_string());
 
-    let temp_path = format!("/tmp/{}", key);
+    let temp_path = format!("/tmp/{key}");
 
     match download_object(&client, &bucket, &key, &temp_path).await {
         Ok(_) => {
