@@ -6,8 +6,29 @@ fn router_v1_constructor() -> Router {
     Router::new().nest("/v1", init_router)
 }
 
+fn check_env_vars() {
+    let required_vars = [
+        "R2_ACCOUNT_ID",
+        "R2_ACCESS_KEY_ID",
+        "R2_ACCESS_KEY_SECRET",
+        "R2_BUCKET_MAIN",
+        "DATABASE_URL",
+        "RUST_LOG",
+        "RUST_BACKTRACE",
+        "R2_BUCKET_BACKUP",
+    ];
+
+    for var in required_vars {
+        if std::env::var(var).is_err() {
+            log::error!("Missing required environment variable: {var}");
+            std::process::exit(1);
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
+    check_env_vars();
     let app = Router::new().nest("/api", router_v1_constructor());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
