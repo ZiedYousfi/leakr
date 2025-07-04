@@ -12,7 +12,6 @@ use std::io::Write;
 pub fn create_routes() -> Router {
     Router::new()
         .route("/upload", post(upload_object_handler))
-        .route("/download/:key", get(download_object_handler))
 }
 
 // Axum handler functions
@@ -81,30 +80,4 @@ pub async fn upload_object_handler(
       "message": "File uploaded successfully",
       "key": filename
     })))
-}
-
-pub async fn download_object_handler(
-    Path(key): Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let client = match create_client().await {
-        Ok(client) => client,
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
-    };
-
-    let bucket = std::env::var("R2_BUCKET_NAME").unwrap_or_else(|_| "default-bucket".to_string());
-
-    let temp_path = format!("/tmp/{key}");
-
-    match download_object(&client, &bucket, &key, &temp_path).await {
-        Ok(_) => {
-            // In a real implementation, you'd want to stream the file back
-            // For now, just return a success message
-            Ok(Json(json!({
-                "message": "File downloaded successfully",
-                "key": key,
-                "path": temp_path
-            })))
-        }
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
-    }
 }
