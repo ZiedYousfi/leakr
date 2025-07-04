@@ -46,7 +46,7 @@ impl fmt::Display for Filename {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}_{}_{}_{}_it{}.sqlite",
+            "{}_{}_{} {}_it{}.sqlite",
             self.db_name, self.uuid, self.date, self.time, self.iteration
         )
     }
