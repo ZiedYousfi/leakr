@@ -20,18 +20,16 @@ impl Filename {
     }
 
     pub fn from_string(filename: &str) -> Option<Self> {
-        let parts: Vec<&str> = filename.split('_').collect();
-        if parts.len() < 5 || !parts[parts.len() - 1].starts_with("it") {
-            return None;
-        }
-
-        let db_name = parts[0].to_string();
-        let uuid = parts[1].to_string();
-        let date = parts[2].to_string();
-        let time = parts[3].to_string();
-        let iteration_str = parts[4].trim_start_matches("it");
-        let iteration = iteration_str.parse::<u32>().ok()?;
-
+        // Regex to match: db_name_uuid_date time_itN
+        let re = regex::Regex::new(
+            r"^(?P<db_name>[^_]+_[^_]+)_(?P<uuid>[0-9a-fA-F-]{36})_(?P<date>\d{4}-\d{2}-\d{2}) (?P<time>\d{2}-\d{2}-\d{2})_it(?P<iteration>\d+)$"
+        ).ok()?;
+        let caps = re.captures(filename)?;
+        let db_name = caps.name("db_name")?.as_str().to_string();
+        let uuid = caps.name("uuid")?.as_str().to_string();
+        let date = caps.name("date")?.as_str().to_string();
+        let time = caps.name("time")?.as_str().to_string();
+        let iteration = caps.name("iteration")?.as_str().parse::<u32>().ok()?;
         Some(Self::new(db_name, uuid, date, time, iteration))
     }
 
@@ -52,67 +50,70 @@ impl fmt::Display for Filename {
 }
 #[cfg(test)]
 mod tests {
-  use super::*;
+    use super::*;
 
-  #[test]
-  fn test_from_string_valid_filename() {
-    let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
-    let parsed = Filename::from_string(
-      filename.trim_end_matches(".sqlite")
-    ).unwrap();
-    assert_eq!(parsed.db_name, "leakr_db");
-    assert_eq!(parsed.uuid, "1f959aee-206e-4ef0-9ef9-7d50320da348");
-    assert_eq!(parsed.date, "2025-05-09");
-    assert_eq!(parsed.time, "10-36-53");
-    assert_eq!(parsed.iteration, 292);
-  }
+    #[test]
+    fn test_from_string_valid_filename() {
+        let filename =
+            "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
+        let parsed = Filename::from_string(filename.trim_end_matches(".sqlite")).unwrap();
+        assert_eq!(parsed.db_name, "leakr_db");
+        assert_eq!(parsed.uuid, "1f959aee-206e-4ef0-9ef9-7d50320da348");
+        assert_eq!(parsed.date, "2025-05-09");
+        assert_eq!(parsed.time, "10-36-53");
+        assert_eq!(parsed.iteration, 292);
+    }
 
-  #[test]
-  fn test_display_trait() {
-    let filename = Filename::new(
-      "leakr_db".to_string(),
-      "1f959aee-206e-4ef0-9ef9-7d50320da348".to_string(),
-      "2025-05-09".to_string(),
-      "10-36-53".to_string(),
-      292,
-    );
-    let expected = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09_10-36-53_it292.sqlite";
-    assert_eq!(filename.to_string(), expected);
-  }
+    #[test]
+    fn test_display_trait() {
+        let filename = Filename::new(
+            "leakr_db".to_string(),
+            "1f959aee-206e-4ef0-9ef9-7d50320da348".to_string(),
+            "2025-05-09".to_string(),
+            "10-36-53".to_string(),
+            292,
+        );
+        let expected =
+            "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09_10-36-53_it292.sqlite";
+        assert_eq!(filename.to_string(), expected);
+    }
 
-  #[test]
-  fn test_validate_filename_valid() {
-    let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
-    assert!(Filename::validate_filename(filename));
-  }
+    #[test]
+    fn test_validate_filename_valid() {
+        let filename =
+            "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
+        assert!(Filename::validate_filename(filename));
+    }
 
-  #[test]
-  fn test_validate_filename_invalid_uuid() {
-    let filename = "leakr_db_invaliduuid_2025-05-09 10-36-53_it292.sqlite";
-    assert!(!Filename::validate_filename(filename));
-  }
+    #[test]
+    fn test_validate_filename_invalid_uuid() {
+        let filename = "leakr_db_invaliduuid_2025-05-09 10-36-53_it292.sqlite";
+        assert!(!Filename::validate_filename(filename));
+    }
 
-  #[test]
-  fn test_validate_filename_invalid_prefix() {
-    let filename = "otherdb_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
-    assert!(!Filename::validate_filename(filename));
-  }
+    #[test]
+    fn test_validate_filename_invalid_prefix() {
+        let filename =
+            "otherdb_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
+        assert!(!Filename::validate_filename(filename));
+    }
 
-  #[test]
-  fn test_validate_filename_missing_iteration() {
-    let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53.sqlite";
-    assert!(!Filename::validate_filename(filename));
-  }
+    #[test]
+    fn test_validate_filename_missing_iteration() {
+        let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53.sqlite";
+        assert!(!Filename::validate_filename(filename));
+    }
 
-  #[test]
-  fn test_from_string_invalid_format() {
-    let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53.sqlite";
-    assert!(Filename::from_string(filename).is_none());
-  }
+    #[test]
+    fn test_from_string_invalid_format() {
+        let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53.sqlite";
+        assert!(Filename::from_string(filename).is_none());
+    }
 
-  #[test]
-  fn test_from_string_invalid_iteration() {
-    let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_itXYZ.sqlite";
-    assert!(Filename::from_string(filename.trim_end_matches(".sqlite")).is_none());
-  }
+    #[test]
+    fn test_from_string_invalid_iteration() {
+        let filename =
+            "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_itXYZ.sqlite";
+        assert!(Filename::from_string(filename.trim_end_matches(".sqlite")).is_none());
+    }
 }
