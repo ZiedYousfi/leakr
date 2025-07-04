@@ -29,6 +29,8 @@ fn check_env_vars() {
 
 #[tokio::main]
 async fn main() {
+    log::set_max_level(log::LevelFilter::Info);
+    env_logger::init();
     check_env_vars();
     let app = Router::new().nest("/api", router_v1_constructor());
 
