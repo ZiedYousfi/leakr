@@ -7,6 +7,7 @@ fn router_v1_constructor() -> Router {
 }
 
 fn check_env_vars() {
+    dotenvy::dotenv().ok();
     let required_vars = [
         "R2_ACCOUNT_ID",
         "R2_ACCESS_KEY_ID",
