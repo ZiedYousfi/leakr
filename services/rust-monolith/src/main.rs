@@ -19,18 +19,27 @@ fn check_env_vars() {
         "R2_BUCKET_BACKUP",
     ];
 
+    let mut missing_vars = Vec::new();
+
     for var in required_vars {
         if std::env::var(var).is_err() {
             log::error!("Missing required environment variable: {var}");
-            std::process::exit(1);
+            missing_vars.push(var);
         }
+    }
+
+    if !missing_vars.is_empty() {
+        log::error!("Exiting due to missing environment variables: {missing_vars:?}");
+        std::process::exit(1);
     }
 }
 
 #[tokio::main]
 async fn main() {
-    log::set_max_level(log::LevelFilter::Info);
-    env_logger::init();
+    if let Err(e) = env_logger::try_init() {
+        eprintln!("Failed to initialize logger: {e}");
+        std::process::exit(1);
+    }
     check_env_vars();
     let app = Router::new().nest("/api", router_v1_constructor());
 
