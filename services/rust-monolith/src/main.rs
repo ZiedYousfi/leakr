@@ -1,9 +1,10 @@
 use axum::Router;
+use rust_monolith::storage::routes::create_routes;
 use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new();
+    let app = Router::new().merge(create_routes());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     log::info!("Listening on http://{addr}");
