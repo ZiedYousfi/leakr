@@ -10,6 +10,7 @@ use axum::{
 use serde_json::json;
 use std::io::Write;
 use base64::{engine::general_purpose, Engine as _};
+use tempfile::NamedTempFile;
 
 pub fn create_routes() -> Router {
     let router = Router::new().route("/upload", post(upload_object_handler)).route("/download/file/:filename", get(download_object_handler));
@@ -43,11 +44,12 @@ pub async fn upload_object_handler(
     };
 
     // Save temporarily to disk
-    let temp_path = format!("/tmp/{filename}");
-    let mut file = match std::fs::File::create(&temp_path) {
+    let mut temp_file = match NamedTempFile::new() {
         Ok(file) => file,
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
     };
+    let temp_path = temp_file.path().to_string_lossy().to_string();
+    let file = &mut temp_file;
 
     if file.write_all(&data).is_err() {
         let _ = std::fs::remove_file(&temp_path);
