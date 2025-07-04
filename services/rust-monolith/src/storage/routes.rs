@@ -1,3 +1,4 @@
+use crate::storage::filename_utils::Filename;
 use crate::storage::storage_utils::{create_client, download_object, upload_object};
 use axum::{
     Router,
@@ -10,8 +11,7 @@ use serde_json::json;
 use std::io::Write;
 
 pub fn create_routes() -> Router {
-    Router::new()
-        .route("/upload", post(upload_object_handler))
+    Router::new().route("/upload", post(upload_object_handler))
 }
 
 // Axum handler functions
@@ -30,10 +30,8 @@ pub async fn upload_object_handler(
         _ => return Err(StatusCode::BAD_REQUEST),
     };
 
-    // Validate filename pattern
-    let re = regex::Regex::new(r"^leakr_db_[0-9a-fA-F-]{36}_[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}-[0-9]{2}-[0-9]{2}_it[0-9]+\.sqlite$")
-    .unwrap();
-    if !re.is_match(&filename) {
+    // Validate filename pattern using Filename utils
+    if !Filename::validate_filename(&filename) {
         return Err(StatusCode::BAD_REQUEST);
     }
 
