@@ -1,5 +1,5 @@
 use crate::storage::filename_utils::Filename;
-use crate::storage::storage_utils::{create_client, download_object, upload_object};
+use crate::storage::storage_utils::{create_client, download_object_as_bytestream, upload_object};
 use axum::{
     Router,
     extract::Multipart,
@@ -11,7 +11,7 @@ use serde_json::json;
 use std::io::Write;
 
 pub fn create_routes() -> Router {
-    Router::new().route("/upload", post(upload_object_handler))
+    Router::new().route("/upload", post(upload_object_handler)).route("/download/file/:filename", get(download_object_handler))
 }
 
 // Axum handler functions
@@ -78,4 +78,39 @@ pub async fn upload_object_handler(
       "message": "File uploaded successfully",
       "key": filename
     })))
+}
+
+pub async fn download_object_handler(
+    axum::extract::Path(filename): axum::extract::Path<String>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    // Validate filename pattern using Filename utils
+    if !Filename::validate_filename(&filename) {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = match create_client().await {
+        Ok(client) => client,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    let bucket = std::env::var("R2_BUCKET_MAIN").unwrap_or_else(|_| "default-bucket".to_string());
+
+    match download_object_as_bytestream(&client, &bucket, &filename).await {
+        Ok(mut data) => {
+            use bytes::Buf;
+            use base64::{engine::general_purpose, Engine as _};
+
+            let mut bytes = Vec::new();
+            while let Some(chunk) = data.try_next().await.unwrap_or(None) {
+                bytes.extend_from_slice(&chunk);
+            }
+            let encoded = general_purpose::STANDARD.encode(&bytes);
+
+            Ok(Json(json!({
+                "message": "File downloaded successfully",
+                "data": encoded
+            })))
+        },
+        Err(_) => Err(StatusCode::NOT_FOUND),
+    }
 }
