@@ -2,7 +2,7 @@ use crate::storage::filename_utils::Filename;
 use crate::storage::storage_utils::{create_client, download_object, upload_object};
 use axum::{
     Router,
-    extract::{Multipart, Path},
+    extract::Multipart,
     http::StatusCode,
     response::Json,
     routing::{get, post},
