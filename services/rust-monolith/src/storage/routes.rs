@@ -15,7 +15,7 @@ use tempfile::NamedTempFile;
 pub fn create_routes() -> Router {
     let router = Router::new()
         .route("/upload", post(upload_object_handler))
-        .route("/download/file/:filename", get(download_object_handler));
+        .route("/download/file/{filename}", get(download_object_handler));
     Router::new().nest("/storage", router)
 }
 
