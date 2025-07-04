@@ -18,15 +18,14 @@ jobs:
           key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-
-      - name: Use Node.js 22.x
+      - name: Use Node.js 20.x
         uses: actions/setup-node@v3.4.1
         with:
-          node-version: 22.x
+          node-version: 20.x
           cache: "pnpm"
-      - uses: pnpm/action-setup@v2.2.4
+      - uses: pnpm/action-setup@v3
         with:
-          version: latest
-          run_install: false
+          version: 8.15.5   # or latest
       - name: Install dependencies
         run: pnpm install
       - name: Build the extension
