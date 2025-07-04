@@ -1,5 +1,5 @@
-use crate::storage::filename_utils::Filename;
 use crate::storage::storage_utils::{create_client, download_object, upload_object};
+use crate::storage::filename_utils::Filename;
 use axum::{
     Router,
     extract::{Multipart, Path},
@@ -11,7 +11,8 @@ use serde_json::json;
 use std::io::Write;
 
 pub fn create_routes() -> Router {
-    Router::new().route("/upload", post(upload_object_handler))
+    Router::new()
+        .route("/upload", post(upload_object_handler))
 }
 
 // Axum handler functions
@@ -61,7 +62,7 @@ pub async fn upload_object_handler(
         }
     };
 
-    let bucket = std::env::var("R2_BUCKET_NAME").unwrap_or_else(|_| "default-bucket".to_string());
+    let bucket = std::env::var("R2_BUCKET_MAIN").unwrap_or_else(|_| "default-bucket".to_string());
 
     if upload_object(&client, &bucket, &filename, &temp_path)
         .await
