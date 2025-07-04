@@ -77,7 +77,7 @@ mod tests {
             292,
         );
         let expected =
-            "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09_10-36-53_it292.sqlite";
+            "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
         assert_eq!(filename.to_string(), expected);
     }
 
