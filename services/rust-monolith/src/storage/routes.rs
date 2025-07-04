@@ -1,7 +1,4 @@
-use crate::storage::storage_utils::{
-    create_client, download_object, generate_get_presigned_url, generate_upload_presigned_url,
-    upload_object,
-};
+use crate::storage::storage_utils::{create_client, download_object, upload_object};
 use axum::{
     Router,
     extract::{Multipart, Path},
@@ -11,20 +8,11 @@ use axum::{
 };
 use serde_json::json;
 use std::io::Write;
-use std::time::Duration;
 
 pub fn create_routes() -> Router {
     Router::new()
         .route("/upload", post(upload_object_handler))
         .route("/download/:key", get(download_object_handler))
-        .route(
-            "/presigned/get/:key",
-            get(generate_get_presigned_url_handler),
-        )
-        .route(
-            "/presigned/upload/:key",
-            get(generate_upload_presigned_url_handler),
-        )
 }
 
 // Axum handler functions
@@ -117,48 +105,6 @@ pub async fn download_object_handler(
                 "path": temp_path
             })))
         }
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
-    }
-}
-
-pub async fn generate_get_presigned_url_handler(
-    Path(key): Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let client = match create_client().await {
-        Ok(client) => client,
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
-    };
-
-    let bucket = std::env::var("R2_BUCKET_NAME").unwrap_or_else(|_| "default-bucket".to_string());
-
-    let expires_in = Duration::from_secs(3600); // 1 hour
-
-    match generate_get_presigned_url(&client, &bucket, &key, expires_in).await {
-        Ok(url) => Ok(Json(json!({
-            "presigned_url": url,
-            "expires_in_seconds": 3600
-        }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
-    }
-}
-
-pub async fn generate_upload_presigned_url_handler(
-    Path(key): Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let client = match create_client().await {
-        Ok(client) => client,
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
-    };
-
-    let bucket = std::env::var("R2_BUCKET_NAME").unwrap_or_else(|_| "default-bucket".to_string());
-
-    let expires_in = Duration::from_secs(3600); // 1 hour
-
-    match generate_upload_presigned_url(&client, &bucket, &key, expires_in).await {
-        Ok(url) => Ok(Json(json!({
-            "presigned_url": url,
-            "expires_in_seconds": 3600
-        }))),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
