@@ -28,7 +28,7 @@ pub async fn upload_object_handler(
 
     let filename = match field.file_name().map(|s| s.to_string()) {
         Some(name) => name,
-        None => return Err(StatusCode::BAD_REQUEST),
+        _ => return Err(StatusCode::BAD_REQUEST),
     };
 
     // Validate filename pattern
