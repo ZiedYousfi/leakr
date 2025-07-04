@@ -7,13 +7,15 @@ use axum::{
     response::Json,
     routing::{get, post},
 };
+use base64::{Engine as _, engine::general_purpose};
 use serde_json::json;
 use std::io::Write;
-use base64::{engine::general_purpose, Engine as _};
 use tempfile::NamedTempFile;
 
 pub fn create_routes() -> Router {
-    let router = Router::new().route("/upload", post(upload_object_handler)).route("/download/file/:filename", get(download_object_handler));
+    let router = Router::new()
+        .route("/upload", post(upload_object_handler))
+        .route("/download/file/:filename", get(download_object_handler));
     Router::new().nest("/storage", router)
 }
 
@@ -111,7 +113,7 @@ pub async fn download_object_handler(
                 "message": "File downloaded successfully",
                 "data": encoded
             })))
-        },
+        }
         Err(_) => Err(StatusCode::NOT_FOUND),
     }
 }

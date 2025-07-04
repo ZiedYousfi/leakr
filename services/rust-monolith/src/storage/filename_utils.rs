@@ -3,7 +3,7 @@ use std::fmt;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-static VALIDATE_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
+static FILENAME_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
     // Add named capture groups for all fields
     regex::Regex::new(
         r"^(?P<db_name>leakr_db)_(?P<uuid>[0-9a-fA-F-]{36})_(?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2}) (?P<time>[0-9]{2}-[0-9]{2}-[0-9]{2})_it(?P<iteration>[0-9]+)\.sqlite$",
@@ -33,7 +33,7 @@ impl Filename {
 
     pub fn from_string(filename: &str) -> Option<Self> {
         // Regex to match: db_name_uuid_date time_itN
-        let re = &VALIDATE_REGEX;
+        let re = &FILENAME_REGEX;
         let caps = re.captures(filename)?;
         let db_name = caps.name("db_name")?.as_str().to_string();
         let uuid = caps.name("uuid")?.as_str().to_string();
@@ -44,7 +44,7 @@ impl Filename {
     }
 
     pub fn validate_filename(filename: &str) -> bool {
-        VALIDATE_REGEX.is_match(filename)
+        FILENAME_REGEX.is_match(filename)
     }
 }
 
