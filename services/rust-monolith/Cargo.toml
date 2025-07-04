@@ -26,6 +26,8 @@ aws-config = { version= "1.8.1", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1.96.0"
 anyhow = "1.0.2"
 regex = "1.8.5"
+bytes = "1.10.1"
+base64 = "0.22.1"
 
 [profile.release]
 opt-level = 3

@@ -2545,6 +2545,8 @@ dependencies = [
  "aws-config",
  "aws-sdk-s3",
  "axum",
+ "base64 0.22.1",
+ "bytes",
  "chrono",
  "clap",
  "clerk-rs",

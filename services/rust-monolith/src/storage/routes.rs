@@ -9,6 +9,7 @@ use axum::{
 };
 use serde_json::json;
 use std::io::Write;
+use base64::{engine::general_purpose, Engine as _};
 
 pub fn create_routes() -> Router {
     Router::new().route("/upload", post(upload_object_handler)).route("/download/file/:filename", get(download_object_handler))
@@ -97,9 +98,6 @@ pub async fn download_object_handler(
 
     match download_object_as_bytestream(&client, &bucket, &filename).await {
         Ok(mut data) => {
-            use bytes::Buf;
-            use base64::{engine::general_purpose, Engine as _};
-
             let mut bytes = Vec::new();
             while let Some(chunk) = data.try_next().await.unwrap_or(None) {
                 bytes.extend_from_slice(&chunk);
