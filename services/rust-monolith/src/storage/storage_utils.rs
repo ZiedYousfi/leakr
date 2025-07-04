@@ -90,6 +90,15 @@ pub async fn download_object(
     Ok(())
 }
 
+pub async fn download_object_as_bytestream(
+    client: &s3::Client,
+    bucket: &str,
+    key: &str,
+) -> Result<ByteStream, Error> {
+    let resp = client.get_object().bucket(bucket).key(key).send().await?;
+    Ok(resp.body)
+}
+
 pub async fn generate_get_presigned_url(
     client: &s3::Client,
     bucket: &str,

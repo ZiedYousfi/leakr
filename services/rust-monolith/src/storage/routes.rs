@@ -1,30 +1,20 @@
-use crate::storage::storage_utils::{
-    create_client, download_object, generate_get_presigned_url, generate_upload_presigned_url,
-    upload_object,
-};
+use crate::storage::filename_utils::Filename;
+use crate::storage::storage_utils::{create_client, download_object_as_bytestream, upload_object};
 use axum::{
     Router,
-    extract::{Multipart, Path},
+    extract::Multipart,
     http::StatusCode,
     response::Json,
     routing::{get, post},
 };
 use serde_json::json;
 use std::io::Write;
-use std::time::Duration;
+use base64::{engine::general_purpose, Engine as _};
+use tempfile::NamedTempFile;
 
 pub fn create_routes() -> Router {
-    Router::new()
-        .route("/upload", post(upload_object_handler))
-        .route("/download/:key", get(download_object_handler))
-        .route(
-            "/presigned/get/:key",
-            get(generate_get_presigned_url_handler),
-        )
-        .route(
-            "/presigned/upload/:key",
-            get(generate_upload_presigned_url_handler),
-        )
+    let router = Router::new().route("/upload", post(upload_object_handler)).route("/download/file/:filename", get(download_object_handler));
+    Router::new().nest("/storage", router)
 }
 
 // Axum handler functions
@@ -32,112 +22,96 @@ pub fn create_routes() -> Router {
 pub async fn upload_object_handler(
     mut multipart: Multipart,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let client = match create_client().await {
-        Ok(client) => client,
+    // Extract the file from the multipart form
+    let field = match multipart.next_field().await {
+        Ok(Some(field)) => field,
+        _ => return Err(StatusCode::BAD_REQUEST),
+    };
+
+    let filename = match field.file_name().map(|s| s.to_string()) {
+        Some(name) => name,
+        _ => return Err(StatusCode::BAD_REQUEST),
+    };
+
+    // Validate filename pattern using Filename utils
+    if !Filename::validate_filename(&filename) {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let data = match field.bytes().await {
+        Ok(data) => data,
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
     };
 
-    let bucket = std::env::var("R2_BUCKET_NAME").unwrap_or_else(|_| "default-bucket".to_string());
+    // Save temporarily to disk
+    let mut temp_file = match NamedTempFile::new() {
+        Ok(file) => file,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+    let temp_path = temp_file.path().to_string_lossy().to_string();
+    let file = &mut temp_file;
 
-    if let Some(field) = multipart.next_field().await.unwrap() {
-        let filename = field.file_name().map(|s| s.to_string()).unwrap_or_else(|| "unnamed".to_string());
-        let data = field.bytes().await.unwrap();
-
-        // Save temporarily to upload
-        let temp_path = format!("/tmp/{filename}");
-        let mut file = match std::fs::File::create(&temp_path) {
-            Ok(file) => file,
-            Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
-        };
-
-        if file.write_all(&data).is_err() {
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-
-        // Upload to R2
-        if upload_object(&client, &bucket, &filename, &temp_path)
-            .await
-            .is_err()
-        {
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-
-        // Clean up temp file
+    if file.write_all(&data).is_err() {
         let _ = std::fs::remove_file(&temp_path);
-
-        return Ok(Json(json!({
-            "message": "File uploaded successfully",
-            "key": filename
-        })));
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    Err(StatusCode::BAD_REQUEST)
+    // Upload to R2
+    let client = match create_client().await {
+        Ok(client) => client,
+        Err(_) => {
+            let _ = std::fs::remove_file(&temp_path);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let bucket = std::env::var("R2_BUCKET_MAIN").unwrap_or_else(|_| "default-bucket".to_string());
+
+    if upload_object(&client, &bucket, &filename, &temp_path)
+        .await
+        .is_err()
+    {
+        let _ = std::fs::remove_file(&temp_path);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    // Clean up temp file
+    let _ = std::fs::remove_file(&temp_path);
+
+    Ok(Json(json!({
+      "message": "File uploaded successfully",
+      "key": filename
+    })))
 }
 
 pub async fn download_object_handler(
-    Path(key): Path<String>,
+    axum::extract::Path(filename): axum::extract::Path<String>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    // Validate filename pattern using Filename utils
+    if !Filename::validate_filename(&filename) {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
     let client = match create_client().await {
         Ok(client) => client,
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
     };
 
-    let bucket = std::env::var("R2_BUCKET_NAME").unwrap_or_else(|_| "default-bucket".to_string());
+    let bucket = std::env::var("R2_BUCKET_MAIN").unwrap_or_else(|_| "default-bucket".to_string());
 
-    let temp_path = format!("/tmp/{key}");
+    match download_object_as_bytestream(&client, &bucket, &filename).await {
+        Ok(mut data) => {
+            let mut bytes = Vec::new();
+            while let Some(chunk) = data.try_next().await.unwrap_or(None) {
+                bytes.extend_from_slice(&chunk);
+            }
+            let encoded = general_purpose::STANDARD.encode(&bytes);
 
-    match download_object(&client, &bucket, &key, &temp_path).await {
-        Ok(_) => {
-            // In a real implementation, you'd want to stream the file back
-            // For now, just return a success message
             Ok(Json(json!({
                 "message": "File downloaded successfully",
-                "key": key,
-                "path": temp_path
+                "data": encoded
             })))
-        }
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
-    }
-}
-
-pub async fn generate_get_presigned_url_handler(
-    Path(key): Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let client = match create_client().await {
-        Ok(client) => client,
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
-    };
-
-    let bucket = std::env::var("R2_BUCKET_NAME").unwrap_or_else(|_| "default-bucket".to_string());
-
-    let expires_in = Duration::from_secs(3600); // 1 hour
-
-    match generate_get_presigned_url(&client, &bucket, &key, expires_in).await {
-        Ok(url) => Ok(Json(json!({
-            "presigned_url": url,
-            "expires_in_seconds": 3600
-        }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
-    }
-}
-
-pub async fn generate_upload_presigned_url_handler(
-    Path(key): Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let client = match create_client().await {
-        Ok(client) => client,
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
-    };
-
-    let bucket = std::env::var("R2_BUCKET_NAME").unwrap_or_else(|_| "default-bucket".to_string());
-
-    let expires_in = Duration::from_secs(3600); // 1 hour
-
-    match generate_upload_presigned_url(&client, &bucket, &key, expires_in).await {
-        Ok(url) => Ok(Json(json!({
-            "presigned_url": url,
-            "expires_in_seconds": 3600
-        }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        },
+        Err(_) => Err(StatusCode::NOT_FOUND),
     }
 }
