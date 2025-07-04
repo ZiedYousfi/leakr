@@ -1,6 +1,12 @@
 use std::fmt;
 
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+
+static VALIDATE_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"^leakr_db_[0-9a-fA-F-]{36}_[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}-[0-9]{2}-[0-9]{2}_it[0-9]+\.sqlite$")
+        .expect("Invalid regex pattern")
+});
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Hash)]
 pub struct Filename {
@@ -24,9 +30,7 @@ impl Filename {
 
     pub fn from_string(filename: &str) -> Option<Self> {
         // Regex to match: db_name_uuid_date time_itN
-        let re = regex::Regex::new(
-            r"^(?P<db_name>[^_]+_[^_]+)_(?P<uuid>[0-9a-fA-F-]{36})_(?P<date>\d{4}-\d{2}-\d{2}) (?P<time>\d{2}-\d{2}-\d{2})_it(?P<iteration>\d+)$"
-        ).ok()?;
+        let re = &VALIDATE_REGEX;
         let caps = re.captures(filename)?;
         let db_name = caps.name("db_name")?.as_str().to_string();
         let uuid = caps.name("uuid")?.as_str().to_string();

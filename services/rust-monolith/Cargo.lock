@@ -2554,6 +2554,7 @@ dependencies = [
  "dotenvy",
  "jsonwebtoken",
  "log",
+ "once_cell",
  "r2d2",
  "regex",
  "reqwest",
