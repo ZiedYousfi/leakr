@@ -41,8 +41,7 @@ impl Filename {
     }
 
     pub fn validate_filename(filename: &str) -> bool {
-        let re = regex::Regex::new(r"^leakr_db_[0-9a-fA-F-]{36}_[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}-[0-9]{2}-[0-9]{2}_it[0-9]+\.sqlite$").unwrap();
-        re.is_match(filename)
+        VALIDATE_REGEX.is_match(filename)
     }
 }
 
