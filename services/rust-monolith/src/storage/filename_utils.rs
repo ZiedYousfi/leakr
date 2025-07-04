@@ -4,8 +4,11 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 static VALIDATE_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
-    regex::Regex::new(r"^leakr_db_[0-9a-fA-F-]{36}_[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}-[0-9]{2}-[0-9]{2}_it[0-9]+\.sqlite$")
-        .expect("Invalid regex pattern")
+    // Add named capture groups for all fields
+    regex::Regex::new(
+        r"^(?P<db_name>leakr_db)_(?P<uuid>[0-9a-fA-F-]{36})_(?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2}) (?P<time>[0-9]{2}-[0-9]{2}-[0-9]{2})_it(?P<iteration>[0-9]+)\.sqlite$",
+    )
+    .expect("Invalid regex pattern")
 });
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Hash)]
@@ -62,7 +65,7 @@ mod tests {
     fn test_from_string_valid_filename() {
         let filename =
             "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_it292.sqlite";
-        let parsed = Filename::from_string(filename.trim_end_matches(".sqlite")).unwrap();
+        let parsed = Filename::from_string(filename).unwrap();
         assert_eq!(parsed.db_name, "leakr_db");
         assert_eq!(parsed.uuid, "1f959aee-206e-4ef0-9ef9-7d50320da348");
         assert_eq!(parsed.date, "2025-05-09");
@@ -121,5 +124,77 @@ mod tests {
         let filename =
             "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09 10-36-53_itXYZ.sqlite";
         assert!(Filename::from_string(filename.trim_end_matches(".sqlite")).is_none());
+    }
+
+    #[test]
+    fn test_from_string_with_invalid_date_time_separator() {
+        // Using 'T' instead of space between date and time
+        let filename =
+            "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09T10-36-53_it292.sqlite";
+        assert!(Filename::from_string(filename).is_none());
+        assert!(!Filename::validate_filename(filename));
+    }
+
+    #[test]
+    fn test_from_string_with_extra_spaces_in_date_time() {
+        // Extra spaces between date and time
+        let filename =
+            "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09  10-36-53_it292.sqlite";
+        assert!(Filename::from_string(filename).is_none());
+        assert!(!Filename::validate_filename(filename));
+    }
+
+    #[test]
+    fn test_to_string_and_from_string_roundtrip() {
+        let original = Filename::new(
+            "leakr_db".to_string(),
+            "1f959aee-206e-4ef0-9ef9-7d50320da348".to_string(),
+            "2025-05-09".to_string(),
+            "10-36-53".to_string(),
+            123,
+        );
+        let filename_str = original.to_string();
+        let parsed = Filename::from_string(&filename_str).unwrap();
+        assert_eq!(original, parsed);
+    }
+
+    #[test]
+    fn test_to_string_invalid_date_time_format() {
+        // This struct has an invalid date-time format (missing space)
+        let filename = Filename::new(
+            "leakr_db".to_string(),
+            "1f959aee-206e-4ef0-9ef9-7d50320da348".to_string(),
+            "2025-05-09".to_string(),
+            "10-36-53".to_string(),
+            1,
+        );
+        let filename_str = filename.to_string().replace(" ", "T");
+        assert!(Filename::from_string(&filename_str).is_none());
+        assert!(!Filename::validate_filename(&filename_str));
+    }
+
+    #[test]
+    fn test_validate_filename_with_date_time_as_one_field() {
+        // DateTime as one field (no space)
+        let filename =
+            "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09-10-36-53_it1.sqlite";
+        assert!(!Filename::validate_filename(filename));
+        assert!(Filename::from_string(filename).is_none());
+    }
+
+    #[test]
+    fn test_validate_filename_with_only_date() {
+        // Only date, no time
+        let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_2025-05-09_it1.sqlite";
+        assert!(!Filename::validate_filename(filename));
+        assert!(Filename::from_string(filename).is_none());
+    }
+
+    #[test]
+    fn test_validate_filename_with_only_time() {
+        // Only time, no date
+        let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_10-36-53_it1.sqlite";
+        assert!(!Filename::validate_filename(filename));
+        assert!(Filename::from_string(filename).is_none());
     }
 }
