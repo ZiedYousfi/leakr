@@ -1,5 +1,8 @@
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Hash)]
 pub struct Filename {
     pub db_name: String,
     pub uuid: String,
