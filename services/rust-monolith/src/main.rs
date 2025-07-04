@@ -19,17 +19,20 @@ fn check_env_vars() {
         "R2_BUCKET_BACKUP",
     ];
 
-    let mut missing_vars = Vec::new();
+    let mut missing_or_empty_vars = Vec::new();
 
     for var in required_vars {
-        if std::env::var(var).is_err() {
-            log::error!("Missing required environment variable: {var}");
-            missing_vars.push(var);
+        match std::env::var(var) {
+            Ok(val) if !val.trim().is_empty() => {},
+            _ => {
+                log::error!("Missing or empty required environment variable: {var}");
+                missing_or_empty_vars.push(var);
+            }
         }
     }
 
-    if !missing_vars.is_empty() {
-        log::error!("Exiting due to missing environment variables: {missing_vars:?}");
+    if !missing_or_empty_vars.is_empty() {
+        log::error!("Exiting due to missing or empty environment variables: {missing_or_empty_vars:?}");
         std::process::exit(1);
     }
 }
