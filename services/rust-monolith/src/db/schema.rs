@@ -6,6 +6,7 @@ diesel::table! {
         clerk_user_id -> Text,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        files -> Integer
     }
 }
 
@@ -19,7 +20,7 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(files -> users(uuid_of_users));
+diesel::joinable!(users -> files (files));
 diesel::allow_tables_to_appear_in_same_query!(
     users,
     files,

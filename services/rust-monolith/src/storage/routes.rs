@@ -16,7 +16,8 @@ use tempfile::NamedTempFile;
 pub fn create_routes() -> Router {
     let router = Router::new()
         .route("/upload", post(upload_object_handler))
-        .route("/download/file/{filename}", get(download_object_handler));
+        .route("/download/file/{filename}", get(download_object_handler))
+        .route("/info/user/{uuid}", get(user_info_handler));
     Router::new().nest("/storage", router)
 }
 
@@ -138,5 +139,24 @@ pub async fn download_object_handler(
             })))
         }
         Err(_) => Err(StatusCode::NOT_FOUND),
+    }
+}
+
+pub async fn user_info_handler(
+    axum::extract::Path(uuid): axum::extract::Path<String>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    // Validate UUID format
+    if uuid.is_empty() || uuid.len() != 36 {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let mut conn = crate::db::db_utils::get_connection(&crate::db::db_utils::establish_pool());
+
+    match crate::db::models::users::Users::get_user_files(&mut conn, &uuid) {
+        Ok(files) => Ok(Json(json!({
+            "message": "User files retrieved successfully",
+            "files": files
+        }))),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
