@@ -1,4 +1,4 @@
-use crate::db::models::files::{FileTable, NewFileTable};
+use crate::db::models::files::NewFileTable;
 use crate::storage::filename_utils::Filename;
 use crate::storage::storage_utils::{create_client, download_object_as_bytestream, upload_object};
 use axum::{
