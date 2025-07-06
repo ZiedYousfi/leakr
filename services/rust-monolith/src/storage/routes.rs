@@ -152,11 +152,8 @@ pub async fn user_info_handler(
 
     let mut conn = crate::db::db_utils::get_connection(&crate::db::db_utils::establish_pool());
 
-    match crate::db::models::users::Users::get_user_files(&mut conn, &uuid) {
-        Ok(files) => Ok(Json(json!({
-            "message": "User files retrieved successfully",
-            "files": files
-        }))),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
-    }
+    let user_files = match crate::db::models::users::Users::get_user_files(&mut conn, &uuid) {
+        Ok(files) => files,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
 }
