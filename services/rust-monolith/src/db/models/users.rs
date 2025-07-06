@@ -1,31 +1,33 @@
 use diesel::prelude::*;
 
-#[derive(Queryable, Insertable, AsChangeset, Debug)]
+#[derive(Queryable, Selectable, Insertable, AsChangeset, Debug)]
 #[diesel(table_name = crate::db::schema::users)]
 // Add check_for_backend for better error messages (optional)
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Users {
     pub uuid: String,
-    pub created_at: chrono::NaiveDateTime,
-    pub files: i32,
     pub clerk_user_id: String,
+    pub created_at: chrono::NaiveDateTime,
+    pub updated_at: chrono::NaiveDateTime,
+    pub files: i32,
 }
 
 #[derive(Insertable, Debug)]
 #[diesel(table_name = crate::db::schema::users)]
 pub struct NewUsers {
-    // id is usually auto-incremented, so not included here
     pub uuid: String,
     pub clerk_user_id: String,
 }
 
 impl Users {
     pub fn new(uuid: String, clerk_user_id: String) -> Self {
+        let now = chrono::Local::now().naive_local();
         Self {
             uuid,
-            created_at: chrono::Local::now().naive_local(),
-            files: 0,
             clerk_user_id,
+            created_at: now,
+            updated_at: now,
+            files: 0,
         }
     }
 
