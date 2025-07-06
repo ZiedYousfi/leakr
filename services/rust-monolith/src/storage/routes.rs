@@ -156,4 +156,53 @@ pub async fn user_info_handler(
         Ok(files) => files,
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
     };
+
+    if user_files.is_empty() {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    let most_recent_file = user_files
+        .iter()
+        .max_by_key(|file| (file.date.clone(), file.time.clone()))
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    let most_iteration_file = user_files.iter().max_by_key(|file| file.iteration);
+
+    let most_iteration = most_iteration_file.map(|file| file.iteration).unwrap_or(0);
+
+    if most_recent_file.iteration == most_iteration {
+        let file_struct = Filename::from_parts(
+            &uuid,
+            &most_recent_file.date,
+            &most_recent_file.time,
+            most_recent_file.iteration as u32,
+        );
+        Ok(Json(json!({
+            "uuid": uuid,
+            "most_recent_file": file_struct.to_string()
+        })))
+    } else {
+        let file_struct_most_recent = Filename::from_parts(
+            &most_recent_file.uuid_of_users,
+            &most_recent_file.date,
+            &most_recent_file.time,
+            most_iteration as u32,
+        );
+
+        if let Some(most_iteration) = most_iteration_file {
+            let file_struct_most_iter = Filename::from_parts(
+                &most_iteration.uuid_of_users,
+                &most_iteration.date,
+                &most_iteration.time,
+                most_iteration.iteration as u32,
+            );
+            Ok(Json(json!({
+                "uuid": uuid,
+                "most_recent_file": file_struct_most_recent.to_string(),
+                "most_iteration_file": file_struct_most_iter.to_string()
+            })))
+        } else {
+            Err(StatusCode::NOT_FOUND)
+        }
+    }
 }

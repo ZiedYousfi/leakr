@@ -46,6 +46,16 @@ impl Filename {
     pub fn validate_filename(filename: &str) -> bool {
         FILENAME_REGEX.is_match(filename)
     }
+
+    pub fn from_parts(uuid: &str, date: &str, time: &str, iteration: u32) -> Self {
+        Self::new(
+            "leakr_db".to_string(),
+            uuid.to_string(),
+            date.to_string(),
+            time.to_string(),
+            iteration,
+        )
+    }
 }
 
 impl fmt::Display for Filename {

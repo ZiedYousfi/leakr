@@ -21,7 +21,4 @@ diesel::table! {
 }
 
 diesel::joinable!(users -> files (files));
-diesel::allow_tables_to_appear_in_same_query!(
-    users,
-    files,
-);
+diesel::allow_tables_to_appear_in_same_query!(users, files,);
