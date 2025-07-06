@@ -9,3 +9,4 @@
 /// ```
 /// Then i recommend properly making your models here
 pub mod users;
+pub mod files;
