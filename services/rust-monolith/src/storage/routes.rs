@@ -1,3 +1,4 @@
+use crate::db::models::files::{FileTable, NewFileTable};
 use crate::storage::filename_utils::Filename;
 use crate::storage::storage_utils::{create_client, download_object_as_bytestream, upload_object};
 use axum::{
@@ -69,12 +70,34 @@ pub async fn upload_object_handler(
 
     let bucket = std::env::var("R2_BUCKET_MAIN").unwrap_or_else(|_| "default-bucket".to_string());
 
-    if upload_object(&client, &bucket, &filename, &temp_path)
-        .await
-        .is_err()
-    {
-        let _ = std::fs::remove_file(&temp_path);
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    match upload_object(&client, &bucket, &filename, &temp_path).await {
+        Ok(_) => {
+            // Upload successful, make it in db
+
+            let file_struct = Filename::from_string(&filename).ok_or(StatusCode::BAD_REQUEST)?;
+
+            let new_file = NewFileTable::new(
+                file_struct.uuid,
+                file_struct.date,
+                file_struct.time,
+                file_struct.iteration as i32,
+            );
+
+            let mut conn =
+                crate::db::db_utils::get_connection(&crate::db::db_utils::establish_pool());
+
+            match new_file.insert_into_db(&mut conn) {
+                Ok(_) => {}
+                Err(_) => {
+                    let _ = std::fs::remove_file(&temp_path);
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            }
+        }
+        Err(_) => {
+            let _ = std::fs::remove_file(&temp_path);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
     }
 
     // Clean up temp file
