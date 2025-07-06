@@ -8,3 +8,19 @@ diesel::table! {
         updated_at -> Timestamp,
     }
 }
+
+diesel::table! {
+    files (id){
+        id -> Integer,
+        uuid_of_users -> Text,
+        date -> Text,
+        time -> Text,
+        iteration -> Integer,
+    }
+}
+
+diesel::joinable!(files -> users(uuid_of_users));
+diesel::allow_tables_to_appear_in_same_query!(
+    users,
+    files,
+);
