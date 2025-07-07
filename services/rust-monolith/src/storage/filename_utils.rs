@@ -46,6 +46,58 @@ impl Filename {
     pub fn validate_filename(filename: &str) -> bool {
         FILENAME_REGEX.is_match(filename)
     }
+
+    pub fn from_parts(uuid: &str, date: &str, time: &str, iteration: u32) -> Self {
+        Self::new(
+            "leakr_db".to_string(),
+            uuid.to_string(),
+            date.to_string(),
+            time.to_string(),
+            iteration,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub enum FileComparisonResult {
+    BestFile(Filename),
+    ConflictingFiles {
+        most_recent_file: Filename,
+        most_iteration_file: Filename,
+    },
+}
+
+pub fn compare_files(
+    most_recent_file: &Filename,
+    most_iteration_file: &Filename,
+) -> Result<FileComparisonResult, anyhow::Error> {
+    if most_recent_file == most_iteration_file {
+        let file_struct = Filename::from_parts(
+            &most_recent_file.uuid,
+            &most_recent_file.date,
+            &most_recent_file.time,
+            most_recent_file.iteration,
+        );
+        Ok(FileComparisonResult::BestFile(file_struct))
+    } else {
+        let file_struct_most_recent = Filename::from_parts(
+            &most_recent_file.uuid,
+            &most_recent_file.date,
+            &most_recent_file.time,
+            most_recent_file.iteration,
+        );
+
+        let file_struct_most_iter = Filename::from_parts(
+            &most_iteration_file.uuid,
+            &most_iteration_file.date,
+            &most_iteration_file.time,
+            most_iteration_file.iteration,
+        );
+        Ok(FileComparisonResult::ConflictingFiles {
+            most_recent_file: file_struct_most_recent,
+            most_iteration_file: file_struct_most_iter,
+        })
+    }
 }
 
 impl fmt::Display for Filename {
@@ -57,6 +109,7 @@ impl fmt::Display for Filename {
         )
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,5 +249,58 @@ mod tests {
         let filename = "leakr_db_1f959aee-206e-4ef0-9ef9-7d50320da348_10-36-53_it1.sqlite";
         assert!(!Filename::validate_filename(filename));
         assert!(Filename::from_string(filename).is_none());
+    }
+
+    #[test]
+    fn test_compare_files_best_file() {
+        let file = Filename::new(
+            "leakr_db".to_string(),
+            "uuid-123".to_string(),
+            "2024-06-01".to_string(),
+            "12-00-00".to_string(),
+            42,
+        );
+        let result = compare_files(&file, &file).unwrap();
+        match result {
+            FileComparisonResult::BestFile(f) => {
+                assert_eq!(f, file);
+            }
+            _ => panic!("Expected BestFile variant"),
+        }
+    }
+
+    #[test]
+    fn test_compare_files_conflicting_files() {
+        let file1 = Filename::new(
+            "leakr_db".to_string(),
+            "uuid-123".to_string(),
+            "2024-06-01".to_string(),
+            "12-00-00".to_string(),
+            42,
+        );
+        let file2 = Filename::new(
+            "leakr_db".to_string(),
+            "uuid-456".to_string(),
+            "2024-06-02".to_string(),
+            "13-00-00".to_string(),
+            43,
+        );
+        let result = compare_files(&file1, &file2).unwrap();
+        match result {
+            FileComparisonResult::ConflictingFiles {
+                most_recent_file,
+                most_iteration_file,
+            } => {
+                assert_eq!(
+                    most_recent_file,
+                    Filename::from_parts("uuid-123", "2024-06-01", "12-00-00", 42)
+                );
+                assert_eq!(
+                    most_iteration_file,
+                    Filename::from_parts("uuid-456", "2024-06-02", "13-00-00", 43)
+                );
+            }
+            _ => panic!("Expected ConflictingFiles variant"),
+        }
     }
 }

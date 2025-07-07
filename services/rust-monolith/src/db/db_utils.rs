@@ -15,3 +15,8 @@ pub fn establish_pool() -> PgPool {
         .build(manager)
         .expect("Failed to create pool.")
 }
+
+pub fn get_connection(pool: &PgPool) -> PgPooledConnection {
+    pool.get()
+        .expect("Failed to get a connection from the pool.")
+}
