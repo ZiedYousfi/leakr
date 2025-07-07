@@ -58,6 +58,7 @@ impl Filename {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum FileComparisonResult {
     BestFile(Filename),
     ConflictingFiles {

@@ -1,6 +1,10 @@
-use crate::db::models::files::NewFileTable;
-use crate::storage::filename_utils::{FileComparisonResult, Filename, compare_files};
-use crate::storage::storage_utils::{create_client, download_object_as_bytestream, upload_object};
+use crate::{
+    db::models::files::NewFileTable,
+    storage::{
+        filename_utils::{FileComparisonResult, Filename, compare_files},
+        storage_utils::{create_client, download_object_as_bytestream, upload_object},
+    },
+};
 use axum::{
     Router,
     extract::Multipart,
@@ -9,7 +13,7 @@ use axum::{
     routing::{get, post},
 };
 use base64::{Engine as _, engine::general_purpose};
-use serde_json::json;
+use serde::{Deserialize, Serialize};
 use std::io::Write;
 use tempfile::NamedTempFile;
 
@@ -21,11 +25,29 @@ pub fn create_routes() -> Router {
     Router::new().nest("/storage", router)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct UploadResponse {
+    pub message: String,
+    pub key: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct DownloadResponse {
+    pub message: String,
+    pub data: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct UserInfoResponse {
+    pub uuid: String,
+    pub response: FileComparisonResult,
+}
+
 // Axum handler functions
 
 pub async fn upload_object_handler(
     mut multipart: Multipart,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> Result<Json<UploadResponse>, StatusCode> {
     // Extract the file from the multipart form
     let field = match multipart.next_field().await {
         Ok(Some(field)) => field,
@@ -104,15 +126,15 @@ pub async fn upload_object_handler(
     // Clean up temp file
     let _ = std::fs::remove_file(&temp_path);
 
-    Ok(Json(json!({
-      "message": "File uploaded successfully",
-      "key": filename
-    })))
+    Ok(Json(UploadResponse {
+        message: "File uploaded successfully".to_string(),
+        key: filename,
+    }))
 }
 
 pub async fn download_object_handler(
     axum::extract::Path(filename): axum::extract::Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> Result<Json<DownloadResponse>, StatusCode> {
     // Validate filename pattern using Filename utils
     if !Filename::validate_filename(&filename) {
         return Err(StatusCode::BAD_REQUEST);
@@ -133,10 +155,10 @@ pub async fn download_object_handler(
             }
             let encoded = general_purpose::STANDARD.encode(&bytes);
 
-            Ok(Json(json!({
-                "message": "File downloaded successfully",
-                "data": encoded
-            })))
+            Ok(Json(DownloadResponse {
+                message: "File downloaded successfully".to_string(),
+                data: encoded,
+            }))
         }
         Err(_) => Err(StatusCode::NOT_FOUND),
     }
@@ -144,7 +166,7 @@ pub async fn download_object_handler(
 
 pub async fn user_info_handler(
     axum::extract::Path(uuid): axum::extract::Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> Result<Json<UserInfoResponse>, StatusCode> {
     // Validate UUID format
     if uuid.is_empty() || uuid.len() != 36 {
         return Err(StatusCode::BAD_REQUEST);
@@ -184,18 +206,20 @@ pub async fn user_info_handler(
 
     match compare_files(&most_recent_file, &most_iteration_file) {
         Ok(result) => match result {
-            FileComparisonResult::BestFile(file) => Ok(Json(json!({
-                "uuid": uuid,
-                "most_recent_file": file.to_string()
-            }))),
+            FileComparisonResult::BestFile(file) => Ok(Json(UserInfoResponse {
+                uuid: uuid.clone(),
+                response: FileComparisonResult::BestFile(file),
+            })),
             FileComparisonResult::ConflictingFiles {
                 most_recent_file,
                 most_iteration_file,
-            } => Ok(Json(json!({
-                "uuid": uuid,
-                "most_recent_file": most_recent_file.to_string(),
-                "most_iteration_file": most_iteration_file.to_string()
-            }))),
+            } => Ok(Json(UserInfoResponse {
+                uuid: uuid.clone(),
+                response: FileComparisonResult::ConflictingFiles {
+                    most_recent_file,
+                    most_iteration_file,
+                },
+            })),
         },
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
