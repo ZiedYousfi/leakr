@@ -58,6 +58,47 @@ impl Filename {
     }
 }
 
+pub enum FileComparisonResult {
+    BestFile(Filename),
+    ConflictingFiles {
+        most_recent_file: Filename,
+        most_iteration_file: Filename,
+    },
+}
+
+pub fn compare_files(
+    most_recent_file: &Filename,
+    most_iteration_file: &Filename,
+) -> Result<FileComparisonResult, anyhow::Error> {
+    if most_recent_file == most_iteration_file {
+        let file_struct = Filename::from_parts(
+            &most_recent_file.uuid,
+            &most_recent_file.date,
+            &most_recent_file.time,
+            most_recent_file.iteration,
+        );
+        Ok(FileComparisonResult::BestFile(file_struct))
+    } else {
+        let file_struct_most_recent = Filename::from_parts(
+            &most_recent_file.uuid,
+            &most_recent_file.date,
+            &most_recent_file.time,
+            most_recent_file.iteration,
+        );
+
+        let file_struct_most_iter = Filename::from_parts(
+            &most_iteration_file.uuid,
+            &most_iteration_file.date,
+            &most_iteration_file.time,
+            most_iteration_file.iteration,
+        );
+        Ok(FileComparisonResult::ConflictingFiles {
+            most_recent_file: file_struct_most_recent,
+            most_iteration_file: file_struct_most_iter,
+        })
+    }
+}
+
 impl fmt::Display for Filename {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
