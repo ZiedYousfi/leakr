@@ -9,7 +9,7 @@ pub fn create_client() -> Clerk {
   Clerk::new(config)
 }
 
-pub fn create_clerk_layer() -> ClerkLayer {
+pub fn create_clerk_layer() -> ClerkLayer<MemoryCacheJwksProvider> {
   let clerk = create_client();
   ClerkLayer::new(MemoryCacheJwksProvider::new(clerk), None, true)
 }
