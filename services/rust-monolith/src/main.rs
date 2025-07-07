@@ -17,6 +17,7 @@ fn check_env_vars_and_init_logger() {
         "R2_ACCESS_KEY_SECRET",
         "R2_BUCKET_MAIN",
         "R2_BUCKET_BACKUP",
+        "CLERK_SECRET_KEY",
         "DATABASE_URL",
     ];
 
