@@ -7,6 +7,7 @@ use axum::{
 };
 use serde_json::Value;
 use svix::webhooks::Webhook;
+use clerk_rs::models::User;
 
 async fn clerk_webhook(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
     let payload = body;
@@ -25,8 +26,8 @@ async fn clerk_webhook(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
     };
 
     if event["type"] == "user.created" {
-        let user_data = &event["data"];
-        todo!("Handle user.created event: {:?}", user_data);
+        let user: User = serde_json::from_value(event["data"].clone()).unwrap();
+        todo!("Handle user.created event: {:?}", user);
     }
 
     (StatusCode::OK, "ok").into_response()
