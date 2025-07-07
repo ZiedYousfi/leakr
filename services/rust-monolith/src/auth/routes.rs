@@ -20,7 +20,6 @@ async fn clerk_webhook(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
         return (StatusCode::UNAUTHORIZED, "invalid signature").into_response();
     }
 
-    // On parse le body JSON
     let event: Value = match serde_json::from_slice(&payload) {
         Ok(val) => val,
         Err(_) => return (StatusCode::BAD_REQUEST, "invalid JSON").into_response(),
