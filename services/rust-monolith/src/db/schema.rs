@@ -1,24 +1,25 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    files (id) {
+        id -> Int4,
+        uuid_of_users -> Text,
+        date -> Text,
+        time -> Text,
+        iteration -> Int4,
+    }
+}
+
+diesel::table! {
     users (uuid) {
         uuid -> Text,
         clerk_user_id -> Text,
         created_at -> Timestamp,
         updated_at -> Timestamp,
-        files -> Integer
+        files -> Int4,
     }
 }
 
-diesel::table! {
-    files (id){
-        id -> Integer,
-        uuid_of_users -> Text,
-        date -> Text,
-        time -> Text,
-        iteration -> Integer,
-    }
-}
+diesel::joinable!(files -> users (uuid_of_users));
 
-diesel::joinable!(users -> files (files));
-diesel::allow_tables_to_appear_in_same_query!(users, files,);
+diesel::allow_tables_to_appear_in_same_query!(files, users,);
