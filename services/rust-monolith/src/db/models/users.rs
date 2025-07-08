@@ -7,6 +7,7 @@ use diesel::prelude::*;
 pub struct Users {
     pub uuid: String,
     pub clerk_user_id: String,
+    pub name: String,
     pub created_at: chrono::NaiveDateTime,
     pub updated_at: chrono::NaiveDateTime,
     pub files: i32,
@@ -17,14 +18,16 @@ pub struct Users {
 pub struct NewUsers {
     pub uuid: String,
     pub clerk_user_id: String,
+    pub name: String,
 }
 
 impl Users {
-    pub fn new(uuid: String, clerk_user_id: String) -> Self {
+    pub fn new(uuid: String, clerk_user_id: String, name: String) -> Self {
         let now = chrono::Local::now().naive_local();
         Self {
             uuid,
             clerk_user_id,
+            name,
             created_at: now,
             updated_at: now,
             files: 0,
@@ -46,10 +49,11 @@ impl Users {
 }
 
 impl NewUsers {
-    pub fn new(uuid: String, clerk_user_id: String) -> Self {
+    pub fn new(uuid: String, clerk_user_id: String, name: String) -> Self {
         Self {
             uuid,
             clerk_user_id,
+            name,
         }
     }
 

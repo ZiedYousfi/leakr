@@ -20,6 +20,7 @@ pub struct ClerkWebhook {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ClerkUser {
     pub id: String,
+    pub username: Option<String>,
 }
 
 async fn clerk_webhook(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
@@ -40,7 +41,11 @@ async fn clerk_webhook(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
     if event["type"] == "user.created" {
         let clerk_user: ClerkUser =
             serde_json::from_value(event["data"].clone()).expect("Failed to parse Clerk User");
-        let user: NewUsers = NewUsers::new(uuid::Uuid::new_v4().into(), clerk_user.id);
+        let user: NewUsers = NewUsers::new(
+            uuid::Uuid::new_v4().into(),
+            clerk_user.id,
+            clerk_user.username.unwrap_or_else(|| "Unknown".to_string()),
+        );
         let pool = crate::db::db_utils::establish_pool();
         let mut conn = crate::db::db_utils::get_connection(&pool);
         let _ = user.insert_into_db(&mut conn);

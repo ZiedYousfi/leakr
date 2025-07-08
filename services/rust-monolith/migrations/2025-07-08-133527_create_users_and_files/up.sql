@@ -4,6 +4,7 @@
 CREATE TABLE users (
     uuid TEXT PRIMARY KEY,
     clerk_user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     files INTEGER NOT NULL DEFAULT 0
