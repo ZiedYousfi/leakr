@@ -16,5 +16,8 @@ RUN cargo build --release --bin rust-monolith
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /app/target/release/rust-monolith /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/rust-monolith"]
