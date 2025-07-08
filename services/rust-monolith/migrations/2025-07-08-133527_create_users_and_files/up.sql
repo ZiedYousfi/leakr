@@ -6,7 +6,7 @@ CREATE TABLE users (
     clerk_user_id TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    files INTEGER NOT NULL
+    files INTEGER NOT NULL DEFAULT 0
 );
 
 -- Création de la table files
