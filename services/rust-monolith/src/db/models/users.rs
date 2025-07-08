@@ -60,6 +60,8 @@ impl NewUsers {
     pub fn insert_into_db(&self, conn: &mut PgConnection) -> Result<Users, diesel::result::Error> {
         use crate::db::schema::users;
 
+        log::info!("Inserting new user into database: {:?}", self);
+
         diesel::insert_into(users::table)
             .values(self)
             .get_result(conn)
