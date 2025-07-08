@@ -6,9 +6,21 @@ use axum::{
     response::IntoResponse,
     routing::post,
 };
-use clerk_rs::models::User as ClerkUser;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use svix::webhooks::Webhook;
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ClerkWebhook {
+    pub id: String,
+    pub type_: String,
+    pub data: Value,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ClerkUser {
+    pub id: String,
+}
 
 async fn clerk_webhook(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
     let payload = body;
@@ -25,14 +37,10 @@ async fn clerk_webhook(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
         Err(_) => return (StatusCode::BAD_REQUEST, "invalid JSON").into_response(),
     };
 
-    log::info!("Received Clerk webhook event: {event:?}");
-
     if event["type"] == "user.created" {
         let clerk_user: ClerkUser =
             serde_json::from_value(event["data"].clone()).expect("Failed to parse Clerk User");
-        log::info!("Clerk user created: {clerk_user:?}");
-        let user: NewUsers = NewUsers::new(uuid::Uuid::new_v4().into(), clerk_user.id.unwrap());
-        log::info!("Inserting user into database: {user:?}");
+        let user: NewUsers = NewUsers::new(uuid::Uuid::new_v4().into(), clerk_user.id);
         let pool = crate::db::db_utils::establish_pool();
         let mut conn = crate::db::db_utils::get_connection(&pool);
         let _ = user.insert_into_db(&mut conn);
