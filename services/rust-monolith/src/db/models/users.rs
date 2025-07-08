@@ -59,5 +59,9 @@ impl NewUsers {
         diesel::insert_into(users::table)
             .values(self)
             .get_result(conn)
+            .map_err(|e| {
+                log::error!("Failed to insert user into database: {}", e);
+                e
+            })
     }
 }

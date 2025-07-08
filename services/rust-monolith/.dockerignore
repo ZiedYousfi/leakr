@@ -1,2 +1,5 @@
 fly.toml
 .git/
+.gitignore
+.vscode/
+target/
