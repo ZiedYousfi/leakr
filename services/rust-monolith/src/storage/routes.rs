@@ -1,4 +1,5 @@
 use crate::{
+    auth::auth_utils::create_clerk_layer,
     db::models::files::NewFileTable,
     storage::{
         filename_utils::{FileComparisonResult, Filename, compare_files},
@@ -21,7 +22,8 @@ pub fn create_routes() -> Router {
     let router = Router::new()
         .route("/upload", post(upload_object_handler))
         .route("/download/file/{filename}", get(download_object_handler))
-        .route("/info/user/{uuid}", get(user_info_handler));
+        .route("/info/user/{uuid}", get(user_info_handler))
+        .layer(create_clerk_layer());
     Router::new().nest("/storage", router)
 }
 

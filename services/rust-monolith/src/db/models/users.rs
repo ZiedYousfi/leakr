@@ -44,3 +44,20 @@ impl Users {
             .load::<crate::db::models::files::FileTable>(conn)
     }
 }
+
+impl NewUsers {
+    pub fn new(uuid: String, clerk_user_id: String) -> Self {
+        Self {
+            uuid,
+            clerk_user_id,
+        }
+    }
+
+    pub fn insert_into_db(&self, conn: &mut PgConnection) -> Result<Users, diesel::result::Error> {
+        use crate::db::schema::users;
+
+        diesel::insert_into(users::table)
+            .values(self)
+            .get_result(conn)
+    }
+}

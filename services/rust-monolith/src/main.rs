@@ -2,7 +2,9 @@ use axum::Router;
 use std::net::SocketAddr;
 
 fn router_v1_constructor() -> Router {
-    let init_router = Router::new().merge(rust_monolith::storage::routes::create_routes());
+    let init_router = Router::new()
+        .merge(rust_monolith::storage::routes::create_routes())
+        .merge(rust_monolith::auth::routes::create_auth_router());
     Router::new().nest("/v1", init_router)
 }
 
@@ -17,6 +19,8 @@ fn check_env_vars_and_init_logger() {
         "R2_ACCESS_KEY_SECRET",
         "R2_BUCKET_MAIN",
         "R2_BUCKET_BACKUP",
+        "CLERK_SECRET_KEY",
+        "CLERK_WEBHOOK_SECRET",
         "DATABASE_URL",
     ];
 
