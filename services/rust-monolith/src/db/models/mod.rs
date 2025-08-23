@@ -1,3 +1,4 @@
+pub mod files;
 /// After changing schema.rs, you need to run the migration command to apply changes.
 ///
 /// You can use the `diesel` CLI to manage migrations in your Rust project.
@@ -9,4 +10,3 @@
 /// ```
 /// Then i recommend properly making your models here
 pub mod users;
-pub mod files;

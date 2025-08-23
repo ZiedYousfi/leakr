@@ -12,10 +12,7 @@ pub struct StripeEvent(pub stripe::Event);
 impl FromRequest<()> for StripeEvent {
     type Rejection = Response;
 
-    async fn from_request(
-        req: Request,
-        _state: &(),
-    ) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _state: &()) -> Result<Self, Self::Rejection> {
         let signature_header = req
             .headers()
             .get("stripe-signature")
@@ -32,12 +29,11 @@ impl FromRequest<()> for StripeEvent {
         let payload = String::from_utf8(bytes.to_vec())
             .map_err(|_| StatusCode::BAD_REQUEST.into_response())?;
 
-        let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET")
-            .unwrap_or_else(|_| "whsec_xxxxx".to_string());
+        let webhook_secret =
+            std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_else(|_| "whsec_xxxxx".to_string());
 
-        let event =
-            stripe::Webhook::construct_event(&payload, &signature_header, &webhook_secret)
-                .map_err(|_| StatusCode::BAD_REQUEST.into_response())?;
+        let event = stripe::Webhook::construct_event(&payload, &signature_header, &webhook_secret)
+            .map_err(|_| StatusCode::BAD_REQUEST.into_response())?;
 
         Ok(Self(event))
     }
