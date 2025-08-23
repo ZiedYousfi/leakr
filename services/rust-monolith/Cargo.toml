@@ -8,7 +8,7 @@ axum = { version = "0.8.4", features = ["multipart"] }
 tokio = { version = "1.47.1", features = ["full"] }
 tower = "0.5.2"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.142"
+serde_json = "1.0.143"
 dotenvy = "0.15.7"
 log = "0.4.27"
 tracing = "0.1.41"
@@ -23,16 +23,16 @@ tower-http = { version = "0.6.6", features = ["cors", "trace"] }
 jsonwebtoken = { version = "9.3.1" }
 clerk-rs = { version = "0.4.1", features = ["axum"] }
 aws-config = { version = "1.8.5", features = ["behavior-version-latest"] }
-aws-sdk-s3 = "1.102.0"
-anyhow = "1.0.98"
+aws-sdk-s3 = "1.103.0"
+anyhow = "1.0.99"
 regex = "1.11.1"
 bytes = "1.10.1"
 base64 = "0.22.1"
 once_cell = "1.21.3"
-tempfile = "3.20.0"
+tempfile = "3.21.0"
 env_logger = "0.11.8"
-svix = { version = "1.71.0" }
-async-stripe = "0.41.0"
+svix = { version = "1.74.1" }
+async-stripe = { version = "0.41.0", features = ["runtime-tokio-hyper"] }
 
 [profile.release]
 opt-level = 3
