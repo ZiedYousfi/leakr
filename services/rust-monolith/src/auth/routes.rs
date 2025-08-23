@@ -33,8 +33,8 @@ async fn clerk_webhook(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
         return (StatusCode::UNAUTHORIZED, "invalid signature").into_response();
     }
 
-    log::info!("Received Clerk webhook: {headers:?}");
-    log::info!("Payload: {:?}", String::from_utf8_lossy(&payload));
+    log::debug!("Received Clerk webhook: {headers:?}");
+    log::debug!("Payload: {:?}", String::from_utf8_lossy(&payload));
 
     let event: Value = match serde_json::from_slice(&payload) {
         Ok(val) => val,
@@ -44,13 +44,13 @@ async fn clerk_webhook(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
     if event["type"] == "user.created" {
         let clerk_user: ClerkUser =
             serde_json::from_value(event["data"].clone()).expect("Failed to parse Clerk User");
-        log::info!("New Clerk user created: {clerk_user:?}");
+        log::debug!("New Clerk user created: {clerk_user:?}");
         let user: NewUsers = NewUsers::new(
             uuid::Uuid::new_v4().into(),
             clerk_user.id,
             clerk_user.username.unwrap_or_else(|| "Unknown".to_string()),
         );
-        log::info!("Inserting user into database: {user:?}");
+        log::debug!("Inserting user into database: {user:?}");
         let pool = crate::db::db_utils::establish_pool();
         let mut conn = crate::db::db_utils::get_connection(&pool);
         let _ = user.insert_into_db(&mut conn);
