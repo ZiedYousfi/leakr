@@ -2,14 +2,10 @@ module auth-service
 
 go 1.24.0
 
-require (
-	github.com/clerk/clerk-sdk-go/v2 v2.3.1
-	github.com/gofiber/fiber/v2 v2.52.7
-)
+require github.com/gofiber/fiber/v2 v2.52.11
 
 require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
@@ -18,6 +14,5 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.61.0 // indirect
-	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 )
