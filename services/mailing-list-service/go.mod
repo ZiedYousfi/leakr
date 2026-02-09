@@ -3,7 +3,7 @@ module mailing-list-service
 go 1.24.0
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.7
+	github.com/gofiber/fiber/v2 v2.52.11
 	github.com/mailerlite/mailerlite-go v1.1.0
 )
 
